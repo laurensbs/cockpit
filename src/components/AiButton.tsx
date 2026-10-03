@@ -25,9 +25,11 @@ export function AiButton({
   estimateMicros,
   disabledReason,
   variant = 'primary',
+  options,
 }: {
   kind: string
   projectId: string
+  options?: Record<string, unknown>
   label: string
   estimateMicros: number
   disabledReason?: string | null
@@ -80,7 +82,7 @@ export function AiButton({
             setError(null)
             setState(null)
             setSeconds(0)
-            const result = await startAi(kind, projectId)
+            const result = await startAi(kind, projectId, options ?? {})
             if (result.error) setError(result.error)
             else if (result.runId) setRunId(result.runId)
           })

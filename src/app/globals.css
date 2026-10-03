@@ -1091,3 +1091,69 @@ a.card:active {
 :where(span.stack-xs, span.stack-s, span.stack-m) > :where(*) {
   display: block;
 }
+
+/* ---------- studio ---------- */
+
+.draft-subject {
+  font: 650 1.05rem/1.35 var(--font-display);
+  overflow-wrap: anywhere;
+}
+.icon-button.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.idea-number {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.matrix .axis {
+  stroke: var(--line);
+  stroke-width: 2;
+}
+.matrix .sweet {
+  fill: color-mix(in srgb, var(--xp) 14%, transparent);
+}
+.matrix .label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-body);
+}
+.matrix .dot {
+  fill: var(--accent);
+}
+.matrix .num-label {
+  fill: var(--on-accent);
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+.calendar {
+  display: grid;
+  gap: 0.5rem;
+}
+.calendar .day {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line);
+}
+.calendar .day.today .day-label {
+  color: var(--accent-ink);
+  font-weight: 800;
+}
+a.chip {
+  text-decoration: none;
+}
+a.chip:hover {
+  color: var(--ink);
+}

@@ -128,3 +128,89 @@ export function planTask(name: string, profile: Profile | null): string {
 - At least one out-of-the-box action per phase (a partnership, guerrilla, cross-promotion with his other projects, or a seasonal hook).
 - Respect the budget and the red lines.`
 }
+
+// ---------- studio ----------
+
+export const LANGUAGE_NAMES: Record<string, string> = { nl: 'Dutch', en: 'English', es: 'Spanish', fr: 'French', de: 'German' }
+const lang = (code: string) => LANGUAGE_NAMES[code] ?? 'Dutch'
+
+const DRAFT_RULES = `- Never invent facts, numbers, quotes or results about the project. Where he must fill something in (a name, a number, a date), put a placeholder in [square brackets].
+- Every email to an organisation ends with a short, friendly opt-out line in the same language (for example in Dutch: "Liever geen mail meer hierover? Laat het even weten, dan stop ik.").
+- Write as the founder himself, in the first person, signed with [naam]; no corporate tone.`
+
+export const EMAIL_PURPOSES = {
+  outreach: 'a first email to an organisation that could help or benefit (business to business)',
+  partnership: 'a proposal for a partnership with another organisation or brand',
+  press: 'a pitch to a local journalist, blogger or podcast',
+  newsletter: 'a newsletter to people who signed up for updates',
+  launch: 'a launch announcement to people who asked to hear about it',
+  followup: 'a series of three follow-ups (after 4, 10 and 21 days) to a first email that got no answer',
+} as const
+export type EmailPurpose = keyof typeof EMAIL_PURPOSES
+
+export function emailsTask(purpose: EmailPurpose, language: string, note: string): string {
+  return `Task: email drafts for ${EMAIL_PURPOSES[purpose]}, in ${lang(language)}, as JSON.
+- drafts: ${purpose === 'followup' ? 'exactly three, in order' : 'two or three variants with a different angle (short and direct, warmer, more concrete)'}; each with a title (what it is, for him), subject, body and ps (empty when not needed).
+- Subject lines under 60 characters, no clickbait. Bodies under 160 words.
+${DRAFT_RULES}${note ? `\n- His note for this batch: ${neutralize(note)}` : ''}`
+}
+
+export interface ContactBrief {
+  organization: string
+  name: string
+  website: string | null
+  note: string
+  basis: string
+}
+
+export function contactEmailTask(contact: ContactBrief, language: string): string {
+  return `Task: one personal email to this contact, in ${lang(language)}, as JSON with drafts holding exactly one draft (title, subject, body, ps).
+<contact>
+Organisation: ${neutralize(contact.organization)}
+${contact.name ? `Person: ${neutralize(contact.name)}\n` : ''}${contact.website ? `Website: ${neutralize(contact.website)}\n` : ''}${contact.note ? `His notes: ${neutralize(contact.note)}\n` : ''}Why mailing them is allowed: ${contact.basis}
+</contact>
+- Make it about them: why this project fits their organisation, and one small, concrete ask.
+- Subject under 60 characters, body under 140 words.
+${DRAFT_RULES}`
+}
+
+export const PLATFORMS = {
+  instagram: 'Instagram (feed posts and carousels of 1080×1350, Reels, Stories)',
+  tiktok: 'TikTok (short videos: a hook in the first two seconds, scenes, on-screen text)',
+  linkedin: 'LinkedIn (posts for his professional network)',
+  x: 'X and Threads (short posts)',
+  discord: 'Discord (announcements for a community server)',
+} as const
+export type Platform = keyof typeof PLATFORMS
+
+export function postsTask(platform: Platform, language: string, pastTitles: string[]): string {
+  return `Task: five posts for ${PLATFORMS[platform]}, in ${lang(language)}, as JSON.
+- posts: each with a title (for him), format (for example carousel, reel, story, text post, thread), hook (the first line or the first two seconds), caption (ready to paste), hashtags (3–10, fitting the market; none for Discord), visualBrief (what to film or design, concretely) and bestTime (day and time that suits the audience).
+- Mix the content pillars and formats; at least one post that is useful or fun without selling anything.
+- Never invent facts, numbers or testimonials; put what he must fill in in [square brackets]. Respect the red lines and the platform's rules.${pastTitles.length ? `\n- Do not repeat these earlier posts: ${pastTitles.map((t) => neutralize(t)).join('; ')}` : ''}`
+}
+
+export const IDEA_MODES = {
+  surprise: 'Surprise him: six ideas across different categories, from safe to wild.',
+  zero: 'Zero-budget guerrilla: six ideas that cost nothing (or a few euros) and take less than a day, online or on the street.',
+  cross: 'Cross-pollination: six ideas that combine this project with his other projects (shared audiences, case studies, joint actions, swapping assets).',
+  inverse: 'Inversion: first think how this project would surely fail to get attention, then turn each failure into an idea. Six ideas.',
+  season: 'Seasonal hooks: six ideas tied to holidays, events, school periods, weather or seasons in his markets in the next 60 days.',
+  persona: 'Borrow a perspective: six ideas the way the persona below would market this project, made realistic for him.',
+} as const
+export type IdeaMode = keyof typeof IDEA_MODES
+
+export function ideasTask(mode: IdeaMode, today: string, persona: string, pastTitles: string[]): string {
+  return `Task: out-of-the-box marketing ideas, as JSON. Today is ${today}.
+${IDEA_MODES[mode]}${mode === 'persona' && persona ? `\nPersona: ${neutralize(persona)}` : ''}
+- ideas: each with a title (at most 10 words), category (for example guerrilla, partnership, content, community, PR, product, offline, cross-promotion), why it could work for this project, a concrete first step, impact (1–5), effort (1–5), cost (in euros, as text) and wildness (1 = safe, 5 = wild).
+- Unusual is good, unexecutable is not. Respect the red lines, the law and platform rules; no tricks on private persons.${pastTitles.length ? `\n- Do not repeat these earlier ideas: ${pastTitles.map((t) => neutralize(t)).join('; ')}` : ''}`
+}
+
+export function opportunitiesTask(language: string, markets: string[]): string {
+  return `Task: find real opportunities for this project on the web: communities, forums, subreddits, Discord servers, directories, toplists, local media, events, partner organisations and associations where its audience is${markets.length ? `, focused on these markets: ${markets.join(', ')}` : ''}.
+Use web search. Only list places you actually found, with their real web address. Never list private persons or personal email addresses: organisations, communities and public pages only.
+Answer in ${lang(language)} with JSON only (no other text), in this shape:
+{"opportunities":[{"name":"…","type":"community | directory | media | event | partner | other","url":"https://…","why":"why it fits","howToApproach":"how to start there, within the rules of that place"}]}
+List 5–8 opportunities, best first.`
+}

@@ -55,3 +55,32 @@ describe('normalizing', () => {
     expect(planFromJson({ nope: true })).toBeNull()
   })
 })
+
+import { emailsFixture, ideasFixture, opportunitiesFixture, postsFixture } from './fixtures'
+import { EmailsWire, hashtags, IdeasWire, normalizeIdeas, normalizeOpportunities, normalizePosts, OpportunitiesWire, PostsWire, safeLink } from './schemas'
+
+describe('studio schemas', () => {
+  it('accept the fixtures', () => {
+    expect(EmailsWire.safeParse(emailsFixture()).success).toBe(true)
+    expect(PostsWire.safeParse(postsFixture()).success).toBe(true)
+    expect(IdeasWire.safeParse(ideasFixture()).success).toBe(true)
+    expect(OpportunitiesWire.safeParse(opportunitiesFixture()).success).toBe(true)
+  })
+
+  it('tidies hashtags', () => {
+    expect(hashtags(['#Rondje', 'rondje', 'dog walking', '##utrecht', ''])).toEqual(['#Rondje', '#dogwalking', '#utrecht'])
+    expect(normalizePosts(postsFixture()).at(0)?.hashtags).toEqual(['#rondje', '#hondenliefde', '#Utrecht'])
+  })
+
+  it('keeps scores between 1 and 5', () => {
+    const [idea] = normalizeIdeas({ ideas: [{ ...ideasFixture().ideas[0], impact: 9, effort: -2, wildness: Number.NaN }] })
+    expect(idea).toMatchObject({ impact: 5, effort: 1, wildness: 3 })
+  })
+
+  it('only lets web links through', () => {
+    expect(safeLink('https://example.org/x')).toBe('https://example.org/x')
+    expect(safeLink('javascript:alert(1)')).toBeNull()
+    expect(safeLink('mailto:a@b.nl')).toBeNull()
+    expect(normalizeOpportunities(opportunitiesFixture()).map((o) => o.url)).toEqual(['https://example.org/opvang', null])
+  })
+})

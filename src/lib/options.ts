@@ -45,3 +45,18 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
   followers: 'Volgers',
 }
 export const isMetricKey = (v: unknown): v is MetricKey => typeof v === 'string' && (METRIC_KEYS as readonly string[]).includes(v)
+
+export const CONTACT_STATUSES = ['new', 'drafted', 'sent', 'replied', 'no'] as const
+export type ContactStatus = (typeof CONTACT_STATUSES)[number]
+export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  new: 'Nieuw',
+  drafted: 'Concept klaar',
+  sent: 'Gemaild',
+  replied: 'Antwoord!',
+  no: 'Geen interesse',
+}
+export const CONTACT_BASIS_LABELS: Record<string, string> = {
+  business: 'Zakelijk adres (gerechtvaardigd belang)',
+  relation: 'Bestaande relatie',
+  consent: 'Toestemming gegeven',
+}

@@ -142,3 +142,98 @@ export function planFromJson(value: unknown): Plan | null {
     .safeParse(value)
   return r.success ? r.data : null
 }
+
+// ---------- studio ----------
+
+export const EmailsWire = z.object({ drafts: z.array(z.object({ title: str, subject: str, body: str, ps: str })) })
+export const PostsWire = z.object({
+  posts: z.array(z.object({ title: str, format: str, hook: str, caption: str, hashtags: z.array(str), visualBrief: str, bestTime: str })),
+})
+export const IdeasWire = z.object({
+  ideas: z.array(z.object({ title: str, category: str, why: str, firstStep: str, impact: z.number(), effort: z.number(), cost: str, wildness: z.number() })),
+})
+export const OpportunitiesWire = z.object({ opportunities: z.array(z.object({ name: str, type: str, url: str, why: str, howToApproach: str })) })
+
+export interface EmailDraft {
+  title: string
+  subject: string
+  body: string
+  ps: string
+}
+export interface PostDraft {
+  title: string
+  format: string
+  hook: string
+  caption: string
+  hashtags: string[]
+  visualBrief: string
+  bestTime: string
+}
+export interface Idea {
+  title: string
+  category: string
+  why: string
+  firstStep: string
+  impact: number
+  effort: number
+  cost: string
+  wildness: number
+}
+export interface Opportunity {
+  name: string
+  type: string
+  url: string | null
+  why: string
+  howToApproach: string
+}
+
+const score = (n: number) => (Number.isFinite(n) ? Math.min(5, Math.max(1, Math.round(n))) : 3)
+
+export const normalizeEmails = (w: z.infer<typeof EmailsWire>): EmailDraft[] =>
+  w.drafts.slice(0, 5).map((d) => ({ title: clean(d.title, 100), subject: clean(d.subject, 140), body: clean(d.body, 4000), ps: clean(d.ps, 300) }))
+
+/** "#Dogs", "dogs", "#dog walking" → "#Dogs", "#dogs", "#dogwalking"; at most 15, no doubles. */
+export function hashtags(tags: string[]): string[] {
+  const out: string[] = []
+  for (const t of tags) {
+    const tag = t.replace(/^#+/, '').replace(/[^\p{L}\p{N}_]/gu, '')
+    if (tag && !out.some((o) => o.toLowerCase() === `#${tag}`.toLowerCase())) out.push(`#${tag}`)
+  }
+  return out.slice(0, 15)
+}
+
+export const normalizePosts = (w: z.infer<typeof PostsWire>): PostDraft[] =>
+  w.posts.slice(0, 7).map((p) => ({
+    title: clean(p.title, 100),
+    format: clean(p.format, 60),
+    hook: clean(p.hook, 200),
+    caption: clean(p.caption, 2200),
+    hashtags: hashtags(p.hashtags),
+    visualBrief: clean(p.visualBrief, 600),
+    bestTime: clean(p.bestTime, 80),
+  }))
+
+export const normalizeIdeas = (w: z.infer<typeof IdeasWire>): Idea[] =>
+  w.ideas.slice(0, 8).map((i) => ({
+    title: clean(i.title, 120),
+    category: clean(i.category, 40),
+    why: clean(i.why, 500),
+    firstStep: clean(i.firstStep, 300),
+    impact: score(i.impact),
+    effort: score(i.effort),
+    cost: clean(i.cost, 60),
+    wildness: score(i.wildness),
+  }))
+
+/** Only http(s) links survive: an answer cannot smuggle in a javascript: or mailto: link. */
+export function safeLink(url: string): string | null {
+  try {
+    const u = new URL(url.trim())
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : null
+  } catch {
+    return null
+  }
+}
+
+export const normalizeOpportunities = (w: z.infer<typeof OpportunitiesWire>): Opportunity[] =>
+  w.opportunities.slice(0, 10).map((o) => ({ name: clean(o.name, 120), type: clean(o.type, 40), url: safeLink(o.url), why: clean(o.why, 500), howToApproach: clean(o.howToApproach, 500) }))
