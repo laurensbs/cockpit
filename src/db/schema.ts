@@ -1,0 +1,252 @@
+import { sql } from 'drizzle-orm'
+import {
+  boolean,
+  date,
+  doublePrecision,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
+import { user } from './auth-schema'
+
+export * from './auth-schema'
+
+// Every row belongs to an owner, so the cockpit can serve more people later without a rewrite.
+const ownerId = () =>
+  text('owner_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' })
+const createdAt = () => timestamp('created_at').defaultNow().notNull()
+const emptyTextArray = sql`'{}'::text[]`
+
+/** A company or brand: your own business, a client, a side project or a non-profit. */
+export const company = pgTable(
+  'company',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    name: text('name').notNull(),
+    kind: text('kind').notNull().default('own'),
+    country: text('country'),
+    registration: text('registration').notNull().default(''),
+    website: text('website'),
+    color: text('color').notNull().default('#8b7bff'),
+    status: text('status').notNull().default('active'),
+    notes: text('notes').notNull().default(''),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index('company_owner_idx').on(t.ownerId)],
+)
+
+/** Something you build and market. It may have GitHub repos, or none yet. */
+export const project = pgTable(
+  'project',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    companyId: text('company_id').references(() => company.id, { onDelete: 'set null' }),
+    name: text('name').notNull(),
+    stage: text('stage').notNull().default('build'),
+    oneLiner: text('one_liner').notNull().default(''),
+    what: text('what').notNull().default(''),
+    audience: text('audience').notNull().default(''),
+    goal: text('goal').notNull().default(''),
+    markets: text('markets').array().notNull().default(emptyTextArray),
+    languages: text('languages').array().notNull().default(sql`'{nl}'::text[]`),
+    tone: text('tone').notNull().default(''),
+    northStar: text('north_star').notNull().default(''),
+    redLines: text('red_lines').notNull().default(''),
+    siteUrl: text('site_url'),
+    siteStatus: integer('site_status'),
+    siteCheckedAt: timestamp('site_checked_at'),
+    links: jsonb('links').$type<{ label: string; url: string }[]>().notNull().default([]),
+    monthlyBudget: integer('monthly_budget'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [index('project_owner_idx').on(t.ownerId), index('project_company_idx').on(t.companyId)],
+)
+
+/** A GitHub repository and what the cockpit last read from it. */
+export const repo = pgTable(
+  'repo',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'set null' }),
+    fullName: text('full_name').notNull(),
+    isPrivate: boolean('is_private').notNull().default(true),
+    archived: boolean('archived').notNull().default(false),
+    // Off for a client's repo whose content should not go to the AI.
+    includeInAi: boolean('include_in_ai').notNull().default(true),
+    description: text('description').notNull().default(''),
+    homepage: text('homepage'),
+    topics: text('topics').array().notNull().default(emptyTextArray),
+    language: text('language'),
+    stack: text('stack').array().notNull().default(emptyTextArray),
+    readme: text('readme').notNull().default(''),
+    docs: jsonb('docs').$type<{ path: string; text: string }[]>().notNull().default([]),
+    commitDays: jsonb('commit_days').$type<Record<string, number>>().notNull().default({}),
+    recentCommits: jsonb('recent_commits').$type<{ date: string; message: string }[]>().notNull().default([]),
+    pushedAt: timestamp('pushed_at'),
+    syncedAt: timestamp('synced_at'),
+    syncError: text('sync_error'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('repo_owner_full_name_idx').on(t.ownerId, t.fullName), index('repo_project_idx').on(t.projectId)],
+)
+
+/** What the AI made for a project (profile, plan) or for the whole portfolio (weekly focus). The newest one counts. */
+export const brief = pgTable(
+  'brief',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    content: jsonb('content').notNull(),
+    runId: text('run_id'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('brief_owner_kind_idx').on(t.ownerId, t.kind, t.createdAt), index('brief_project_idx').on(t.projectId)],
+)
+
+/** Someone to reach out to for a project: always an organisation or a business address. */
+export const contact = pgTable(
+  'contact',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    organization: text('organization').notNull(),
+    name: text('name').notNull().default(''),
+    email: text('email'),
+    website: text('website'),
+    note: text('note').notNull().default(''),
+    // Why mailing them is allowed: consent, an existing relationship, or a business address (legitimate interest).
+    basis: text('basis').notNull().default('business'),
+    status: text('status').notNull().default('new'),
+    lastContactAt: timestamp('last_contact_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('contact_project_idx').on(t.projectId)],
+)
+
+/** A draft: an email, a social post, an idea or an opportunity. Nothing here is ever sent on its own. */
+export const contentItem = pgTable(
+  'content_item',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    channel: text('channel').notNull().default(''),
+    language: text('language').notNull().default('nl'),
+    title: text('title').notNull(),
+    body: jsonb('body').notNull(),
+    status: text('status').notNull().default('draft'),
+    plannedFor: date('planned_for'),
+    doneAt: timestamp('done_at'),
+    rating: integer('rating').notNull().default(0),
+    contactId: text('contact_id').references(() => contact.id, { onDelete: 'set null' }),
+    runId: text('run_id'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('content_owner_kind_idx').on(t.ownerId, t.kind, t.status),
+    index('content_project_idx').on(t.projectId),
+    index('content_planned_idx').on(t.ownerId, t.plannedFor),
+  ],
+)
+
+/** Something to do, worth XP. sourceKey keeps generated quests from appearing twice. */
+export const quest = pgTable(
+  'quest',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    detail: text('detail').notNull().default(''),
+    kind: text('kind').notNull().default('custom'),
+    xp: integer('xp').notNull().default(25),
+    source: text('source').notNull().default('manual'),
+    sourceKey: text('source_key'),
+    status: text('status').notNull().default('open'),
+    // A recurring quest (VAT return, domain renewal) comes back after it is done.
+    recurrence: text('recurrence').notNull().default('none'),
+    dueOn: date('due_on'),
+    doneAt: timestamp('done_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('quest_owner_status_idx').on(t.ownerId, t.status), uniqueIndex('quest_source_idx').on(t.ownerId, t.sourceKey)],
+)
+
+/** The XP ledger. Levels, streaks and badges are all computed from it; (kind, refId) can only score once. */
+export const xpEvent = pgTable(
+  'xp_event',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'set null' }),
+    kind: text('kind').notNull(),
+    refId: text('ref_id').notNull(),
+    xp: integer('xp').notNull(),
+    day: date('day').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('xp_event_ref_idx').on(t.ownerId, t.kind, t.refId), index('xp_event_owner_day_idx').on(t.ownerId, t.day)],
+)
+
+
+/** A number per project per month, entered by hand: revenue, costs, users, leads, followers. */
+export const metric = pgTable(
+  'metric',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    month: date('month').notNull(),
+    key: text('key').notNull(),
+    value: doublePrecision('value').notNull(),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('metric_project_month_key_idx').on(t.projectId, t.month, t.key)],
+)
+
+/** One call to Claude: what it was for, what it cost, and how it ended. */
+export const aiRun = pgTable(
+  'ai_run',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'set null' }),
+    kind: text('kind').notNull(),
+    options: jsonb('options').$type<Record<string, unknown>>().notNull().default({}),
+    status: text('status').notNull().default('running'),
+    model: text('model').notNull(),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
+    cacheWriteTokens: integer('cache_write_tokens').notNull().default(0),
+    webSearches: integer('web_searches').notNull().default(0),
+    // Millionths of a US dollar. While a run is busy, its worst case is held back from the budget.
+    costMicros: integer('cost_micros').notNull().default(0),
+    reservedMicros: integer('reserved_micros').notNull().default(0),
+    error: text('error'),
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    finishedAt: timestamp('finished_at'),
+  },
+  (t) => [index('ai_run_owner_started_idx').on(t.ownerId, t.startedAt), index('ai_run_project_idx').on(t.projectId)],
+)
