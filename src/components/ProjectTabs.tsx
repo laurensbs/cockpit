@@ -1,9 +1,10 @@
 import Link from 'next/link'
 
-export type ProjectTab = 'overview' | 'quests'
+export type ProjectTab = 'overview' | 'brain' | 'quests'
 
 const TABS: { key: ProjectTab; label: string; path: string }[] = [
   { key: 'overview', label: 'Overzicht', path: '' },
+  { key: 'brain', label: 'Marketingbrein', path: '/brain' },
   { key: 'quests', label: 'Quests', path: '/quests' },
 ]
 

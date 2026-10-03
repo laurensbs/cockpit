@@ -1,6 +1,9 @@
-import { dbMode } from '@/db'
+import { dbMode, getDb } from '@/db'
 import { AddPasskeyButton } from '@/components/AddPasskeyButton'
+import { CostMeter } from '@/components/CostMeter'
 import { Icon } from '@/components/Icon'
+import { budgetState } from '@/server/ai/budget'
+import { requireOwner } from '@/server/session'
 import { aiStatus, emailStatus, githubStatus, monthlyBudgetUsd, type ServiceStatus } from '@/server/status'
 
 export const metadata = { title: 'Instellingen' }
@@ -12,7 +15,9 @@ function StatusChip({ status }: { status: ServiceStatus | 'neon' | 'postgres' | 
   return <span className="chip">Niet ingesteld</span>
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const owner = await requireOwner('/settings')
+  const budget = await budgetState(await getDb(), owner.userId)
   const db = dbMode()
   return (
     <div className="stack-l">
@@ -45,8 +50,9 @@ export default function SettingsPage() {
         <p className="muted small">
           Maakt marketingplannen, mails, posts en ideeën. Harde limiet: <strong className="num">${monthlyBudgetUsd().toFixed(2)}</strong> per maand (
           <code>AI_MONTHLY_BUDGET_USD</code>). Zet je key als <code>ANTHROPIC_API_KEY</code> in Vercel, en stel in de Anthropic Console ook een
-          maandlimiet in als tweede slot.
+          maandlimiet in als tweede slot. Per dag gaat er hooguit een vijfde van het budget op.
         </p>
+        <CostMeter budget={budget} />
       </section>
 
       <section className="card stack-m">
