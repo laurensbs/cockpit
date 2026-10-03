@@ -9,8 +9,10 @@ import * as s from '@/db/schema'
 import { COMPANY_COLORS, LANGUAGES, MARKETS, STAGES, isStage } from '@/lib/options'
 import { STARTER_PROJECTS } from '@/lib/starter'
 import { normalizeUrl, REPO_NAME } from '@/lib/urls'
+import { isIntakeDone } from '../game'
 import { syncRepo } from '../github/sync'
 import { actionOwner } from '../session'
+import { award } from '../xp'
 import type { FormState } from './types'
 
 const text = (max: number) => z.string().trim().max(max)
@@ -125,7 +127,9 @@ export async function saveProject(_prev: FormState, form: FormData): Promise<For
     projectId = crypto.randomUUID()
     await db.insert(s.project).values({ id: projectId, ownerId: owner.userId, ...values })
   }
+  if (isIntakeDone(values)) await award(db, owner.userId, { kind: 'intake', refId: projectId, projectId })
   revalidatePath('/projects')
+  revalidatePath('/')
   redirect(`/projects/${projectId}`)
 }
 

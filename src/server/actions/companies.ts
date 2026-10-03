@@ -9,6 +9,7 @@ import * as s from '@/db/schema'
 import { COMPANY_KINDS, METRIC_KEYS } from '@/lib/options'
 import { normalizeUrl } from '@/lib/urls'
 import { actionOwner } from '../session'
+import { award } from '../xp'
 import type { FormState } from './types'
 
 const companySchema = z.object({
@@ -99,8 +100,10 @@ export async function saveMetric(_prev: FormState, form: FormData): Promise<Form
       target: [s.metric.projectId, s.metric.month, s.metric.key],
       set: { value: m.value, updatedAt: new Date() },
     })
+  const xp = await award(db, owner.userId, { kind: 'metric', refId: `${m.projectId}:${month}:${m.key}`, projectId: m.projectId })
   revalidatePath('/companies')
+  revalidatePath('/')
   revalidatePath(`/projects/${m.projectId}`)
   if (project.companyId) revalidatePath(`/companies/${project.companyId}`)
-  return { ok: true, message: 'Bewaard.' }
+  return { ok: true, message: xp ? `Bewaard. +${xp} XP` : 'Bewaard.' }
 }

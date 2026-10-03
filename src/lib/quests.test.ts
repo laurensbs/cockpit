@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest'
+import { bucketOf, nextDue, ruleQuests, type RuleProject } from './quests'
+
+describe('recurring quests', () => {
+  it('moves the due day by the recurrence, keeping month ends sane', () => {
+    expect(nextDue('2026-10-03', 'weekly')).toBe('2026-10-10')
+    expect(nextDue('2026-10-31', 'monthly')).toBe('2026-11-30')
+    expect(nextDue('2026-01-31', 'monthly')).toBe('2026-02-28')
+    expect(nextDue('2026-11-15', 'quarterly')).toBe('2027-02-15')
+    expect(nextDue('2028-02-29', 'yearly')).toBe('2029-02-28')
+    expect(nextDue('2026-10-03', 'none')).toBeNull()
+  })
+})
+
+const project = (over: Partial<RuleProject> = {}): RuleProject => ({
+  id: 'p1',
+  name: 'Rondje',
+  active: true,
+  intakeDone: true,
+  hasPlan: true,
+  quietDays: 1,
+  hasMetricsLastMonth: true,
+  syncError: false,
+  ...over,
+})
+
+describe('rule quests', () => {
+  it('asks for nothing when all is well', () => {
+    expect(ruleQuests([project()], '2026-10-03', true)).toEqual([])
+  })
+
+  it('asks for the intake first, and a plan only once the intake is done and AI is there', () => {
+    expect(ruleQuests([project({ intakeDone: false, hasPlan: false })], '2026-10-20', true).map((q) => q.sourceKey)).toEqual(['intake:p1'])
+    expect(ruleQuests([project({ hasPlan: false })], '2026-10-20', true).map((q) => q.sourceKey)).toEqual(['plan:p1'])
+    expect(ruleQuests([project({ hasPlan: false })], '2026-10-20', false)).toEqual([])
+  })
+
+  it('makes him choose about a quiet project, once a week', () => {
+    const [q] = ruleQuests([project({ quietDays: 20 })], '2026-10-03', true)
+    expect(q).toMatchObject({ sourceKey: 'quiet:p1:2026-09-28', title: 'Rondje ligt al 20 dagen stil: kies' })
+  })
+
+  it('asks for last month’s numbers in the first ten days', () => {
+    expect(ruleQuests([project({ hasMetricsLastMonth: false })], '2026-10-03', true)[0]).toMatchObject({ sourceKey: 'metrics:p1:2026-09-01', dueOn: '2026-10-10' })
+    expect(ruleQuests([project({ hasMetricsLastMonth: false })], '2026-10-15', true)).toEqual([])
+  })
+
+  it('skips paused projects', () => {
+    expect(ruleQuests([project({ active: false, intakeDone: false, quietDays: 50 })], '2026-10-03', true)).toEqual([])
+  })
+})
+
+describe('bucketOf', () => {
+  it('sorts quests by when they are due', () => {
+    expect(bucketOf('2026-10-01', '2026-10-03')).toBe('overdue')
+    expect(bucketOf('2026-10-03', '2026-10-03')).toBe('today')
+    expect(bucketOf('2026-10-09', '2026-10-03')).toBe('week')
+    expect(bucketOf('2026-10-10', '2026-10-03')).toBe('later')
+    expect(bucketOf(null, '2026-10-03')).toBe('someday')
+  })
+})

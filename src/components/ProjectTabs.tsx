@@ -1,8 +1,11 @@
 import Link from 'next/link'
 
-export type ProjectTab = 'overview'
+export type ProjectTab = 'overview' | 'quests'
 
-const TABS: { key: ProjectTab; label: string; path: string }[] = [{ key: 'overview', label: 'Overzicht', path: '' }]
+const TABS: { key: ProjectTab; label: string; path: string }[] = [
+  { key: 'overview', label: 'Overzicht', path: '' },
+  { key: 'quests', label: 'Quests', path: '/quests' },
+]
 
 /** The parts of a project page. */
 export function ProjectTabs({ projectId, active }: { projectId: string; active: ProjectTab }) {
