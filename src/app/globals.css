@@ -711,3 +711,89 @@ a.card:active {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- activity ---------- */
+
+.sparkline rect.on {
+  fill: var(--accent);
+}
+.sparkline rect.off {
+  fill: var(--line);
+}
+.heatmap rect {
+  fill: var(--sunken);
+}
+.heatmap rect.l1 {
+  fill: color-mix(in srgb, var(--xp) 35%, var(--sunken));
+}
+.heatmap rect.l2 {
+  fill: color-mix(in srgb, var(--xp) 60%, var(--sunken));
+}
+.heatmap rect.l3 {
+  fill: color-mix(in srgb, var(--xp) 82%, var(--sunken));
+}
+.heatmap rect.l4 {
+  fill: var(--xp);
+}
+
+.starter.off {
+  opacity: 0.55;
+}
+.project-card h3 {
+  font-size: 1.1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+.table th,
+.table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+.table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+.table tbody th {
+  font-weight: 600;
+}
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.swatch input {
+  appearance: none;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.swatch:has(input:checked) {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 3px var(--bg);
+}
+.company-card {
+  border-top: 4px solid var(--company, var(--accent));
+}
+
+[hidden] {
+  display: none !important;
+}
