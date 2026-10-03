@@ -71,3 +71,11 @@ export const opportunitiesFixture = () => ({
     { name: 'Onveilige link', type: 'Test', url: 'javascript:alert(1)', why: 'Mag niet klikbaar worden.', howToApproach: '-' },
   ],
 })
+
+export const weeklyFixture = () => ({
+  headline: 'Deze week: Rondje op straat, de rest op een laag pitje.',
+  focus: [{ project: 'Rondje', why: 'De lancering loopt en de eerste opvangen reageren.', firstStep: 'Bel de opvang die nog niet antwoordde.' }],
+  wins: ['Marketingplan voor Rondje staat'],
+  avoiding: 'De cijfers van vorige maand blijven liggen.',
+  boss: { title: 'Organiseer de eerste groepswandeling', project: 'Rondje', why: 'Dat is het verhaal voor alle kanalen.' },
+})

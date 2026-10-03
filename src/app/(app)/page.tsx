@@ -3,6 +3,7 @@ import { HealthRing } from '@/components/HealthRing'
 import { Icon } from '@/components/Icon'
 import { QuestItem } from '@/components/QuestItem'
 import { Sparkline } from '@/components/Sparkline'
+import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
@@ -57,6 +58,8 @@ export default async function TodayPage() {
           </span>
         </div>
       </section>
+
+      {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} /> : null}
 
       <section className="card stack-s">
         <div className="row between">

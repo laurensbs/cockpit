@@ -3,7 +3,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { emailsFixture, ideasFixture, opportunitiesFixture, planFixture, postsFixture, profileFixture } from '@/lib/ai/fixtures'
+import { emailsFixture, ideasFixture, opportunitiesFixture, planFixture, postsFixture, profileFixture, weeklyFixture } from '@/lib/ai/fixtures'
 import {
   contactEmailTask,
   EMAIL_PURPOSES,
@@ -15,6 +15,7 @@ import {
   PLATFORMS,
   postsTask,
   profileTask,
+  weeklyTask,
 } from '@/lib/ai/prompts'
 import {
   EmailsWire,
@@ -29,6 +30,8 @@ import {
   PlanWire,
   PostsWire,
   ProfileWire,
+  normalizeWeekly,
+  WeeklyWire,
 } from '@/lib/ai/schemas'
 import { dayOf } from '@/lib/dates'
 import { LANGUAGES } from '@/lib/options'
@@ -43,6 +46,8 @@ export interface JobExtras {
 
 export interface Job<W extends z.ZodType = z.ZodType, O extends z.ZodType = z.ZodType> {
   label: string
+  /** One project, or the whole portfolio. */
+  scope?: 'project' | 'portfolio'
   wire: W
   options: O
   effort: 'low' | 'medium' | 'high'
@@ -59,6 +64,12 @@ export interface Job<W extends z.ZodType = z.ZodType, O extends z.ZodType = z.Zo
 }
 
 const none = z.object({})
+
+/** The project of a project job (a portfolio job never comes here). */
+function P(ctx: JobContext) {
+  if (!ctx.project) throw new Error('This job needs a project')
+  return ctx.project
+}
 const language = z.enum(LANGUAGES)
 
 async function insertDrafts(
@@ -104,10 +115,10 @@ const profile: Job<typeof ProfileWire, typeof none> = {
   effort: 'medium',
   maxTokens: 12_000,
   typicalOutput: 4_000,
-  task: (ctx) => profileTask(ctx.project.name),
-  fixture: (ctx) => profileFixture(ctx.project.name),
+  task: (ctx) => profileTask(P(ctx).name),
+  fixture: (ctx) => profileFixture(P(ctx).name),
   async save(db, run, ctx, wire) {
-    await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId: run.ownerId, projectId: ctx.project.id, kind: 'profile', content: normalizeProfile(wire), runId: run.id })
+    await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId: run.ownerId, projectId: P(ctx).id, kind: 'profile', content: normalizeProfile(wire), runId: run.id })
   },
 }
 
@@ -118,12 +129,12 @@ const plan: Job<typeof PlanWire, typeof none> = {
   effort: 'medium',
   maxTokens: 14_000,
   typicalOutput: 5_000,
-  task: (ctx) => planTask(ctx.project.name, ctx.profile),
+  task: (ctx) => planTask(P(ctx).name, ctx.profile),
   fixture: () => planFixture(),
   async save(db, run, ctx, wire) {
     const id = crypto.randomUUID()
-    await db.insert(s.brief).values({ id, ownerId: run.ownerId, projectId: ctx.project.id, kind: 'plan', content: normalizePlan(wire), runId: run.id })
-    await award(db, run.ownerId, { kind: 'plan', refId: id, projectId: ctx.project.id })
+    await db.insert(s.brief).values({ id, ownerId: run.ownerId, projectId: P(ctx).id, kind: 'plan', content: normalizePlan(wire), runId: run.id })
+    await award(db, run.ownerId, { kind: 'plan', refId: id, projectId: P(ctx).id })
   },
 }
 
@@ -139,7 +150,7 @@ const emails: Job<typeof EmailsWire, typeof emailsOptions> = {
   fixture: () => emailsFixture(),
   async save(db, run, ctx, wire, o) {
     const drafts = normalizeEmails(wire)
-    await insertDrafts(db, run, ctx.project.id, 'email', o.purpose, o.language, drafts.map((d) => ({ title: d.title, body: { subject: d.subject, body: d.body, ps: d.ps } })))
+    await insertDrafts(db, run, P(ctx).id, 'email', o.purpose, o.language, drafts.map((d) => ({ title: d.title, body: { subject: d.subject, body: d.body, ps: d.ps } })))
   },
 }
 
@@ -155,7 +166,7 @@ const contactEmail: Job<typeof EmailsWire, typeof contactOptions> = {
     const [contact] = await db
       .select()
       .from(s.contact)
-      .where(and(eq(s.contact.id, o.contactId), eq(s.contact.projectId, ctx.project.id)))
+      .where(and(eq(s.contact.id, o.contactId), eq(s.contact.projectId, P(ctx).id)))
     return { contact: contact ?? null }
   },
   task: (_ctx, o, extras) =>
@@ -180,7 +191,7 @@ const contactEmail: Job<typeof EmailsWire, typeof contactOptions> = {
     if (!contact) return
     const [draft] = normalizeEmails(wire)
     if (!draft) return
-    await insertDrafts(db, run, ctx.project.id, 'email', 'contact', o.language, [
+    await insertDrafts(db, run, P(ctx).id, 'email', 'contact', o.language, [
       { title: `Mail aan ${contact.organization}`, body: { subject: draft.subject, body: draft.body, ps: draft.ps }, contactId: contact.id },
     ])
     if (contact.status === 'new') await db.update(s.contact).set({ status: 'drafted' }).where(eq(s.contact.id, contact.id))
@@ -195,14 +206,14 @@ const posts: Job<typeof PostsWire, typeof postsOptions> = {
   effort: 'low',
   maxTokens: 8_000,
   typicalOutput: 2_500,
-  extras: async (db, ctx) => ({ pastTitles: await pastTitles(db, ctx.project.id, 'social') }),
+  extras: async (db, ctx) => ({ pastTitles: await pastTitles(db, P(ctx).id, 'social') }),
   task: (_ctx, o, extras) => postsTask(o.platform, o.language, extras.pastTitles),
   fixture: () => postsFixture(),
   async save(db, run, ctx, wire, o) {
     await insertDrafts(
       db,
       run,
-      ctx.project.id,
+      P(ctx).id,
       'social',
       o.platform,
       o.language,
@@ -219,14 +230,14 @@ const ideas: Job<typeof IdeasWire, typeof ideasOptions> = {
   effort: 'medium',
   maxTokens: 10_000,
   typicalOutput: 3_500,
-  extras: async (db, ctx) => ({ pastTitles: await pastTitles(db, ctx.project.id, 'idea') }),
+  extras: async (db, ctx) => ({ pastTitles: await pastTitles(db, P(ctx).id, 'idea') }),
   task: (_ctx, o, extras) => ideasTask(o.mode, dayOf(new Date()), o.persona, extras.pastTitles),
   fixture: () => ideasFixture(),
   async save(db, run, ctx, wire, o) {
     await insertDrafts(
       db,
       run,
-      ctx.project.id,
+      P(ctx).id,
       'idea',
       o.mode,
       'nl',
@@ -244,13 +255,13 @@ const opportunities: Job<typeof OpportunitiesWire, typeof opportunitiesOptions> 
   maxTokens: 12_000,
   typicalOutput: 3_000,
   webSearch: { maxUses: 5, extraInputTokens: 50_000 },
-  task: (ctx, o) => opportunitiesTask(o.language, ctx.project.markets),
+  task: (ctx, o) => opportunitiesTask(o.language, P(ctx).markets),
   fixture: () => opportunitiesFixture(),
   async save(db, run, ctx, wire, o) {
     await insertDrafts(
       db,
       run,
-      ctx.project.id,
+      P(ctx).id,
       'opportunity',
       'web',
       o.language,
@@ -259,6 +270,21 @@ const opportunities: Job<typeof OpportunitiesWire, typeof opportunitiesOptions> 
   },
 }
 
-export const JOBS = { profile, plan, emails, contactEmail, posts, ideas, opportunities } as const
+const weekly: Job<typeof WeeklyWire, typeof none> = {
+  label: 'Weekfocus',
+  scope: 'portfolio',
+  wire: WeeklyWire,
+  options: none,
+  effort: 'medium',
+  maxTokens: 8_000,
+  typicalOutput: 2_000,
+  task: () => weeklyTask(dayOf(new Date())),
+  fixture: () => weeklyFixture(),
+  async save(db, run, _ctx, wire) {
+    await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId: run.ownerId, projectId: null, kind: 'weekly', content: normalizeWeekly(wire), runId: run.id })
+  },
+}
+
+export const JOBS = { profile, plan, emails, contactEmail, posts, ideas, opportunities, weekly } as const
 export type JobKind = keyof typeof JOBS
 export const isJobKind = (v: unknown): v is JobKind => typeof v === 'string' && Object.hasOwn(JOBS, v)

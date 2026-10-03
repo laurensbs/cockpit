@@ -214,3 +214,45 @@ Answer in ${lang(language)} with JSON only (no other text), in this shape:
 {"opportunities":[{"name":"…","type":"community | directory | media | event | partner | other","url":"https://…","why":"why it fits","howToApproach":"how to start there, within the rules of that place"}]}
 List 5–8 opportunities, best first.`
 }
+
+// ---------- portfolio ----------
+
+export interface PortfolioInput {
+  today: string
+  level: number
+  actionStreak: number
+  projects: {
+    name: string
+    stage: string
+    oneLiner: string
+    health: number
+    tips: string[]
+    trend: string
+    openQuests: number
+    revenueThisMonth: number | null
+  }[]
+  doneThisWeek: string[]
+  skipped: string[]
+}
+
+/** The whole portfolio in short, for the weekly focus. Projects in a fixed order. */
+export function portfolioContext(p: PortfolioInput): string {
+  let out = '<project>\nThis is his whole portfolio, not one project.\n'
+  out += `Level ${p.level}; action streak ${p.actionStreak} days.\n`
+  for (const x of [...p.projects].sort((a, b) => a.name.localeCompare(b.name))) {
+    out += `- ${neutralize(x.name)} (${x.stage}): ${neutralize(x.oneLiner) || 'no one-liner yet'}. Health ${x.health}/100${x.tips.length ? ` (${x.tips.map(neutralize).join('; ')})` : ''}. Momentum ${x.trend}. Open quests: ${x.openQuests}.${x.revenueThisMonth != null ? ` Revenue this month: €${x.revenueThisMonth}.` : ''}\n`
+  }
+  out += '</project>\n'
+  if (p.doneThisWeek.length) out += `<recent_work>\n${p.doneThisWeek.map((d) => `- ${neutralize(d)}`).join('\n')}\n</recent_work>\n`
+  if (p.skipped.length) out += `<feedback>\nQuests he skipped or let slide lately:\n${p.skipped.map((d) => `- ${neutralize(d)}`).join('\n')}\n</feedback>\n`
+  return out
+}
+
+export function weeklyTask(today: string): string {
+  return `Task: his focus for this week (today is ${today}), as JSON.
+- headline: one sentence that names the week's priority.
+- focus: at most three projects that deserve his attention now, best first, each with project (its exact name), why (be specific: health, momentum, timing) and firstStep (doable today in under an hour). It is fine to advise pausing a project.
+- wins: up to three things that went well recently (only from the information given; empty when there is nothing).
+- avoiding: one honest, kind sentence about what he seems to be putting off, based on skipped quests (empty when nothing stands out).
+- boss: the one bigger task for this week, with title (starts with a verb), project (exact name) and why.`
+}

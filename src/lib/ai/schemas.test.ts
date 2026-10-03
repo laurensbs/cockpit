@@ -84,3 +84,14 @@ describe('studio schemas', () => {
     expect(normalizeOpportunities(opportunitiesFixture()).map((o) => o.url)).toEqual(['https://example.org/opvang', null])
   })
 })
+
+import { weeklyFixture } from './fixtures'
+import { normalizeWeekly, WeeklyWire } from './schemas'
+
+describe('weekly schema', () => {
+  it('accepts the fixture and caps the focus at three', () => {
+    expect(WeeklyWire.safeParse(weeklyFixture()).success).toBe(true)
+    const many = { ...weeklyFixture(), focus: Array.from({ length: 5 }, (_, i) => ({ project: `P${i}`, why: 'w', firstStep: 's' })) }
+    expect(normalizeWeekly(many).focus).toHaveLength(3)
+  })
+})

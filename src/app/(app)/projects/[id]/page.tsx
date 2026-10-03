@@ -84,9 +84,20 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         {project.siteUrl ? (
-          <a href={project.siteUrl} target="_blank" rel="noreferrer noopener" className="row small" style={{ width: 'fit-content' }}>
-            <Icon name="external" size={16} /> {hostOf(project.siteUrl)}
-          </a>
+          <span className="row">
+            <a href={project.siteUrl} target="_blank" rel="noreferrer noopener" className="row small" style={{ width: 'fit-content' }}>
+              <Icon name="external" size={16} /> {hostOf(project.siteUrl)}
+            </a>
+            {project.siteStatus == null ? null : project.siteStatus > 0 && project.siteStatus < 500 ? (
+              <span className="chip good" title={project.siteCheckedAt ? `Gecontroleerd ${ago(project.siteCheckedAt, now)}` : undefined}>
+                online
+              </span>
+            ) : (
+              <span className="chip bad" title={project.siteCheckedAt ? `Gecontroleerd ${ago(project.siteCheckedAt, now)}` : undefined}>
+                {project.siteStatus ? `fout ${project.siteStatus}` : 'niet bereikbaar'}
+              </span>
+            )}
+          </span>
         ) : null}
         <ProjectTabs projectId={project.id} active="overview" />
       </header>

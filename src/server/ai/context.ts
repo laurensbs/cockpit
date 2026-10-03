@@ -2,19 +2,27 @@ import 'server-only'
 import { and, desc, eq, gte, ne } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import type { ContextInput } from '@/lib/ai/prompts'
+import { portfolioContext, projectContext, type ContextInput, type PortfolioInput } from '@/lib/ai/prompts'
 import { profileFromJson, type Profile } from '@/lib/ai/schemas'
 import { addMonths, dayOf, monthStart } from '@/lib/dates'
 
 export interface JobContext {
   ownerId: string
-  project: typeof s.project.$inferSelect
-  input: ContextInput
+  /** The project of a project job; null for a job about the whole portfolio. */
+  project: typeof s.project.$inferSelect | null
+  input: ContextInput | null
+  portfolio: PortfolioInput | null
   profile: Profile | null
 }
 
+/** A job about one project always has that project and its information. */
+export type ProjectJobContext = JobContext & { project: NonNullable<JobContext['project']>; input: ContextInput }
+
+/** The cached part of the prompt: one project in full, or the portfolio in short. */
+export const contextText = (ctx: JobContext) => (ctx.input ? projectContext(ctx.input) : ctx.portfolio ? portfolioContext(ctx.portfolio) : '')
+
 /** Everything the AI may know about one of the owner's projects, or null when it is not theirs. */
-export async function loadJobContext(db: Db, ownerId: string, projectId: string): Promise<JobContext | null> {
+export async function loadJobContext(db: Db, ownerId: string, projectId: string): Promise<ProjectJobContext | null> {
   const [project] = await db
     .select()
     .from(s.project)
@@ -48,6 +56,7 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
   return {
     ownerId,
     project,
+    portfolio: null,
     profile: profileBrief ? profileFromJson(profileBrief.content) : null,
     input: {
       project: {
@@ -71,6 +80,56 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
       others,
       liked: rated.filter((r) => r.rating > 0).map((r) => r.title),
       disliked: rated.filter((r) => r.rating < 0).map((r) => r.title),
+    },
+  }
+}
+
+/** The whole portfolio in short: health, momentum, open quests and money per project, and what slid. */
+export async function loadPortfolioContext(db: Db, ownerId: string): Promise<JobContext> {
+  const { playerStats, projectPulses } = await import('../game')
+  const today = dayOf(new Date())
+  const [stats, pulses, quests, metrics, done] = await Promise.all([
+    playerStats(db, ownerId),
+    projectPulses(db, ownerId),
+    db.select({ projectId: s.quest.projectId, title: s.quest.title, status: s.quest.status, dueOn: s.quest.dueOn, doneAt: s.quest.doneAt }).from(s.quest).where(eq(s.quest.ownerId, ownerId)),
+    db
+      .select({ projectId: s.metric.projectId, value: s.metric.value })
+      .from(s.metric)
+      .where(and(eq(s.metric.ownerId, ownerId), eq(s.metric.month, monthStart(today)), eq(s.metric.key, 'revenue'))),
+    db
+      .select({ title: s.contentItem.title, doneAt: s.contentItem.doneAt })
+      .from(s.contentItem)
+      .where(and(eq(s.contentItem.ownerId, ownerId), eq(s.contentItem.status, 'done'))),
+  ])
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000)
+  const twoWeeksAgo = new Date(Date.now() - 14 * 86_400_000)
+  return {
+    ownerId,
+    project: null,
+    input: null,
+    profile: null,
+    portfolio: {
+      today,
+      level: stats.level.level,
+      actionStreak: stats.actionStreak.length,
+      projects: pulses.map((p) => ({
+        name: p.name,
+        stage: p.stage,
+        oneLiner: '',
+        health: p.health.score,
+        tips: p.health.tips,
+        trend: p.trend,
+        openQuests: quests.filter((q) => q.projectId === p.id && q.status === 'open').length,
+        revenueThisMonth: metrics.find((m) => m.projectId === p.id)?.value ?? null,
+      })),
+      doneThisWeek: [
+        ...quests.filter((q) => q.status === 'done' && q.doneAt && q.doneAt > weekAgo).map((q) => q.title),
+        ...done.filter((d) => d.doneAt && d.doneAt > weekAgo).map((d) => d.title),
+      ].slice(0, 20),
+      skipped: [
+        ...quests.filter((q) => q.status === 'skipped' && q.doneAt && q.doneAt > twoWeeksAgo).map((q) => q.title),
+        ...quests.filter((q) => q.status === 'open' && q.dueOn && q.dueOn < today).map((q) => `${q.title} (overdue)`),
+      ].slice(0, 15),
     },
   }
 }

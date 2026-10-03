@@ -237,3 +237,34 @@ export function safeLink(url: string): string | null {
 
 export const normalizeOpportunities = (w: z.infer<typeof OpportunitiesWire>): Opportunity[] =>
   w.opportunities.slice(0, 10).map((o) => ({ name: clean(o.name, 120), type: clean(o.type, 40), url: safeLink(o.url), why: clean(o.why, 500), howToApproach: clean(o.howToApproach, 500) }))
+
+// ---------- weekly ----------
+
+export const WeeklyWire = z.object({
+  headline: str,
+  focus: z.array(z.object({ project: str, why: str, firstStep: str })),
+  wins: z.array(str),
+  avoiding: str,
+  boss: z.object({ title: str, project: str, why: str }),
+})
+
+export interface Weekly {
+  headline: string
+  focus: { project: string; why: string; firstStep: string }[]
+  wins: string[]
+  avoiding: string
+  boss: { title: string; project: string; why: string }
+}
+
+export const normalizeWeekly = (w: z.infer<typeof WeeklyWire>): Weekly => ({
+  headline: clean(w.headline, 200),
+  focus: w.focus.slice(0, 3).map((f) => ({ project: clean(f.project, 80), why: clean(f.why, 400), firstStep: clean(f.firstStep, 300) })),
+  wins: list(w.wins, 3, 200),
+  avoiding: clean(w.avoiding, 300),
+  boss: { title: clean(w.boss.title, 120), project: clean(w.boss.project, 80), why: clean(w.boss.why, 300) },
+})
+
+export const weeklyFromJson = (value: unknown): Weekly | null => {
+  const r = WeeklyWire.safeParse(value)
+  return r.success ? normalizeWeekly(r.data) : null
+}

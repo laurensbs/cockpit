@@ -7,12 +7,12 @@ import { getDb, type Db } from '@/db'
 import * as s from '@/db/schema'
 import { FIXTURE_USAGE } from '@/lib/ai/fixtures'
 import { costMicros, estimateTokens, priceOf, worstCaseMicros, type MessageUsage } from '@/lib/ai/pricing'
-import { projectContext, SYSTEM_PROMPT } from '@/lib/ai/prompts'
+import { SYSTEM_PROMPT } from '@/lib/ai/prompts'
 import { aiStatus } from '../status'
 import { award } from '../xp'
 import { reserveRun, type Refusal } from './budget'
 import { anthropic, FALLBACK_BETA, MODEL } from './client'
-import { loadJobContext, type JobContext } from './context'
+import { contextText, loadJobContext, loadPortfolioContext, type JobContext } from './context'
 import { JOBS, type Job, type JobExtras, type JobKind } from './jobs'
 
 const REFUSALS: Record<Refusal, string> = {
@@ -24,7 +24,7 @@ const REFUSALS: Record<Refusal, string> = {
 const NO_EXTRAS: JobExtras = { pastTitles: [], contact: null }
 
 function prompts(job: Job, ctx: JobContext, options: unknown, extras: JobExtras) {
-  const context = projectContext(ctx.input)
+  const context = contextText(ctx)
   const task = job.task(ctx, options, extras)
   return { context, task, inputTokens: estimateTokens(SYSTEM_PROMPT + context + task) + (job.webSearch?.extraInputTokens ?? 0) }
 }
@@ -45,20 +45,26 @@ async function extrasFor(db: Db, job: Job, ctx: JobContext, options: unknown): P
   return { ...NO_EXTRAS, ...(job.extras ? await job.extras(db, ctx, options) : {}) }
 }
 
-/** Starts a job for a project: reserves the budget, then runs after the response has gone out. */
-export async function startJob(ownerId: string, kind: JobKind, projectId: string, rawOptions: unknown = {}): Promise<{ runId: string } | { error: string }> {
+/** The context of a job: its project, or the whole portfolio. */
+export async function contextFor(db: Db, job: Job, ownerId: string, projectId: string | null): Promise<JobContext | null> {
+  if (job.scope === 'portfolio') return loadPortfolioContext(db, ownerId)
+  return projectId ? loadJobContext(db, ownerId, projectId) : null
+}
+
+/** Starts a job: reserves the budget, then runs after the response has gone out. */
+export async function startJob(ownerId: string, kind: JobKind, projectId: string | null, rawOptions: unknown = {}): Promise<{ runId: string } | { error: string }> {
   if (aiStatus() === 'off') return { error: 'Claude is nog niet gekoppeld: zet ANTHROPIC_API_KEY in Vercel.' }
   const job = JOBS[kind] as Job
   const options = job.options.safeParse(rawOptions ?? {})
   if (!options.success) return { error: 'Kies eerst wat je wilt maken.' }
   const db = await getDb()
-  const ctx = await loadJobContext(db, ownerId, projectId)
+  const ctx = await contextFor(db, job, ownerId, job.scope === 'portfolio' ? null : projectId)
   if (!ctx) return { error: 'Dit project bestaat niet.' }
   const extras = await extrasFor(db, job, ctx, options.data)
   if (kind === 'contactEmail' && !extras.contact) return { error: 'Dit contact bestaat niet.' }
   const reserved = await reserveRun(db, {
     ownerId,
-    projectId,
+    projectId: ctx.project?.id ?? null,
     kind,
     model: MODEL,
     worstMicros: estimate(job, ctx, options.data, extras).worstMicros,
@@ -119,7 +125,7 @@ export async function executeRun(runId: string): Promise<void> {
   const [run] = await db.select().from(s.aiRun).where(eq(s.aiRun.id, runId))
   if (!run || run.status !== 'running') return
   const job = JOBS[run.kind as JobKind] as Job | undefined
-  const ctx = run.projectId ? await loadJobContext(db, run.ownerId, run.projectId) : null
+  const ctx = job ? await contextFor(db, job, run.ownerId, run.projectId) : null
   const options = job?.options.safeParse(run.options)
   if (!job || !ctx || !options?.success) return finish(db, runId, { status: 'error', error: 'Het project of de taak bestaat niet meer.' })
   const extras = await extrasFor(db, job, ctx, options.data)

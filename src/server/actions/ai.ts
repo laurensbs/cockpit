@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
-import { planFromJson, profileFromJson } from '@/lib/ai/schemas'
+import { planFromJson, profileFromJson, weeklyFromJson } from '@/lib/ai/schemas'
 import { addDays, dayOf, weekStart } from '@/lib/dates'
 import { BOSS_XP } from '@/lib/game'
 import { isJobKind } from '../ai/jobs'
@@ -99,5 +99,38 @@ export async function acceptQuickWin(briefId: string, index: number): Promise<{ 
   revalidatePath('/')
   revalidatePath('/quests')
   if (brief.projectId) revalidatePath(`/projects/${brief.projectId}/brain`)
+  return { added: rows.length > 0 }
+}
+
+/** The boss the weekly focus suggested becomes this week's boss quest, on the project it named. */
+export async function acceptWeeklyBoss(briefId: string): Promise<{ added: boolean }> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  const [brief] = await db
+    .select()
+    .from(s.brief)
+    .where(and(eq(s.brief.id, String(briefId)), eq(s.brief.ownerId, owner.userId), eq(s.brief.kind, 'weekly')))
+  const weekly = brief ? weeklyFromJson(brief.content) : null
+  if (!brief || !weekly) return { added: false }
+  const projects = await db.select({ id: s.project.id, name: s.project.name }).from(s.project).where(eq(s.project.ownerId, owner.userId))
+  const project = projects.find((p) => p.name.trim().toLowerCase() === weekly.boss.project.trim().toLowerCase())
+  const rows = await db
+    .insert(s.quest)
+    .values({
+      id: crypto.randomUUID(),
+      ownerId: owner.userId,
+      projectId: project?.id ?? null,
+      title: weekly.boss.title,
+      detail: weekly.boss.why,
+      kind: 'boss',
+      xp: BOSS_XP,
+      source: 'ai',
+      sourceKey: `weekly:${brief.id}`,
+      dueOn: addDays(weekStart(dayOf(new Date())), 6),
+    })
+    .onConflictDoNothing()
+    .returning({ id: s.quest.id })
+  revalidatePath('/')
+  revalidatePath('/quests')
   return { added: rows.length > 0 }
 }
