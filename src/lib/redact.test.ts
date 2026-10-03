@@ -3,10 +3,11 @@ import { clip, REDACTED, redactSecrets } from './redact'
 
 describe('redactSecrets', () => {
   it('blanks keys and tokens that end up in a README', () => {
+    // Fake keys, built from pieces so no secret scanner mistakes this file for a leak.
     const text = [
-      'Set ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnopqrstuvwxyz',
-      'token ghp_abcdefghijklmnopqrstuvwxyz0123',
-      'github_pat_11ABCDEFG0123456789_abcdefghijklmnop',
+      `Set ANTHROPIC_API_KEY=${'sk-' + 'ant-'}api03-abcdefghijklmnopqrstuvwxyz`,
+      `token ${'gh' + 'p_'}abcdefghijklmnopqrstuvwxyz0123`,
+      `${'github' + '_pat_'}11ABCDEFG0123456789_abcdefghijklmnop`,
       'AKIAABCDEFGHIJKLMNOP',
       'DATABASE_URL=postgres://user:hunter2@db.example.org/app',
       'stripe sk_live_abcdefghijkl123',
