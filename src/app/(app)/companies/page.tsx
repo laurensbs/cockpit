@@ -45,7 +45,7 @@ export default async function CompaniesPage() {
         <p className="lede">Alles wat je runt, met de cijfers van {monthLabel(month)}.</p>
       </header>
 
-      <section className="grid tight">
+      <section className="kpis">
         <Money label="Omzet" value={now.revenue} previous={before.known ? before.revenue : undefined} known={now.known} />
         <Money label="Kosten" value={now.costs} known={now.known} />
         <Money label="Winst" value={now.profit} previous={before.known ? before.profit : undefined} known={now.known} />
@@ -86,7 +86,12 @@ export default async function CompaniesPage() {
 
       {projects.length ? (
         <section className="card stack-m">
-          <h2>Cijfers invullen</h2>
+          <div className="row between">
+            <h2>Cijfers invullen</h2>
+            <a href="/api/export/metrics.csv" className="button ghost small" download>
+              Exporteer als CSV
+            </a>
+          </div>
           <MetricForm projects={projects.map((p) => ({ id: p.id, name: p.name }))} month={month.slice(0, 7)} />
         </section>
       ) : null}

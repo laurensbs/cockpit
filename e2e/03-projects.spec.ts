@@ -50,5 +50,16 @@ test('the five projects go in at once, linked to GitHub, with a company overview
   await page.reload()
   await expect(page.locator('.kpi').filter({ hasText: 'Omzet' })).toContainText('1.500')
   await shot(page, '05-companies')
+
+  // The numbers export as a CSV for the owner, and for nobody else.
+  const csv = await page.request.get('/api/export/metrics.csv')
+  expect(csv.status()).toBe(200)
+  expect(csv.headers()['content-type']).toContain('text/csv')
+  const text = await csv.text()
+  expect(text).toContain('bedrijf;project;maand;soort;waarde')
+  expect(text).toMatch(/^Webstability;Webstability;\d{4}-\d{2};Omzet \(€\);1500\r?$/m)
+  const { context: anonymous } = await newVisitor(browser)
+  expect((await anonymous.request.get('/api/export/metrics.csv')).status()).toBe(401)
+  await anonymous.close()
   await context.close()
 })

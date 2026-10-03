@@ -14,7 +14,7 @@ Privé en voor één eigenaar. **Niets gaat vanzelf naar buiten:** Claude maakt 
 | **Studio** | Mails (outreach, partners, pers, nieuwsbrief, lancering, opvolgreeks), 5 posts per platform, een weekkalender, het idee-lab (zes manieren van denken, met een impact/moeite-matrix) en kansen zoeken op het web |
 | **Contacten** (per project) | Organisaties met hun wettelijke basis om te mailen, een persoonlijke mail per contact, en de status tot en met “antwoord” |
 | **Quests** | Quests van regels, van het plan, van de weekfocus of van jezelf; terugkerende quests (btw, domeinen); badges en XP-historie |
-| **Bedrijven** | Omzet, kosten en winst per maand, per bedrijf en in totaal; KvK/btw, land en notities |
+| **Bedrijven** | Omzet, kosten en winst per maand, per bedrijf en in totaal; KvK/btw, land en notities; alle cijfers als CSV voor je boekhouder |
 | **GitHub** | Alle repo’s, slim gegroepeerd; kies wat bij welk project hoort |
 
 ## Zo zet je hem aan

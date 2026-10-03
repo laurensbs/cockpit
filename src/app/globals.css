@@ -636,11 +636,24 @@ a.card:active {
 .kpi {
   display: grid;
   gap: 0.15rem;
+  min-width: 0;
 }
 .kpi .value {
   font: 700 1.6rem/1.1 var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+/* Four small numbers: two by two on a phone, in one row on a desktop. */
+.kpis {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 720px) {
+  .kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .list {
