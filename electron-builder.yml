@@ -10,8 +10,11 @@ files:
   - package.json
   - "!node_modules/**/*"
 extraResources:
-  - from: release/server
-    to: server
+  # electron-builder always drops a node_modules folder at the top of `from`, so copy from one level up.
+  - from: release
+    to: .
+    filter:
+      - "server/**/*"
 asar: true
 npmRebuild: false
 win:
@@ -27,3 +30,6 @@ nsis:
   shortcutName: Cockpit
 portable:
   artifactName: ${productName}-${version}-portable.${ext}
+# Only for the smoke test of the packaged layout on Linux.
+linux:
+  target: dir
