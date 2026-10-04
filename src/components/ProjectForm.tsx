@@ -134,7 +134,7 @@ export function ProjectForm({ values, companies }: { values: ProjectFormValues; 
         </div>
         <label className="field">
           <span>Map met de code op deze computer (optioneel)</span>
-          <input className="input" name="localPath" defaultValue={values.localPath ?? ''} maxLength={400} spellCheck={false} placeholder="C:\Users\jij\code\project" />
+          <input className="input" name="localPath" defaultValue={values.localPath ?? ''} maxLength={400} spellCheck={false} placeholder="~/code/project" />
           <span className="hint">Claude Code start dan in die map en kan de code zelf lezen.</span>
         </label>
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>

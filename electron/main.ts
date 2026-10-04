@@ -2,12 +2,14 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, Menu, nativeTheme, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, Menu, nativeTheme, session, shell, type MenuItemConstructorOptions } from 'electron'
+import { loginShellPath, mergePath } from './path'
 
-// The Windows app: a window around the cockpit's own local server. The server (Next.js, built as a
-// standalone folder) runs as a child process on 127.0.0.1 with a token only this installation knows;
-// Claude Code reaches it on the same address through MCP.
+// The desktop app (Mac and Windows): a window around the cockpit's own local server. The server
+// (Next.js, built as a standalone folder) runs as a child process on 127.0.0.1 with a token only this
+// installation knows; Claude Code reaches it on the same address through MCP.
 
 const DEFAULT_PORT = 41414
 const TOKEN_COOKIE = 'cockpit'
@@ -148,14 +150,20 @@ async function main() {
     win.focus()
   })
   await app.whenReady()
+  // On a Mac the Edit menu is what makes Cmd+C, Cmd+V and Cmd+A work in the window.
+  const view: MenuItemConstructorOptions = {
+    label: 'Weergave',
+    submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }],
+  }
   Menu.setApplicationMenu(
-    Menu.buildFromTemplate([
-      {
-        label: 'Cockpit',
-        submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'quit' }],
-      },
-    ]),
+    Menu.buildFromTemplate(
+      process.platform === 'darwin'
+        ? [{ role: 'appMenu' }, { role: 'editMenu' }, view, { role: 'windowMenu' }]
+        : [{ label: 'Cockpit', submenu: [{ role: 'quit' }] }, { role: 'editMenu' }, view],
+    ),
   )
+  // A Mac app started from Finder has a bare PATH; give the server the one a terminal has, so it finds claude and gh.
+  if (process.platform === 'darwin') process.env.PATH = mergePath(homedir(), await loginShellPath(), process.env.PATH)
 
   const dataDir = app.getPath('userData')
   const config = loadConfig(dataDir)

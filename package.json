@@ -1,6 +1,6 @@
 {
   "name": "cockpit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,7 +15,8 @@
     "electron:server": "next build && node scripts/standalone.mjs",
     "electron:start": "npm run electron:compile && electron .",
     "electron:build": "npm run electron:server && npm run electron:compile && electron-builder --win",
-    "test:electron": "playwright test -c playwright.electron.config.ts"
+    "test:electron": "playwright test -c playwright.electron.config.ts",
+    "electron:build:mac": "npm run electron:server && npm run electron:compile && electron-builder --mac"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -46,7 +47,7 @@
     "vitest": "^5.0.3"
   },
   "main": "dist-electron/main.js",
-  "description": "Al je projecten en bedrijven op één plek, met Claude Code als marketingbrein.",
+  "description": "Al je projecten en bedrijven op \u00e9\u00e9n plek, met Claude Code als marketingbrein.",
   "author": "Laurens Bos",
   "repository": {
     "type": "git",

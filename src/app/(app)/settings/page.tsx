@@ -7,6 +7,7 @@ import { SettingsForm } from '@/components/SettingsForm'
 import { UpdateNowButton } from '@/components/UpdateNowButton'
 import { dbDir, dbMode, getDb } from '@/db'
 import { expectedToken } from '@/lib/local'
+import { claudeInstallCommand } from '@/lib/terminal'
 import { claudeVersion, connectCommand, desktopConfig, mcpUrl } from '@/server/claude'
 import { mailConfig } from '@/server/outbox'
 import { requireOwner } from '@/server/session'
@@ -79,7 +80,7 @@ export default async function SettingsPage() {
           <ConnectClaudeButton connectedAt={connectedAt} />
         ) : (
           <p className="notice warn small">
-            Installeer Claude Code (in PowerShell: <code>irm https://claude.ai/install.ps1 | iex</code>), log in met je Claude-account, en open deze
+            Installeer Claude Code ({process.platform === 'win32' ? 'in PowerShell' : 'in Terminal'}: <code>{claudeInstallCommand(process.platform)}</code>), log in met je Claude-account, en open deze
             pagina daarna opnieuw.
           </p>
         )}

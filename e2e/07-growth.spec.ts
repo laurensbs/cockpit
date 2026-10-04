@@ -20,6 +20,7 @@ test('organic growth: articles, a growth experiment and LinkedIn, from Claude Co
   const { context, page } = await newVisitor(browser)
   await page.goto('/studio')
   await page.getByRole('navigation', { name: 'Project' }).getByRole('link', { name: 'Rondje' }).click()
+  await expect(page.getByText('Alles voor de groei van Rondje')).toBeVisible()
 
   // Articles: the full one as markdown, the others as an outline; publishing counts as a post.
   await page.getByRole('link', { name: 'Artikelen' }).click()

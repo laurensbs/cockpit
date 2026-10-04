@@ -1,6 +1,6 @@
 # Cockpit
 
-Al je projecten en bedrijven op één plek, als app op je Windows-pc. De cockpit leest je GitHub, houdt je cijfers bij en maakt van marketing een spel met quests, XP, levels en streaks. **Claude Code is het brein:** het draait op je eigen Claude-abonnement, dus zonder API-kosten.
+Al je projecten en bedrijven op één plek, als app op je Mac of Windows-pc. De cockpit leest je GitHub, houdt je cijfers bij en maakt van marketing een spel met quests, XP, levels en streaks. **Claude Code is het brein:** het draait op je eigen Claude-abonnement, dus zonder API-kosten.
 
 **Niets gaat zonder jou naar buiten.** Claude maakt concepten. Jij keurt goed. Mails die je goedkeurt, verstuurt de cockpit daarna zelf vanaf je eigen mailbox, binnen je daglimiet. Posts zet je zelf online, met één klik.
 
@@ -27,18 +27,19 @@ Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedsch
 
 ## Installeren
 
-1. **Claude Code:** open PowerShell, typ `irm https://claude.ai/install.ps1 | iex` en start daarna `claude` één keer om in te loggen met je Claude-account (Pro of Max).
-2. **Cockpit:** start `Cockpit-Setup-….exe` (installeert) of `Cockpit-…-portable.exe` (draait zonder installatie). De app is niet digitaal ondertekend, dus Windows SmartScreen vraagt de eerste keer om bevestiging: **Meer info → Toch uitvoeren**.
-3. **Instellingen** in de cockpit:
+1. **Claude Code:** op de Mac open je Terminal en typ je `curl -fsSL https://claude.ai/install.sh | bash`; op Windows in PowerShell `irm https://claude.ai/install.ps1 | iex`. Start daarna `claude` één keer om in te loggen met je Claude-account (Pro of Max).
+2. **Cockpit op de Mac:** open `Cockpit-….dmg` en sleep Cockpit naar Apps (of pak de zip uit en zet `Cockpit.app` in Apps). De app is niet door Apple genotariseerd, dus de eerste keer zegt macOS dat hij niet geopend kan worden. Ga dan naar Systeeminstellingen → **Privacy en beveiliging**, scrol naar beneden en kies **Toch openen**. Dat hoeft maar één keer. De eerste keer dat een knop Claude Code opent, vraagt macOS of Cockpit **Terminal** mag bedienen: kies OK.
+3. **Cockpit op Windows:** start `Cockpit-Setup-….exe` (installeert) of `Cockpit-…-portable.exe` (draait zonder installatie). Windows SmartScreen vraagt de eerste keer om bevestiging: **Meer info → Toch uitvoeren**.
+4. **Instellingen** in de cockpit:
    - je naam;
    - een GitHub-token, alleen-lezen. Maak er een via GitHub → Settings → Developer settings → Fine-grained tokens. Kies je eigen account en *All repositories*, en zet bij Permissions alleen **Contents: Read-only**;
-   - **Koppel aan Claude Code**. Dat registreert de cockpit bij Claude Code voor jouw account op deze pc.
-4. **Projecten:** zet je projecten erin. Wat nog niet op GitHub staat, werkt ook: dan is de intake de bron.
+   - **Koppel aan Claude Code**. Dat registreert de cockpit bij Claude Code voor jouw account op deze computer.
+5. **Projecten:** ga naar GitHub → **Alles binnenhalen**, of zet je projecten er zelf in. Wat nog niet op GitHub staat, werkt ook: dan is de intake de bron.
 
 Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* staat de configuratie om te plakken.
 
-5. **Mails versturen (optioneel):** onder Instellingen → *Mails versturen* kies je je provider (Gmail, Microsoft 365, TransIP, Strato of een eigen server), vul je je adres en een app-wachtwoord in, stel je een daglimiet in (standaard 20, hoogstens 50), en zet je *Automatisch versturen* aan. Met **Stuur een testmail naar mezelf** controleer je of het werkt.
-6. **Autopilot (optioneel):** zet onder Instellingen → Claude Code *Autopilot* aan. Dan maakt Claude Code elke maandagochtend zelf de weekfocus, op de achtergrond. Dat telt mee in je Claude-limieten.
+6. **Mails versturen (optioneel):** onder Instellingen → *Mails versturen* kies je je provider (Gmail, Microsoft 365, TransIP, Strato of een eigen server), vul je je adres en een app-wachtwoord in, stel je een daglimiet in (standaard 20, hoogstens 50), en zet je *Automatisch versturen* aan. Met **Stuur een testmail naar mezelf** controleer je of het werkt.
+7. **Autopilot (optioneel):** zet onder Instellingen → Claude Code *Autopilot* aan. Dan maakt Claude Code elke maandagochtend zelf de weekfocus, op de achtergrond. Dat telt mee in je Claude-limieten.
 
 ## Automatische mails: de regels
 
@@ -50,12 +51,12 @@ Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* 
 
 ## Veiligheid en privacy
 
-- Alles staat op je pc, in `%APPDATA%\Cockpit`: de database (PGlite), de GitHub-token en de toegangscode van deze installatie.
+- Alles staat op je eigen computer: op de Mac in `~/Library/Application Support/Cockpit`, op Windows in `%APPDATA%\Cockpit`. Daar staan de database (PGlite), de GitHub-token en de toegangscode van deze installatie.
 - De lokale server luistert alleen op `127.0.0.1` en antwoordt alleen aan de app zelf en aan Claude Code, met de toegangscode van deze installatie. Andere websites kunnen er niet bij, ook niet via een omweg met DNS.
 - De cockpit **leest** GitHub; hij schrijft er nooit iets. Wat op een sleutel lijkt, wordt weggepoetst voordat het wordt opgeslagen of naar Claude gaat. Per repo kun je Claude uitzetten (bijvoorbeeld voor code van een klant).
 - Tekst uit repo’s en contacten gaat als gegevens naar Claude, nooit als instructie. Claude ziet de namen en je notities bij contacten, nooit hun e-mailadres.
 - Claude krijgt geen gereedschap om te mailen of te posten. Hij schrijft concepten; versturen doet de cockpit pas nadat jij hebt goedgekeurd.
-- Het wachtwoord van je mailbox staat alleen in de lokale database op je pc. Gebruik een app-wachtwoord, dan kun je het altijd intrekken.
+- Het wachtwoord van je mailbox staat alleen in de lokale database op je computer. Gebruik een app-wachtwoord, dan kun je het altijd intrekken.
 
 ## Ontwikkelen
 
@@ -68,14 +69,14 @@ npx next build && E2E_SERVER_CMD="npx next start --port 3300" npx playwright tes
 
 Met `GITHUB_FIXTURES=1` werkt GitHub met vaste antwoorden, zonder token. De e2e-tests spelen de rol van Claude Code: ze praten via MCP met de cockpit, precies zoals Claude dat doet.
 
-**De Windows-app:**
+**De desktop-app:**
 
 ```bash
-npm run electron:build      # next build → release/server → dist-electron → release/dist/*.exe
+npm run electron:build      # next build → release/server → dist-electron → release/dist (Windows: .exe; op een Mac: npm run electron:build:mac)
 npm run test:electron       # rooktest van de app (onder Linux: xvfb-run -a …)
 ```
 
-Bij elke push naar `main` bouwt de workflow `.github/workflows/windows.yml` op Windows de installer en de portable versie. Bij een tag `v*` hangt hij ze aan een GitHub Release.
+Bij elke push naar `main` bouwt de workflow `.github/workflows/release.yml` de Mac-app (dmg en zip, voor Apple Silicon en Intel) op macOS en de installer en portable versie op Windows, en start hij op beide systemen de verpakte app één keer. Bij een tag `v*` hangt hij alles aan een GitHub Release.
 
 ## Database
 

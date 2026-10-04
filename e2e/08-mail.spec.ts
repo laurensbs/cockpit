@@ -83,7 +83,7 @@ test('approved mails go out on their own, within the cap, and an answer stops th
 
   await page.goto('/studio?tab=mails')
   await page.getByRole('navigation', { name: 'Project' }).getByRole('link', { name: 'Rondje' }).click()
-  await page.getByRole('link', { name: 'Mails' }).click()
+  await expect(page.getByText('Alles voor de groei van Rondje')).toBeVisible()
   const rows = page.getByRole('list', { name: 'Wachtrij' })
   await expect(rows.locator('li').filter({ hasText: org }).filter({ hasText: 'Opvolging 1' })).toContainText('Gestopt')
   await expect(rows.locator('li').filter({ hasText: 'Verstuurd' })).toHaveCount(2)

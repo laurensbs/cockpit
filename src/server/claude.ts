@@ -3,6 +3,7 @@ import { exec, spawn } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname } from 'node:path'
+import { cleanPrompt, terminalScript } from '@/lib/terminal'
 import { fixturesAllowed } from './status'
 
 // Claude Code is the brain of the cockpit: it runs on the owner's own Claude account. The cockpit
@@ -37,13 +38,6 @@ export const desktopConfig = (token: string) =>
 /** What Claude Code is told when a button opens it: just the ticket; the task comes through MCP. */
 export const launchPrompt = (ticket: string) => `Haal met de cockpit-tool get_task de taak met ticket ${ticket} op en voer die uit.`
 
-/** Only letters, digits and plain punctuation go into a command line (no ";": Windows Terminal splits on it). */
-export const cleanPrompt = (text: string) =>
-  text
-    .replace(/[^\p{L}\p{N} .,:()_/-]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 300)
 
 const CLAUDE_ARGS = '--allowedTools mcp__cockpit'
 
@@ -63,13 +57,16 @@ function record(file: string, entry: Record<string, unknown>): void {
 
 const quoteWin = (value: string) => `"${value.replace(/"/g, '')}"`
 
+
+
 /**
  * Opens a terminal window that starts Claude Code with the prompt, in the project's folder when it
  * has one. Returns the command as well, so the page can show it when no window could be opened.
  */
 export async function openTerminal(prompt: string, cwd: string | null): Promise<LaunchOutcome> {
   const command = `claude ${CLAUDE_ARGS} "${cleanPrompt(prompt)}"`
-  const dir = cwd && existsSync(cwd) ? cwd : homedir()
+  const wanted = cwd?.trim().replace(/^~(?=$|[/\\])/, homedir()) ?? null
+  const dir = wanted && existsSync(wanted) ? wanted : homedir()
   const fake = fakeTerminal()
   if (fake) {
     record(fake, { command, cwd: dir })
@@ -84,8 +81,7 @@ export async function openTerminal(prompt: string, cwd: string | null): Promise<
       return { launched: true, command }
     }
     if (process.platform === 'darwin') {
-      const script = `cd ${JSON.stringify(dir)} && ${command}`
-      spawn('osascript', ['-e', `tell application "Terminal" to do script ${JSON.stringify(script)}`], { detached: true, stdio: 'ignore' }).unref()
+      spawn('osascript', terminalScript(dir, command).flatMap((line) => ['-e', line]), { detached: true, stdio: 'ignore' }).unref()
       return { launched: true, command }
     }
     for (const terminal of ['x-terminal-emulator', 'gnome-terminal', 'konsole', 'xterm']) {

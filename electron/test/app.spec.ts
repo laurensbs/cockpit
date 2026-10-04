@@ -11,7 +11,7 @@ const packaged = process.env.COCKPIT_PACKAGED_APP
 
 test('the app starts its own server and opens the cockpit', async () => {
   const userData = mkdtempSync(join(tmpdir(), 'cockpit-'))
-  const env = { ...process.env, COCKPIT_USER_DATA: userData, GITHUB_FIXTURES: '1' }
+  const env = { ...process.env, COCKPIT_USER_DATA: userData, GITHUB_FIXTURES: '1', COCKPIT_NO_GH: '1' }
   const app = packaged
     ? await electron.launch({ executablePath: packaged, args: ['--no-sandbox'], env })
     : await electron.launch({ args: ['.', '--no-sandbox'], env })
