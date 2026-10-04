@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { expectedToken } from '@/lib/local'
-import { connectClaudeCode, launchPrompt, openTerminal } from '../claude'
+import { connectClaudeCode, launchPrompt, mcpUrl, openTerminal } from '../claude'
 import { isTaskKind, TaskOptions } from '../mcp/tasks'
 import { createTicket } from '../mcp/tickets'
 import { actionOwner } from '../session'
@@ -25,9 +25,10 @@ export async function openInClaude(task: string, projectId: string | null, optio
   if (!isTaskKind(task)) return { ok: false, error: 'Onbekende taak.' }
   const parsed = TaskOptions.safeParse(options)
   if (!parsed.success) return { ok: false, error: 'Die keuzes kloppen niet.' }
+  if (task === 'ask' && !parsed.data.question) return { ok: false, error: 'Wat wil je Claude vragen?' }
   let cwd: string | null = null
   let id: string | null = null
-  if (task !== 'weekly') {
+  if (task !== 'weekly' && !(task === 'ask' && !projectId)) {
     const db = await getDb()
     const [project] = await db
       .select({ id: s.project.id, localPath: s.project.localPath })
@@ -48,7 +49,11 @@ export async function connectClaude(): Promise<{ ok: boolean; message: string }>
   const token = expectedToken()
   if (!token) return { ok: false, message: 'De cockpit heeft geen toegangscode.' }
   const result = await connectClaudeCode(token)
-  if (result.ok) await setSetting(await getDb(), owner.userId, 'claude_connected', new Date().toISOString())
+  if (result.ok) {
+    const db = await getDb()
+    await setSetting(db, owner.userId, 'claude_connected', new Date().toISOString())
+    await setSetting(db, owner.userId, 'claude_url', mcpUrl())
+  }
   revalidatePath('/settings')
   return result
 }

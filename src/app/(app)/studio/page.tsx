@@ -11,10 +11,11 @@ import { PostCard } from '@/components/PostCard'
 import { StudioGenerator } from '@/components/StudioGenerator'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
-import { addDays, dayLabel, dayOf, monthStart, weekStart } from '@/lib/dates'
-import { nextActions, type HubTab } from '@/lib/growth'
+import { addDays, dayLabel, dayOf, weekStart } from '@/lib/dates'
+import { actionHref, nextActions, type HubTab } from '@/lib/growth'
 import { ACTIVE_STAGES, isStage } from '@/lib/options'
 import { claudeBlocked } from '@/server/claude-status'
+import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { mailStatus, outboxRows, queueByItem } from '@/server/outbox-views'
 import { requireOwner } from '@/server/session'
 
@@ -179,30 +180,12 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   // ---------- the overview ----------
   let hub: React.ReactNode = null
   if (tab === 'hub') {
-    const briefs = await db.select({ kind: s.brief.kind }).from(s.brief).where(eq(s.brief.projectId, current.id))
-    const has = (kind: string) => briefs.some((x) => x.kind === kind)
     const sentThisWeek = outbox.filter((o) => o.status === 'sent' && o.sentAt && dayOf(o.sentAt) >= week).length + emails.filter((e) => e.status === 'done' && e.doneAt && dayOf(e.doneAt) >= week && !queue.get(e.id)).length
     const postsDone = posts.filter((p) => p.status === 'done' && p.doneAt && dayOf(p.doneAt) >= week).length
     const postsPlanned = posts.filter((p) => p.status !== 'done' && p.plannedFor && p.plannedFor >= today && p.plannedFor <= addDays(week, 6)).length
     const running = experiments.filter((e) => e.status === 'planned')
-    const readyDrafts = emails.filter((e) => e.status === 'draft' && e.contactId && !queue.get(e.id) && contacts.some((c) => c.id === e.contactId && c.email && !stopped(c.status))).length
-    const actions = nextActions({
-      hasProfile: has('profile'),
-      hasPlan: has('plan'),
-      hasLinkedin: has('linkedin'),
-      hasKeywords: has('seo'),
-      experimentsRunning: running.length,
-      experimentsBacklog: experiments.filter((e) => e.status === 'draft').length,
-      articlesThisMonth: articles.filter((a) => dayOf(a.createdAt) >= monthStart(today)).length,
-      newContactsWithEmail: contacts.filter((c) => c.status === 'new' && c.email).length,
-      readyDrafts,
-      postsDoneThisWeek: postsDone,
-      postsPlannedThisWeek: postsPlanned,
-      mailReady: status.ready && status.enabled,
-      contacts: contacts.length,
-    })
-    const target = (t: HubTab) =>
-      t === 'brain' ? `/projects/${current.id}/brain` : t === 'contacts' ? `/projects/${current.id}/contacts` : t === 'settings' ? '/settings#mail' : href({ tab: t })
+    const actions = nextActions((await growthStates(db, owner.userId, now)).get(current.id) ?? EMPTY_GROWTH)
+    const target = (t: HubTab) => (t === 'brain' || t === 'contacts' || t === 'settings' ? actionHref(current.id, t) : href({ tab: t }))
     hub = (
       <>
         <section className="kpis">

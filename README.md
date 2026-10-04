@@ -11,11 +11,15 @@ Al je projecten en bedrijven op één plek, als app op je Mac of Windows-pc. De 
 3. Claude haalt via de cockpit (MCP) alles op wat hij moet weten: de intake, de rode lijnen, README en docs, cijfers, en wat je van eerdere concepten vond. Dan doet hij het werk en zet hij het resultaat terug in de cockpit.
 4. De pagina ververst vanzelf zodra het binnen is. In het venster van Claude Code kun je meepraten en bijsturen.
 
+Of je vraagt het gewoon: typ in **Vraag Claude** (op Vandaag en op elk project) of in de **opdrachtbalk** (⌘K, op Windows Ctrl+K) wat je wilt weten of laten doen. Claude krijgt je vraag via de cockpit, met al je projecten, cijfers en contacten erbij, en zet wat hij maakt meteen terug.
+
 Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedschapskist, met tools als `list_projects`, `get_project`, `get_task` en `save_posts`, en prompts als `/mcp__cockpit__profile Rondje`.
 
 | Plek | Wat je er doet |
 |---|---|
-| **Vandaag** | Level, XP en streaks, de focus van de week, je quests, en per project de gezondheid (0–100) |
+| **Vandaag** | **Klaarzetten** (wat er nog moet tot alles werkt), **Vraag Claude**, **Nu doen**: per project de stap die het meest oplevert, met één klik naar Claude Code; dan de focus van de week, je quests, en per project de gezondheid (0–100) |
+| **⌘K** | De opdrachtbalk: naar elke plek of elk project, elke Claude-klus voor elk project, of een vraag aan Claude |
+| **Zijbalk** | Je plekken, al je actieve projecten met hun kleur, en of Claude Code gekoppeld is |
 | **Projecten** | Per project: intake (vijf vragen), activiteit uit GitHub, repo’s, cijfers per maand, en of de site online is |
 | **Marketingbrein** | Profiel (doelgroepen, kanalen, KPI’s, quick wins) en een plan voor 90 dagen; acties worden quests |
 | **Marketing** | Overzicht met de cijfers van deze week en “wat nu?” voor organische groei; concepten, mails (wachtrij en verzonden), SEO-artikelen, groei-experimenten met een bord, een kalender, het idee-lab en kansen van het web |
@@ -28,12 +32,18 @@ Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedsch
 ## Installeren
 
 1. **Claude Code:** op de Mac open je Terminal en typ je `curl -fsSL https://claude.ai/install.sh | bash`; op Windows in PowerShell `irm https://claude.ai/install.ps1 | iex`. Start daarna `claude` één keer om in te loggen met je Claude-account (Pro of Max).
-2. **Cockpit op de Mac:** open `Cockpit-….dmg` en sleep Cockpit naar Apps (of pak de zip uit en zet `Cockpit.app` in Apps). De app is niet door Apple genotariseerd, dus de eerste keer zegt macOS dat hij niet geopend kan worden. Ga dan naar Systeeminstellingen → **Privacy en beveiliging**, scrol naar beneden en kies **Toch openen**. Dat hoeft maar één keer. De eerste keer dat een knop Claude Code opent, vraagt macOS of Cockpit **Terminal** mag bedienen: kies OK.
+2. **Cockpit op de Mac (Apple-chip):** open Terminal, plak deze regel en druk op Enter:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/laurensbs/cockpit/downloads/install-mac.sh -o /tmp/cockpit-install.sh && bash /tmp/cockpit-install.sh
+   ```
+
+   Het script ([`install-mac.sh`](https://github.com/laurensbs/cockpit/blob/downloads/install-mac.sh) op de branch `downloads`) downloadt de app en controleert of de download compleet is. Dan zet het Cockpit in Apps en opent het hem. Je gegevens blijven staan. Is er een nieuwe versie, dan zegt de app dat zelf en werkt **Bijwerken** hem met dezelfde regel bij. De eerste keer dat een knop Claude Code opent, vraagt macOS of Cockpit **Terminal** mag bedienen: kies OK. Staat er een dmg bij de Releases, dan kan dat ook: sleep Cockpit naar Apps en kies de eerste keer Systeeminstellingen → Privacy en beveiliging → **Toch openen**.
 3. **Cockpit op Windows:** start `Cockpit-Setup-….exe` (installeert) of `Cockpit-…-portable.exe` (draait zonder installatie). Windows SmartScreen vraagt de eerste keer om bevestiging: **Meer info → Toch uitvoeren**.
 4. **Instellingen** in de cockpit:
    - je naam;
    - een GitHub-token, alleen-lezen. Maak er een via GitHub → Settings → Developer settings → Fine-grained tokens. Kies je eigen account en *All repositories*, en zet bij Permissions alleen **Contents: Read-only**;
-   - **Koppel aan Claude Code**. Dat registreert de cockpit bij Claude Code voor jouw account op deze computer.
+   - Claude Code koppelt de app vanzelf zodra hij het vindt (en opnieuw als het adres verandert). De knop **Koppel aan Claude Code** doet hetzelfde met de hand.
 5. **Projecten:** ga naar GitHub → **Alles binnenhalen**, of zet je projecten er zelf in. Wat nog niet op GitHub staat, werkt ook: dan is de intake de bron.
 
 Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* staat de configuratie om te plakken.
@@ -55,6 +65,7 @@ Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* 
 - De lokale server luistert alleen op `127.0.0.1` en antwoordt alleen aan de app zelf en aan Claude Code, met de toegangscode van deze installatie. Andere websites kunnen er niet bij, ook niet via een omweg met DNS.
 - De cockpit **leest** GitHub; hij schrijft er nooit iets. Wat op een sleutel lijkt, wordt weggepoetst voordat het wordt opgeslagen of naar Claude gaat. Per repo kun je Claude uitzetten (bijvoorbeeld voor code van een klant).
 - Tekst uit repo’s en contacten gaat als gegevens naar Claude, nooit als instructie. Claude ziet de namen en je notities bij contacten, nooit hun e-mailadres.
+- Om te zien of er een nieuwe versie is, haalt de Mac-app elke zes uur `version.json` van de branch `downloads` op GitHub; hij stuurt daarbij niets mee.
 - Claude krijgt geen gereedschap om te mailen of te posten. Hij schrijft concepten; versturen doet de cockpit pas nadat jij hebt goedgekeurd.
 - Het wachtwoord van je mailbox staat alleen in de lokale database op je computer. Gebruik een app-wachtwoord, dan kun je het altijd intrekken.
 
@@ -75,6 +86,8 @@ Met `GITHUB_FIXTURES=1` werkt GitHub met vaste antwoorden, zonder token. De e2e-
 npm run electron:build      # next build → release/server → dist-electron → release/dist (Windows: .exe; op een Mac: npm run electron:build:mac)
 npm run test:electron       # rooktest van de app (onder Linux: xvfb-run -a …)
 ```
+
+Op elke computer (ook Linux) bouwt `scripts/build-mac.sh` de Mac-app voor de branch `downloads`. Alleen de app en zijn helpers krijgen een nieuwe ad-hoc-handtekening (met `rcodesign`); de Electron-frameworks blijven zoals Electron ze levert. Daarna gaan de twee delen, `install-mac.sh` (met de nieuwe checksum) en `version.json` naar `downloads`.
 
 Bij elke push naar `main` bouwt de workflow `.github/workflows/release.yml` de Mac-app (dmg en zip, voor Apple Silicon en Intel) op macOS en de installer en portable versie op Windows, en start hij op beide systemen de verpakte app één keer. Daarna hangt hij alles aan de GitHub Release van de versie in `package.json` (bijvoorbeeld `v0.3.0`); verhoog de versie voor een nieuwe release.
 

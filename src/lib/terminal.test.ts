@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claudeInstallCommand, cleanPrompt, shellQuote, terminalScript } from './terminal'
+import { claudeInstallCommand, cleanPrompt, MAC_INSTALL_COMMAND, shellQuote, terminalScript } from './terminal'
 
 describe('cleanPrompt', () => {
   it('keeps plain words and drops what a shell could act on', () => {
@@ -29,5 +29,11 @@ describe('claudeInstallCommand', () => {
   it('gives the right line per system', () => {
     expect(claudeInstallCommand('darwin')).toBe('curl -fsSL https://claude.ai/install.sh | bash')
     expect(claudeInstallCommand('win32')).toBe('irm https://claude.ai/install.ps1 | iex')
+  })
+})
+
+describe('MAC_INSTALL_COMMAND', () => {
+  it('downloads the install script from the downloads branch and runs it, without piping into a shell', () => {
+    expect(MAC_INSTALL_COMMAND).toBe('curl -fsSL https://raw.githubusercontent.com/laurensbs/cockpit/downloads/install-mac.sh -o /tmp/cockpit-install.sh && bash /tmp/cockpit-install.sh')
   })
 })

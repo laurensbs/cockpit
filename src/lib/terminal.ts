@@ -22,3 +22,9 @@ export function terminalScript(dir: string, command: string): string[] {
 export function claudeInstallCommand(platform: string): string {
   return platform === 'win32' ? 'irm https://claude.ai/install.ps1 | iex' : 'curl -fsSL https://claude.ai/install.sh | bash'
 }
+
+/** Where the Mac app and its install script live (the downloads branch of the repo). */
+export const DOWNLOADS_URL = 'https://raw.githubusercontent.com/laurensbs/cockpit/downloads'
+
+/** The one line that installs or updates Cockpit on a Mac; the same line as in the README. */
+export const MAC_INSTALL_COMMAND = `curl -fsSL ${DOWNLOADS_URL}/install-mac.sh -o /tmp/cockpit-install.sh && bash /tmp/cockpit-install.sh`

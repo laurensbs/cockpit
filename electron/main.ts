@@ -105,6 +105,9 @@ async function openWindow(base: string, token: string): Promise<BrowserWindow> {
     sameSite: 'strict',
     expirationDate: Math.floor(Date.now() / 1000) + 365 * 86_400,
   })
+  // Tells the pages they live in the Mac window, so the top bar makes room for the traffic lights.
+  const mac = process.platform === 'darwin'
+  await session.defaultSession.cookies.set({ url: base, name: 'cockpit_shell', value: mac ? 'mac' : 'desktop', sameSite: 'strict', expirationDate: Math.floor(Date.now() / 1000) + 365 * 86_400 })
   const icon = join(app.getAppPath(), 'resources', 'icon.png')
   const win = new BrowserWindow({
     width: 1280,
@@ -115,6 +118,8 @@ async function openWindow(base: string, token: string): Promise<BrowserWindow> {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0c1b' : '#f3f4fa',
+    // On the Mac the traffic lights sit in the cockpit's own top bar, like a native app.
+    ...(mac ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 18, y: 23 } } : {}),
     ...(existsSync(icon) ? { icon } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   })

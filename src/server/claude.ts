@@ -95,6 +95,22 @@ export async function openTerminal(prompt: string, cwd: string | null): Promise<
   }
 }
 
+/** Opens Terminal on the Mac with a command of the cockpit's own (the update), in his home folder. */
+export async function runInMacTerminal(command: string): Promise<LaunchOutcome> {
+  const fake = fakeTerminal()
+  if (fake) {
+    record(fake, { command, terminal: true })
+    return { launched: true, command }
+  }
+  if (process.platform !== 'darwin') return { launched: false, command, error: 'Dit werkt alleen op de Mac.' }
+  try {
+    spawn('osascript', terminalScript(homedir(), command).flatMap((line) => ['-e', line]), { detached: true, stdio: 'ignore' }).unref()
+    return { launched: true, command }
+  } catch {
+    return { launched: false, command, error: 'Terminal wilde niet openen.' }
+  }
+}
+
 /** Registers the cockpit with Claude Code (user scope), replacing an older registration. */
 export async function connectClaudeCode(token: string): Promise<{ ok: boolean; message: string }> {
   if (!/^[A-Za-z0-9_-]+$/.test(token)) return { ok: false, message: 'De toegangscode bevat tekens die niet in een commando passen.' }

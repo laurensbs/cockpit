@@ -277,6 +277,14 @@ export function weeklyTask(today: string): string {
 - boss: the one bigger task for this week, with title (starts with a verb), project (exact name) and why.`
 }
 
+export function askTask(question: string, scope: string): string {
+  return `Task: he asks you something about ${scope}. His own words, his request to you:
+<question>
+${neutralize(question)}
+</question>
+Work it out with the cockpit's tools: read what you need (list_projects, get_project, get_portfolio, get_stats, list_contacts) and, when it helps, the code in the current folder or the web. When the answer is something the cockpit can keep (a profile, a plan, posts, mails, ideas, opportunities, articles, experiments, a LinkedIn plan, the weekly focus), make it and save it with the matching save_* tool, so it shows up in the cockpit; concrete to-dos go in with add_quests. Otherwise just answer. Ask him when something essential is unclear.`
+}
+
 // ---------- organic growth ----------
 
 export function seoTask(language: string, markets: string[], siteUrl: string | null): string {

@@ -63,7 +63,7 @@ export default async function SettingsPage() {
         </section>
       ) : null}
 
-      <section className="card stack-m">
+      <section className="card stack-m" id="claude">
         <div className="row between">
           <h2 className="row">
             <Icon name="cpu" /> Claude Code
@@ -75,6 +75,11 @@ export default async function SettingsPage() {
           taak; Claude leest het project via de cockpit en zet het resultaat hier terug. Dat loopt op je eigen Claude-abonnement, zonder
           API-kosten.
         </p>
+        {version ? (
+          <p className="tiny muted">
+            De app koppelt Claude Code vanzelf zodra hij het vindt, en opnieuw als het adres van de cockpit verandert. De knop hieronder doet hetzelfde met de hand.
+          </p>
+        ) : null}
         {version ? <AutopilotToggle on={autopilot === '1'} /> : null}
         {version ? (
           <ConnectClaudeButton connectedAt={connectedAt} />
@@ -122,7 +127,7 @@ export default async function SettingsPage() {
         />
       </section>
 
-      <section className="card stack-m">
+      <section className="card stack-m" id="you">
         <h2 className="row">
           <Icon name="key" /> Jij en GitHub
         </h2>

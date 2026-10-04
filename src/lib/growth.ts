@@ -27,6 +27,18 @@ export interface GrowthAction {
   tab: HubTab
 }
 
+/** The steps Claude Code can do in one go (the rest is his: approving, a mailbox, starting an experiment). */
+export const ACTION_TASKS: Record<string, string> = {
+  profile: 'profile',
+  plan: 'plan',
+  experiments: 'experiments',
+  posts: 'posts',
+  outreach: 'contact_mails',
+  seo: 'seo',
+  opportunities: 'opportunities',
+  linkedin: 'linkedin',
+}
+
 const WEEKLY_POSTS = 3
 
 /** At most five next steps, the most important first. */
@@ -49,4 +61,12 @@ export function nextActions(g: GrowthState): GrowthAction[] {
   if (!g.hasLinkedin) out.push({ key: 'linkedin', title: 'Maak je LinkedIn-plan', why: 'Je profiel en vijf posts: daar zoeken partners en klanten je eerst.', tab: 'brain' })
   if (g.hasProfile && !g.hasPlan) out.push({ key: 'plan', title: 'Maak het plan voor 90 dagen', why: 'Van losse acties naar een ritme met quests.', tab: 'brain' })
   return out.slice(0, 5)
+}
+
+/** Where a "what now?" step is done: the brain, the contacts, the mail settings or a tab of the marketing hub. */
+export function actionHref(projectId: string, tab: HubTab): string {
+  if (tab === 'brain') return `/projects/${projectId}/brain`
+  if (tab === 'contacts') return `/projects/${projectId}/contacts`
+  if (tab === 'settings') return '/settings#mail'
+  return `/studio?${new URLSearchParams({ tab, project: projectId }).toString()}`
 }

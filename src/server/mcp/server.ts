@@ -156,7 +156,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         kind = found.task
         projectId = found.projectId
         options = { ...found.options, ...options }
-      } else if (kind && kind !== 'weekly') {
+      } else if (kind && kind !== 'weekly' && !(kind === 'ask' && !project)) {
         if (!project) return fail('Which project? Pass project (see list_projects).')
         const found = await resolveProject(db, ownerId, project)
         if ('error' in found) return fail(found.error)
@@ -313,7 +313,8 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
   )
 
   // Every task is also a prompt: /mcp__cockpit__profile Rondje, say.
-  for (const kind of TASK_KINDS) {
+  // A question needs no prompt: in Claude Code he just asks it.
+  for (const kind of TASK_KINDS.filter((k) => k !== 'ask')) {
     server.registerPrompt(
       kind,
       {

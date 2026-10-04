@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextActions, type GrowthState } from './growth'
+import { ACTION_TASKS, actionHref, nextActions, type GrowthState } from './growth'
 
 const base: GrowthState = {
   hasProfile: true,
@@ -32,5 +32,23 @@ describe('nextActions', () => {
     expect(actions).toHaveLength(5)
     expect(actions.map((a) => a.key)).toEqual(['start-experiment', 'posts', 'outreach', 'seo', 'opportunities'])
     expect(actions[1].title).toBe('Plan 2 posts deze week')
+  })
+})
+
+describe('actionHref', () => {
+  it('sends each step to the page where it is done', () => {
+    expect(actionHref('p1', 'brain')).toBe('/projects/p1/brain')
+    expect(actionHref('p1', 'contacts')).toBe('/projects/p1/contacts')
+    expect(actionHref('p1', 'settings')).toBe('/settings#mail')
+    expect(actionHref('p1', 'experiments')).toBe('/studio?tab=experiments&project=p1')
+  })
+})
+
+describe('ACTION_TASKS', () => {
+  it('only names jobs Claude Code can do, never the ones that are his', () => {
+    expect(ACTION_TASKS.profile).toBe('profile')
+    expect(ACTION_TASKS.outreach).toBe('contact_mails')
+    expect(ACTION_TASKS.approve).toBeUndefined()
+    expect(ACTION_TASKS.mailbox).toBeUndefined()
   })
 })

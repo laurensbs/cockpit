@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
+import { cookies } from 'next/headers'
 import { APP_NAME, siteUrl } from '@/lib/site'
 import { fontVariables } from './fonts'
 
@@ -23,9 +24,11 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The desktop app says where it runs: in the Mac window the top bar holds the traffic lights.
+  const shell = (await cookies()).get('cockpit_shell')?.value
   return (
-    <html lang="nl" className={fontVariables}>
+    <html lang="nl" className={fontVariables} data-shell={shell === 'mac' || shell === 'desktop' ? shell : undefined}>
       <body>{children}</body>
     </html>
   )

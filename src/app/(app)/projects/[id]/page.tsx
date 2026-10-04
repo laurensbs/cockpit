@@ -1,9 +1,11 @@
 import { and, desc, eq } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { AskClaude } from '@/components/AskClaude'
 import { Heatmap } from '@/components/Heatmap'
 import { Icon } from '@/components/Icon'
 import { MetricForm } from '@/components/MetricForm'
+import { NextSteps } from '@/components/NextSteps'
 import { ProjectTabs } from '@/components/ProjectTabs'
 import { RepoList } from '@/components/RepoList'
 import { StageSelect } from '@/components/StageSelect'
@@ -12,9 +14,12 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { activeDays, daysSinceLast, mergeCommitDays } from '@/lib/activity'
 import { addMonths, dayOf, monthLabel, monthStart } from '@/lib/dates'
+import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
 import { LANGUAGE_LABELS, METRIC_KEYS, METRIC_LABELS } from '@/lib/options'
 import { ago, formatEuro, formatNumber } from '@/lib/time'
 import { hostOf } from '@/lib/urls'
+import { claudeBlocked } from '@/server/claude-status'
+import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { metricsSince } from '@/server/queries'
 import { requireOwner } from '@/server/session'
 
@@ -59,6 +64,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 8)
   const intakeDone = Boolean(project.oneLiner && project.what && project.audience && project.goal)
+  const [growth, blocked] = await Promise.all([growthStates(db, owner.userId, now), claudeBlocked()])
+  const steps = nextActions(growth.get(project.id) ?? EMPTY_GROWTH)
+    .slice(0, 3)
+    .map((a) => ({ key: a.key, title: a.title, why: a.why, projects: [{ projectId: project.id, projectName: project.name, color: company?.color ?? null, href: actionHref(project.id, a.tab), task: ACTION_TASKS[a.key] ?? null }] }))
 
   return (
     <div className="stack-l">
@@ -110,6 +119,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </Link>
         </div>
       ) : null}
+
+      <NextSteps groups={steps} disabledReason={blocked} project={project.name} />
+
+      <AskClaude projects={[]} project={{ id: project.id, name: project.name }} disabledReason={blocked} />
 
       <section className="card stack-m">
         <h2>Intake</h2>

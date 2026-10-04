@@ -3,13 +3,18 @@ import { HealthRing } from '@/components/HealthRing'
 import { Icon } from '@/components/Icon'
 import { QuestItem } from '@/components/QuestItem'
 import { Sparkline } from '@/components/Sparkline'
+import { AskClaude } from '@/components/AskClaude'
+import { NextSteps, SetupChecklist, type NextStepGroup } from '@/components/NextSteps'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
+import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
 import { claudeBlocked } from '@/server/claude-status'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
+import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { questViews } from '@/server/quest-views'
 import { requireOwner } from '@/server/session'
+import { setupSteps } from '@/server/setup'
 
 const TREND = { up: { icon: '▲', label: 'meer dan vorige week', color: 'var(--good)' }, down: { icon: '▼', label: 'minder dan vorige week', color: 'var(--bad)' }, flat: { icon: '●', label: 'gelijk aan vorige week', color: 'var(--faint)' } }
 
@@ -17,22 +22,49 @@ export default async function TodayPage() {
   const owner = await requireOwner()
   const db = await getDb()
   await dailyRound(db, owner.userId)
-  const [stats, quests, pulses] = await Promise.all([playerStats(db, owner.userId), questViews(db, owner.userId, { status: 'open', limit: 50 }), projectPulses(db, owner.userId)])
+  const [stats, quests, pulses, growth, blocked] = await Promise.all([
+    playerStats(db, owner.userId),
+    questViews(db, owner.userId, { status: 'open', limit: 50 }),
+    projectPulses(db, owner.userId),
+    growthStates(db, owner.userId),
+    claudeBlocked(),
+  ])
+  const setup = await setupSteps(db, owner.userId, pulses.length)
+  const setupLeft = setup.some((step) => !step.done && !step.optional)
+  // One step per project, the least healthy project first: that is where attention pays off most.
+  // The same step for several projects becomes one row.
+  const groups: NextStepGroup[] = []
+  for (const p of pulses) {
+    const [first] = nextActions(growth.get(p.id) ?? EMPTY_GROWTH)
+    if (!first) continue
+    const item = { projectId: p.id, projectName: p.name, color: p.color, href: actionHref(p.id, first.tab), task: ACTION_TASKS[first.key] ?? null }
+    const same = groups.find((g) => g.key === first.key && g.title === first.title)
+    if (same) same.projects.push(item)
+    else groups.push({ key: first.key, title: first.title, why: first.why, projects: [item] })
+  }
   const now = quests.filter((q) => q.bucket === 'overdue' || q.bucket === 'today' || q.kind === 'boss').slice(0, 5)
   const shown = now.length >= 3 ? now : [...now, ...quests.filter((q) => !now.includes(q))].slice(0, 3)
   const { level, actionStreak, buildStreak } = stats
 
   return (
     <div className="stack-l">
-      <section className="hero stack-m">
-        <div className="row between">
+      <section className="hero hero-compact">
+        <div className="stack-s">
           <p className="eyebrow" style={{ color: '#b5f23d' }}>
             Vandaag
           </p>
-          <span className="chip xp num">+{stats.todayXp} XP vandaag</span>
+          <h1>{owner.name ? `${greeting(new Date())}, ${owner.name.split(' ')[0]}` : greeting(new Date())}</h1>
+          <div className="row">
+            <span className="chip flame" title="Dagen op rij iets gedaan (één vrije dag per week)">
+              <Icon name="flame" size={14} /> {actionStreak.length} {actionStreak.length === 1 ? 'dag' : 'dagen'} actie{actionStreak.length && !actionStreak.today ? ' · vandaag nog niet' : ''}
+            </span>
+            <span className="chip" title="Dagen op rij gecommit">
+              <Icon name="branch" size={14} /> {buildStreak.length} {buildStreak.length === 1 ? 'dag' : 'dagen'} bouwen
+            </span>
+            <span className="chip xp num">+{stats.todayXp} XP vandaag</span>
+          </div>
         </div>
-        <h1>{owner.name ? `${greeting(new Date())}, ${owner.name.split(' ')[0]}` : greeting(new Date())}</h1>
-        <div className="row nowrap" style={{ gap: '1rem' }}>
+        <div className="row nowrap hero-level">
           <div className="level-badge num" aria-hidden="true">
             {level.level}
           </div>
@@ -48,17 +80,15 @@ export default async function TodayPage() {
             </p>
           </div>
         </div>
-        <div className="row">
-          <span className="chip flame" title="Dagen op rij iets gedaan (één vrije dag per week)">
-            <Icon name="flame" size={14} /> {actionStreak.length} {actionStreak.length === 1 ? 'dag' : 'dagen'} actie{actionStreak.length && !actionStreak.today ? ' · vandaag nog niet' : ''}
-          </span>
-          <span className="chip" title="Dagen op rij gecommit">
-            <Icon name="branch" size={14} /> {buildStreak.length} {buildStreak.length === 1 ? 'dag' : 'dagen'} bouwen
-          </span>
-        </div>
       </section>
 
-      {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={await claudeBlocked()} /> : null}
+      {setupLeft ? <SetupChecklist steps={setup} /> : null}
+
+      <AskClaude projects={pulses.map((p) => ({ id: p.id, name: p.name }))} disabledReason={blocked} />
+
+      {pulses.length ? <NextSteps groups={groups.slice(0, 5)} disabledReason={blocked} /> : null}
+
+      {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}
 
       <section className="card stack-s">
         <div className="row between">
