@@ -1,5 +1,8 @@
 import { execFile } from 'node:child_process'
-import { join } from 'node:path'
+import { posix } from 'node:path'
+
+// macOS paths, also when the tests run on Windows.
+const join = posix.join
 
 // A Mac app started from Finder or the Dock gets a bare PATH (/usr/bin:/bin:/usr/sbin:/sbin), so it
 // would not find `claude` or `gh`. This builds the PATH a terminal would have.
