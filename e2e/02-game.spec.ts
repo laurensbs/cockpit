@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { newVisitor, shot, signInOwner } from './helpers'
+import { newVisitor, shot } from './helpers'
 
 test('quests give XP, a boss levels you up, recurring quests come back', async ({ browser }) => {
   const { context, page } = await newVisitor(browser)
-  await signInOwner(page)
+  await page.goto('/')
   await expect(page.getByText('Level 1 · Dromer')).toBeVisible()
 
   // A quest of his own, done: XP and a streak.

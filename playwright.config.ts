@@ -30,13 +30,12 @@ export default defineConfig({
         timeout: 180_000,
         env: {
           PGLITE_DIR: 'memory',
-          OWNER_EMAILS: 'owner@e2e.test',
-          OWNER_SETUP_CODE: 'e2e-setup-code',
-          // Fixed answers instead of Claude and GitHub: the tests never spend money or need a token.
-          AI_FIXTURES: '1',
+          // The token the tests put in their cookie, as the app window would.
+          COCKPIT_TOKEN: 'e2e-token',
+          // Fixed answers instead of GitHub: the tests never need a token.
           GITHUB_FIXTURES: '1',
-          CRON_SECRET: 'e2e-cron',
-          AI_MONTHLY_BUDGET_USD: '10',
+          // "Open in Claude Code" writes the command here instead of opening a terminal.
+          COCKPIT_FAKE_TERMINAL: `${process.cwd()}/test-results/claude-launch.txt`,
         },
       },
 })

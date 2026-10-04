@@ -55,7 +55,7 @@ export function StarterSetup({ starters, repoNames, github }: { starters: Starte
           </li>
         ))}
       </ul>
-      {!github ? <p className="notice warn small">GitHub is nog niet gekoppeld: de repo’s worden gelezen zodra GITHUB_TOKEN in Vercel staat.</p> : null}
+      {!github ? <p className="notice warn small">GitHub is nog niet gekoppeld: de repo’s worden gelezen zodra je bij de instellingen een token zet.</p> : null}
       {state.error ? (
         <p className="notice bad" role="alert">
           {state.error}

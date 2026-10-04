@@ -19,7 +19,6 @@ import {
 } from '@/lib/game'
 import { ACTIVE_STAGES, isStage } from '@/lib/options'
 import { ruleQuests, type RuleProject } from '@/lib/quests'
-import { aiStatus } from './status'
 import { award } from './xp'
 
 export const isIntakeDone = (p: { oneLiner: string; what: string; audience: string; goal: string }) =>
@@ -104,7 +103,7 @@ export async function dailyRound(db: Db, ownerId: string, now = new Date()): Pro
       syncError: own.some((r) => r.syncError),
     })
   }
-  const candidates = ruleQuests(ruleProjects, today, aiStatus() !== 'off')
+  const candidates = ruleQuests(ruleProjects, today, true)
   if (candidates.length) {
     await db
       .insert(s.quest)

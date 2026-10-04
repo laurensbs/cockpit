@@ -1,5 +1,5 @@
 import 'server-only'
-import { githubStatus } from '../status'
+import { githubFixtures } from '../status'
 import { fixtureSource } from './fixtures'
 
 export interface RepoMeta {
@@ -41,9 +41,7 @@ export class GithubError extends Error {
 
 const API = 'https://api.github.com'
 
-async function request(path: string, accept: string): Promise<string | null> {
-  const token = process.env.GITHUB_TOKEN
-  if (!token) throw new GithubError(401, 'token')
+async function request(token: string, path: string, accept: string): Promise<string | null> {
   let res: Response
   try {
     res = await fetch(`${API}${path}`, {
@@ -62,11 +60,6 @@ async function request(path: string, accept: string): Promise<string | null> {
   return res.text()
 }
 
-const json = async <T>(path: string): Promise<T | null> => {
-  const body = await request(path, 'application/vnd.github+json')
-  return body == null ? null : (JSON.parse(body) as T)
-}
-const raw = (path: string) => request(path, 'application/vnd.github.raw+json')
 const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/')
 
 interface ApiRepo {
@@ -94,47 +87,53 @@ const toMeta = (r: ApiRepo): RepoMeta => ({
 })
 
 /** The GitHub REST API with a fine-grained, read-only token. Requests go one at a time, as GitHub asks. */
-const apiSource: GithubSource = {
-  async listRepos() {
-    const all: RepoMeta[] = []
-    for (let page = 1; page <= 3; page++) {
-      const repos = await json<ApiRepo[]>(`/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`)
-      if (!repos?.length) break
-      all.push(...repos.map(toMeta))
-      if (repos.length < 100) break
-    }
-    return all
-  },
-  async repo(fullName) {
-    const r = await json<ApiRepo>(`/repos/${fullName}`)
-    return r ? toMeta(r) : null
-  },
-  readme: (fullName) => raw(`/repos/${fullName}/readme`),
-  async dir(fullName, path) {
-    const entries = await json<{ name: string }[] | { name: string }>(`/repos/${fullName}/contents/${encodePath(path)}`)
-    return Array.isArray(entries) ? entries.map((e) => e.name) : null
-  },
-  file: (fullName, path) => raw(`/repos/${fullName}/contents/${encodePath(path)}`),
-  async commits(fullName, sinceIso) {
-    const out: CommitInfo[] = []
-    for (let page = 1; page <= 3; page++) {
-      const commits = await json<{ commit: { message: string; author: { date: string } | null; committer: { date: string } | null } }[]>(
-        `/repos/${fullName}/commits?since=${encodeURIComponent(sinceIso)}&per_page=100&page=${page}`,
-      )
-      if (!commits?.length) break
-      for (const c of commits) {
-        const date = c.commit.author?.date ?? c.commit.committer?.date
-        if (date) out.push({ date, message: c.commit.message })
+function apiSource(token: string): GithubSource {
+  const json = async <T>(path: string): Promise<T | null> => {
+    const body = await request(token, path, 'application/vnd.github+json')
+    return body == null ? null : (JSON.parse(body) as T)
+  }
+  const raw = (path: string) => request(token, path, 'application/vnd.github.raw+json')
+  return {
+    async listRepos() {
+      const all: RepoMeta[] = []
+      for (let page = 1; page <= 3; page++) {
+        const repos = await json<ApiRepo[]>(`/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`)
+        if (!repos?.length) break
+        all.push(...repos.map(toMeta))
+        if (repos.length < 100) break
       }
-      if (commits.length < 100) break
-    }
-    return out
-  },
+      return all
+    },
+    async repo(fullName) {
+      const r = await json<ApiRepo>(`/repos/${fullName}`)
+      return r ? toMeta(r) : null
+    },
+    readme: (fullName) => raw(`/repos/${fullName}/readme`),
+    async dir(fullName, path) {
+      const entries = await json<{ name: string }[] | { name: string }>(`/repos/${fullName}/contents/${encodePath(path)}`)
+      return Array.isArray(entries) ? entries.map((e) => e.name) : null
+    },
+    file: (fullName, path) => raw(`/repos/${fullName}/contents/${encodePath(path)}`),
+    async commits(fullName, sinceIso) {
+      const out: CommitInfo[] = []
+      for (let page = 1; page <= 3; page++) {
+        const commits = await json<{ commit: { message: string; author: { date: string } | null; committer: { date: string } | null } }[]>(
+          `/repos/${fullName}/commits?since=${encodeURIComponent(sinceIso)}&per_page=100&page=${page}`,
+        )
+        if (!commits?.length) break
+        for (const c of commits) {
+          const date = c.commit.author?.date ?? c.commit.committer?.date
+          if (date) out.push({ date, message: c.commit.message })
+        }
+        if (commits.length < 100) break
+      }
+      return out
+    },
+  }
 }
 
-/** The real API, the fixtures in tests, or null when no token is set. */
-export function githubSource(): GithubSource | null {
-  const status = githubStatus()
-  if (status === 'fixtures') return fixtureSource
-  return status === 'live' ? apiSource : null
+/** The real API with the owner's token, the fixtures in tests, or null when there is no token. */
+export function githubSource(token: string | null): GithubSource | null {
+  if (githubFixtures()) return fixtureSource
+  return token ? apiSource(token) : null
 }

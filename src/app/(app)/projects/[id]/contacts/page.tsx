@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, ne } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { AiButton } from '@/components/AiButton'
+import { ClaudeButton } from '@/components/ClaudeButton'
 import { ContactForm } from '@/components/ContactForm'
 import { ContactStatus } from '@/components/ContactStatus'
 import { EmailDraftCard } from '@/components/EmailDraftCard'
@@ -9,12 +9,9 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { CONTACT_BASIS_LABELS } from '@/lib/options'
 import { hostOf } from '@/lib/urls'
-import { budgetState } from '@/server/ai/budget'
 import { loadJobContext } from '@/server/ai/context'
-import { JOBS } from '@/server/ai/jobs'
-import { estimate } from '@/server/ai/run'
+import { claudeBlocked } from '@/server/claude-status'
 import { requireOwner } from '@/server/session'
-import { aiStatus } from '@/server/status'
 
 export const metadata = { title: 'Contacten' }
 
@@ -40,9 +37,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
         )
         .orderBy(desc(s.contentItem.createdAt))
     : []
-  const budget = await budgetState(db, owner.userId)
-  const est = estimate(JOBS.contactEmail, ctx, { contactId: 'x', language: ctx.project.languages[0] ?? 'nl' })
-  const disabled = aiStatus() === 'off' ? 'Zet ANTHROPIC_API_KEY in Vercel om Claude te laten werken.' : budget.remainingMicros < est.worstMicros ? 'Het AI-budget van deze maand is op.' : null
+  const blocked = await claudeBlocked()
   const language = ctx.project.languages[0] ?? 'nl'
 
   return (
@@ -50,7 +45,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
       <ProjectHeader project={ctx.project} active="contacts" />
       <p className="notice small">
         Alleen organisaties, zakelijke adressen of mensen met wie je al contact hebt. Elke mail krijgt een afmeldregel, en wie nee zegt, zet je op
-        “Geen interesse”. Geen gekochte lijsten.
+        “Geen interesse”. Geen gekochte lijsten. Claude ziet de naam en je notities, nooit het e-mailadres.
       </p>
       {contacts.length ? (
         <ul className="stack-m" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -69,7 +64,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
                   <ContactStatus contactId={c.id} status={c.status} />
                 </div>
                 {c.note ? <p className="small muted">{c.note}</p> : null}
-                <AiButton kind="contactEmail" projectId={id} label="Schrijf een persoonlijke mail" estimateMicros={est.typicalMicros} disabledReason={disabled} options={{ contactId: c.id, language }} variant="secondary" />
+                <ClaudeButton task="contact_mail" projectId={id} label="Schrijf een persoonlijke mail" disabledReason={blocked} options={{ contactId: c.id, language }} variant="secondary" />
                 {mine.map((d) => {
                   const body = d.body as { subject?: string; body?: string; ps?: string }
                   return (

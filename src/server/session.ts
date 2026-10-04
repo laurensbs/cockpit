@@ -1,11 +1,10 @@
 import 'server-only'
-import { headers } from 'next/headers'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { getDb } from '@/db'
-import { auth } from '@/lib/auth'
-import { isOwnerEmail } from '@/lib/owner'
-import { ownerEmails } from '@/lib/site'
+import { expectedToken, TOKEN_COOKIE, tokenMatches } from '@/lib/local'
+import { getSetting } from './settings'
 
 export interface Owner {
   userId: string
@@ -13,27 +12,36 @@ export interface Owner {
   name: string
 }
 
-export const getSession = cache(async () => {
-  await getDb()
-  return auth.api.getSession({ headers: await headers() })
-})
+/** The one owner of this cockpit. Every row still carries an owner_id, so more people can follow later. */
+export const LOCAL_OWNER_ID = 'local'
 
-/** The signed-in owner. Someone removed from OWNER_EMAILS loses access at once. */
+const owner = (name = ''): Owner => ({ userId: LOCAL_OWNER_ID, email: '', name })
+
+/** The owner, when the request carries the app's token in its cookie; null for anything else. */
 export const getOwner = cache(async (): Promise<Owner | null> => {
-  const session = await getSession()
-  if (!session || !isOwnerEmail(session.user.email, ownerEmails())) return null
-  return { userId: session.user.id, email: session.user.email, name: session.user.name }
+  const jar = await cookies()
+  if (!tokenMatches(jar.get(TOKEN_COOKIE)?.value, expectedToken())) return null
+  const db = await getDb()
+  return owner((await getSetting(db, LOCAL_OWNER_ID, 'name')) ?? '')
 })
 
+/** Pages: the proxy already turned strangers away; this is the belt to its braces. */
 export async function requireOwner(next = '/'): Promise<Owner> {
-  const owner = await getOwner()
-  if (!owner) redirect(`/login?next=${encodeURIComponent(next)}`)
-  return owner
+  const found = await getOwner()
+  if (!found) redirect(`/auth?next=${encodeURIComponent(next)}`)
+  return found
 }
 
 /** For server actions and route handlers: fails instead of redirecting. */
 export async function actionOwner(): Promise<Owner> {
-  const owner = await getOwner()
-  if (!owner) throw new Error('unauthorized')
-  return owner
+  const found = await getOwner()
+  if (!found) throw new Error('unauthorized')
+  return found
+}
+
+/** Route handlers may also be called with "Authorization: Bearer <token>", the way Claude Code's MCP client does. */
+export function bearerOwner(request: Request): Owner | null {
+  const header = request.headers.get('authorization') ?? ''
+  const given = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : ''
+  return tokenMatches(given, expectedToken()) ? owner() : null
 }

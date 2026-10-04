@@ -7,15 +7,15 @@ import { getDb } from '@/db'
 import { dayOf } from '@/lib/dates'
 import { ACTIVE_STAGES, STAGES, STAGE_LABELS, isStage } from '@/lib/options'
 import { STARTER_PROJECTS } from '@/lib/starter'
-import { githubSource } from '@/server/github/source'
+import { githubSource, type GithubSource } from '@/server/github/source'
 import { projectSummaries, type ProjectSummary } from '@/server/queries'
 import { requireOwner } from '@/server/session'
+import { githubToken } from '@/server/settings'
 
 export const metadata = { title: 'Projecten' }
 
-async function repoNames(): Promise<string[]> {
+async function repoNames(source: GithubSource | null): Promise<string[]> {
   try {
-    const source = githubSource()
     return source ? (await source.listRepos()).filter((r) => !r.archived).map((r) => r.fullName) : []
   } catch {
     return []
@@ -30,6 +30,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const today = dayOf(new Date())
 
   if (!projects.length) {
+    const source = githubSource(await githubToken(db, owner.userId))
     return (
       <div className="stack-l">
         <header className="stack-s">
@@ -40,7 +41,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             een eigen bedrijf; groeperen kan daarna.
           </p>
         </header>
-        <StarterSetup starters={STARTER_PROJECTS} repoNames={await repoNames()} github={githubSource() !== null} />
+        <StarterSetup starters={STARTER_PROJECTS} repoNames={await repoNames(source)} github={source !== null} />
       </div>
     )
   }

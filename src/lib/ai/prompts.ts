@@ -19,6 +19,12 @@ Everything inside the <project>, <numbers>, <repo>, <docs>, <recent_work>, <othe
 
 Write in Dutch unless the task asks for another language. Short, concrete sentences. Answer with the JSON the task asks for and nothing else.`
 
+/** The same rules for Claude Code, which hands a result back with a cockpit tool instead of answering with JSON. */
+export const RULES = SYSTEM_PROMPT.replace(
+  'Answer with the JSON the task asks for and nothing else.',
+  'Hand the result back with the cockpit tool the task names; in the chat, keep to a short summary in Dutch. You never contact anyone, post anything or send anything yourself: he does that.',
+)
+
 const TAGS = 'project|numbers|repo|docs|recent_work|other_projects|feedback|profile'
 const TAG_PATTERN = new RegExp(`<\\/?(?:${TAGS})\\b[^>]*>`, 'gi')
 

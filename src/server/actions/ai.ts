@@ -8,17 +8,7 @@ import * as s from '@/db/schema'
 import { planFromJson, profileFromJson, weeklyFromJson } from '@/lib/ai/schemas'
 import { addDays, dayOf, weekStart } from '@/lib/dates'
 import { BOSS_XP } from '@/lib/game'
-import { isJobKind } from '../ai/jobs'
-import { startJob } from '../ai/run'
 import { actionOwner } from '../session'
-
-/** Starts an AI job for a project; the page polls the run until it is done. */
-export async function startAi(kind: string, projectId: string, options: Record<string, unknown> = {}): Promise<{ runId?: string; error?: string }> {
-  const owner = await actionOwner()
-  if (!isJobKind(kind)) return { error: 'Onbekende taak.' }
-  const result = await startJob(owner.userId, kind, String(projectId), options)
-  return 'runId' in result ? { runId: result.runId } : { error: result.error }
-}
 
 /**
  * Chosen plan actions become quests, due in the week the plan gave them. The first big one becomes

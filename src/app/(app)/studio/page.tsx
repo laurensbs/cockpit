@@ -9,12 +9,8 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayLabel, dayOf } from '@/lib/dates'
 import { ACTIVE_STAGES, isStage } from '@/lib/options'
-import { budgetState } from '@/server/ai/budget'
-import { loadJobContext } from '@/server/ai/context'
-import { JOBS } from '@/server/ai/jobs'
-import { estimate } from '@/server/ai/run'
+import { claudeBlocked } from '@/server/claude-status'
 import { requireOwner } from '@/server/session'
-import { aiStatus } from '@/server/status'
 
 export const metadata = { title: 'Studio' }
 
@@ -88,13 +84,10 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
         .where(eq(s.contact.projectId, current.id))
     ).map((c) => [c.id, c.email]),
   )
-  const status = aiStatus()
-  const [ctx, budget] = await Promise.all([loadJobContext(db, owner.userId, current.id), budgetState(db, owner.userId)])
-  const generatorFor = (kind: 'emails' | 'posts' | 'ideas' | 'opportunities') => {
-    const est = ctx ? estimate(JOBS[kind], ctx) : { typicalMicros: 0, worstMicros: 0 }
-    const disabled = status === 'off' ? 'Zet ANTHROPIC_API_KEY in Vercel om Claude te laten werken.' : budget.remainingMicros < est.worstMicros ? 'Het AI-budget van deze maand is op.' : null
-    return <StudioGenerator key={`${kind}-${current.id}`} kind={kind} projectId={current.id} languages={current.languages} estimateMicros={est.typicalMicros} disabledReason={disabled} />
-  }
+  const blocked = await claudeBlocked()
+  const generatorFor = (kind: 'emails' | 'posts' | 'ideas' | 'opportunities') => (
+    <StudioGenerator key={`${kind}-${current.id}`} kind={kind} projectId={current.id} languages={current.languages} disabledReason={blocked} />
+  )
 
   const emails = rows.filter((r) => r.kind === 'email')
   const posts = rows.filter((r) => r.kind === 'social')

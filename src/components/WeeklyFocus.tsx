@@ -3,16 +3,11 @@ import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { weeklyFromJson } from '@/lib/ai/schemas'
 import { dayOf, weekStart } from '@/lib/dates'
-import { budgetState } from '@/server/ai/budget'
-import { loadPortfolioContext } from '@/server/ai/context'
-import { JOBS } from '@/server/ai/jobs'
-import { estimate } from '@/server/ai/run'
-import { aiStatus } from '@/server/status'
-import { AiButton } from './AiButton'
+import { ClaudeButton } from './ClaudeButton'
 import { WeeklyBoss } from './WeeklyBoss'
 
-/** This week's focus from Claude, made on Monday by the cron (when switched on) or with one tap. */
-export async function WeeklyFocus({ db, ownerId }: { db: Db; ownerId: string }) {
+/** This week's focus from Claude Code, made with one press on Monday (or whenever he likes). */
+export async function WeeklyFocus({ db, ownerId, disabledReason }: { db: Db; ownerId: string; disabledReason: string | null }) {
   const [brief] = await db
     .select()
     .from(s.brief)
@@ -21,16 +16,12 @@ export async function WeeklyFocus({ db, ownerId }: { db: Db; ownerId: string }) 
     .limit(1)
   const thisWeek = brief && dayOf(brief.createdAt) >= weekStart(dayOf(new Date()))
   const weekly = thisWeek && brief ? weeklyFromJson(brief.content) : null
-  const status = aiStatus()
   if (!weekly || !brief) {
-    if (status === 'off') return null
-    const [ctx, budget] = await Promise.all([loadPortfolioContext(db, ownerId), budgetState(db, ownerId)])
-    const est = estimate(JOBS.weekly, ctx)
     return (
       <section className="card stack-s">
         <h2>Focus van de week</h2>
         <p className="small muted">Claude kijkt naar al je projecten (gezondheid, momentum, wat bleef liggen) en zegt waar je deze week heen moet.</p>
-        <AiButton kind="weekly" projectId="" label="Maak de weekfocus" estimateMicros={est.typicalMicros} disabledReason={budget.remainingMicros < est.worstMicros ? 'Het AI-budget van deze maand is op.' : null} />
+        <ClaudeButton task="weekly" projectId={null} label="Maak de weekfocus" disabledReason={disabledReason} />
       </section>
     )
   }

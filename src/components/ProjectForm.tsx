@@ -19,6 +19,7 @@ export interface ProjectFormValues {
   northStar: string
   redLines: string
   siteUrl: string | null
+  localPath: string | null
   languages: string[]
   markets: string[]
   monthlyBudget: number | null
@@ -36,6 +37,7 @@ export const EMPTY_PROJECT: ProjectFormValues = {
   northStar: '',
   redLines: '',
   siteUrl: null,
+  localPath: null,
   languages: ['nl'],
   markets: [],
   monthlyBudget: null,
@@ -130,6 +132,11 @@ export function ProjectForm({ values, companies }: { values: ProjectFormValues; 
             <input className="input" name="monthlyBudget" type="number" min={0} defaultValue={values.monthlyBudget ?? ''} inputMode="numeric" />
           </label>
         </div>
+        <label className="field">
+          <span>Map met de code op deze computer (optioneel)</span>
+          <input className="input" name="localPath" defaultValue={values.localPath ?? ''} maxLength={400} spellCheck={false} placeholder="C:\Users\jij\code\project" />
+          <span className="hint">Claude Code start dan in die map en kan de code zelf lezen.</span>
+        </label>
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
           <legend className="label">Talen voor content</legend>
           <div className="row">

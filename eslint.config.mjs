@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Windows app's build output.
+    "release/**",
+    "dist-electron/**",
   ]),
 ]);
 

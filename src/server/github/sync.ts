@@ -7,6 +7,7 @@ import { addDays, dayOf } from '@/lib/dates'
 import { clip, redactSecrets } from '@/lib/redact'
 import { pickDocs } from '@/lib/repo-docs'
 import { packageJsonPath, tagsFromFileNames, tagsFromPackageJson } from '@/lib/stack'
+import { githubToken } from '../settings'
 import { GithubError, githubSource, type GithubSource } from './source'
 
 const README_MAX = 12_000
@@ -56,7 +57,7 @@ async function readContent(source: GithubSource, fullName: string, language: str
  * was pushed since the last time; otherwise just the details are refreshed.
  */
 export async function syncRepo(db: Db, row: RepoRow, now = new Date()): Promise<{ ok: boolean; error?: string }> {
-  const source = githubSource()
+  const source = githubSource(await githubToken(db, row.ownerId))
   if (!source) return { ok: false, error: 'Geen GitHub-token ingesteld.' }
   try {
     const meta = await source.repo(row.fullName)

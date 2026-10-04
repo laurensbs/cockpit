@@ -11,15 +11,9 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
-import { user } from './auth-schema'
-
-export * from './auth-schema'
-
-// Every row belongs to an owner, so the cockpit can serve more people later without a rewrite.
-const ownerId = () =>
-  text('owner_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' })
+// Every row belongs to an owner ('local' in the app on your own computer), so the cockpit can serve
+// more people later without a rewrite.
+const ownerId = () => text('owner_id').notNull()
 const createdAt = () => timestamp('created_at').defaultNow().notNull()
 const emptyTextArray = sql`'{}'::text[]`
 
@@ -64,6 +58,8 @@ export const project = pgTable(
     siteUrl: text('site_url'),
     siteStatus: integer('site_status'),
     siteCheckedAt: timestamp('site_checked_at'),
+    // The folder on this computer with the code: Claude Code starts there, so it can read everything.
+    localPath: text('local_path'),
     links: jsonb('links').$type<{ label: string; url: string }[]>().notNull().default([]),
     monthlyBudget: integer('monthly_budget'),
     sortOrder: integer('sort_order').notNull().default(0),
@@ -225,28 +221,15 @@ export const metric = pgTable(
   (t) => [uniqueIndex('metric_project_month_key_idx').on(t.projectId, t.month, t.key)],
 )
 
-/** One call to Claude: what it was for, what it cost, and how it ended. */
-export const aiRun = pgTable(
-  'ai_run',
+/** One value per key: the owner's name, the GitHub token, what is connected. */
+export const setting = pgTable(
+  'setting',
   {
     id: text('id').primaryKey(),
     ownerId: ownerId(),
-    projectId: text('project_id').references(() => project.id, { onDelete: 'set null' }),
-    kind: text('kind').notNull(),
-    options: jsonb('options').$type<Record<string, unknown>>().notNull().default({}),
-    status: text('status').notNull().default('running'),
-    model: text('model').notNull(),
-    inputTokens: integer('input_tokens').notNull().default(0),
-    outputTokens: integer('output_tokens').notNull().default(0),
-    cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
-    cacheWriteTokens: integer('cache_write_tokens').notNull().default(0),
-    webSearches: integer('web_searches').notNull().default(0),
-    // Millionths of a US dollar. While a run is busy, its worst case is held back from the budget.
-    costMicros: integer('cost_micros').notNull().default(0),
-    reservedMicros: integer('reserved_micros').notNull().default(0),
-    error: text('error'),
-    startedAt: timestamp('started_at').defaultNow().notNull(),
-    finishedAt: timestamp('finished_at'),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (t) => [index('ai_run_owner_started_idx').on(t.ownerId, t.startedAt), index('ai_run_project_idx').on(t.projectId)],
+  (t) => [uniqueIndex('setting_owner_key_idx').on(t.ownerId, t.key)],
 )

@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
-import { dbMode, ready } from '@/db'
-import { aiStatus, emailStatus, githubStatus } from '@/server/status'
+import { dbMode, getDb } from '@/db'
+import { LOCAL_OWNER_ID } from '@/server/session'
+import { githubToken } from '@/server/settings'
+import { githubStatus } from '@/server/status'
 
 export const dynamic = 'force-dynamic'
 
-/** Whether the parts are connected, never which keys: safe to call without signing in. */
+/** Whether the parts are there, never which keys. The app waits for this before it opens its window. */
 export async function GET() {
-  await ready()
+  const db = await getDb()
   return NextResponse.json({
     ok: true,
     database: dbMode(),
-    ai: aiStatus(),
-    github: githubStatus(),
-    email: emailStatus(),
-    region: process.env.VERCEL_REGION ?? null,
+    github: githubStatus(await githubToken(db, LOCAL_OWNER_ID)),
+    version: process.env.COCKPIT_VERSION ?? 'dev',
   })
 }

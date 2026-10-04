@@ -1,92 +1,133 @@
-import { dbMode, getDb } from '@/db'
-import { AddPasskeyButton } from '@/components/AddPasskeyButton'
-import { CostMeter } from '@/components/CostMeter'
+import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
+import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/Icon'
-import { budgetState } from '@/server/ai/budget'
+import { SettingsForm } from '@/components/SettingsForm'
+import { UpdateNowButton } from '@/components/UpdateNowButton'
+import { dbDir, dbMode, getDb } from '@/db'
+import { expectedToken } from '@/lib/local'
+import { claudeVersion, connectCommand, desktopConfig, mcpUrl } from '@/server/claude'
 import { requireOwner } from '@/server/session'
-import { aiStatus, emailStatus, githubStatus, monthlyBudgetUsd, type ServiceStatus } from '@/server/status'
+import { getSetting, githubToken } from '@/server/settings'
+import { githubStatus, type ServiceStatus } from '@/server/status'
 
 export const metadata = { title: 'Instellingen' }
 
-function StatusChip({ status }: { status: ServiceStatus | 'neon' | 'postgres' | 'pglite' }) {
-  if (status === 'live' || status === 'neon' || status === 'postgres') return <span className="chip good">Verbonden</span>
+function StatusChip({ status }: { status: ServiceStatus }) {
+  if (status === 'live') return <span className="chip good">Gekoppeld</span>
   if (status === 'fixtures') return <span className="chip warn">Testdata</span>
-  if (status === 'pglite') return <span className="chip warn">Tijdelijk</span>
   return <span className="chip">Niet ingesteld</span>
 }
 
 export default async function SettingsPage() {
   const owner = await requireOwner('/settings')
-  const budget = await budgetState(await getDb(), owner.userId)
-  const db = dbMode()
+  const db = await getDb()
+  const [token, stored, version, connectedAt] = await Promise.all([
+    githubToken(db, owner.userId),
+    getSetting(db, owner.userId, 'github_token'),
+    claudeVersion(),
+    getSetting(db, owner.userId, 'claude_connected'),
+  ])
+  const github = githubStatus(token)
+  const appToken = expectedToken() ?? ''
+  const steps = [
+    { done: Boolean(owner.name), label: 'Je naam' },
+    { done: github !== 'off', label: 'GitHub-token' },
+    { done: Boolean(connectedAt), label: 'Claude Code gekoppeld' },
+  ]
+  const todo = steps.filter((s) => !s.done)
+
   return (
     <div className="stack-l">
       <header className="stack-s">
         <h1>Instellingen</h1>
-        <p className="lede">Wat er gekoppeld is. Sleutels staan alleen in Vercel, nooit in de database of in je browser.</p>
+        <p className="lede">Alles staat op deze computer. Claude Code werkt met je eigen account; de cockpit stuurt zelf nergens iets heen.</p>
       </header>
 
-      <section className="card stack-m">
-        <div className="row between">
-          <h2 className="row">
-            <Icon name="branch" /> GitHub
-          </h2>
-          <StatusChip status={githubStatus()} />
-        </div>
-        <p className="muted small">
-          Een fine-grained token, alleen-lezen: GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token. Kies je
-          eigen account, Repository access: All repositories, en bij Permissions alleen <strong>Contents: Read-only</strong> (Metadata gaat
-          vanzelf mee). Zet hem in Vercel als <code>GITHUB_TOKEN</code>.
-        </p>
-      </section>
+      {todo.length ? (
+        <section className="notice stack-xs">
+          <strong>Nog {todo.length === 1 ? 'één stap' : `${todo.length} stappen`} en de cockpit is compleet</strong>
+          <ul className="row" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {steps.map((s) => (
+              <li key={s.label} className={`chip${s.done ? ' good' : ''}`}>
+                {s.done ? '✓ ' : ''}
+                {s.label}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="card stack-m">
         <div className="row between">
           <h2 className="row">
-            <Icon name="cpu" /> Claude (AI)
+            <Icon name="cpu" /> Claude Code
           </h2>
-          <StatusChip status={aiStatus()} />
+          {version ? <span className="chip good">Gevonden · {version}</span> : <span className="chip warn">Niet gevonden</span>}
         </div>
         <p className="muted small">
-          Maakt marketingplannen, mails, posts en ideeën. Harde limiet: <strong className="num">${monthlyBudgetUsd().toFixed(2)}</strong> per maand (
-          <code>AI_MONTHLY_BUDGET_USD</code>). Zet je key als <code>ANTHROPIC_API_KEY</code> in Vercel, en stel in de Anthropic Console ook een
-          maandlimiet in als tweede slot. Per dag gaat er hooguit een vijfde van het budget op.
+          Claude Code is het brein van de cockpit. Elke knop (profiel, plan, mails, posts, ideeën, kansen, weekfocus) opent Claude Code met de
+          taak; Claude leest het project via de cockpit en zet het resultaat hier terug. Dat loopt op je eigen Claude-abonnement, zonder
+          API-kosten.
         </p>
-        <CostMeter budget={budget} />
-      </section>
-
-      <section className="card stack-m">
-        <div className="row between">
-          <h2 className="row">
-            <Icon name="mail" /> E-mail (optioneel)
-          </h2>
-          <StatusChip status={emailStatus()} />
-        </div>
-        <p className="muted small">
-          Voor de weekmail aan jezelf op maandag. Concepten voor anderen open je in je eigen mailapp; de cockpit verstuurt niets namens jou.
-        </p>
-      </section>
-
-      <section className="card stack-m">
-        <div className="row between">
-          <h2 className="row">
-            <Icon name="shield" /> Database
-          </h2>
-          <StatusChip status={db} />
-        </div>
-        {db === 'pglite' ? (
-          <p className="notice warn small">Er is geen database gekoppeld: wat je invult, blijft niet bewaard. Zet DATABASE_URL in Vercel.</p>
+        {version ? (
+          <ConnectClaudeButton connectedAt={connectedAt} />
         ) : (
-          <p className="muted small">Je gegevens staan in je eigen Postgres-database.</p>
+          <p className="notice warn small">
+            Installeer Claude Code (in PowerShell: <code>irm https://claude.ai/install.ps1 | iex</code>), log in met je Claude-account, en open deze
+            pagina daarna opnieuw.
+          </p>
         )}
+        <details>
+          <summary className="label">Zelf koppelen, of de Claude-desktop-app</summary>
+          <div className="stack-m" style={{ marginTop: '0.8rem' }}>
+            <div className="stack-xs">
+              <p className="tiny muted">Claude Code, in een terminal:</p>
+              <code className="codeblock">{connectCommand(appToken)}</code>
+              <CopyButton text={connectCommand(appToken)} label="Kopieer het commando" />
+            </div>
+            <div className="stack-xs">
+              <p className="tiny muted">
+                Claude-desktop-app: Instellingen → Developer → Edit config, en voeg dit toe aan <code>claude_desktop_config.json</code>:
+              </p>
+              <code className="codeblock">{desktopConfig(appToken)}</code>
+              <CopyButton text={desktopConfig(appToken)} label="Kopieer de configuratie" />
+            </div>
+            <p className="tiny muted">
+              Adres van de cockpit: <code>{mcpUrl()}</code>. De toegangscode hoort bij deze installatie en blijft op deze computer.
+            </p>
+          </div>
+        </details>
       </section>
 
       <section className="card stack-m">
         <h2 className="row">
-          <Icon name="key" /> Inloggen
+          <Icon name="key" /> Jij en GitHub
         </h2>
-        <p className="muted small">Voeg Face ID of je vingerafdruk toe, dan hoef je geen wachtwoord meer te typen.</p>
-        <AddPasskeyButton />
+        <SettingsForm name={owner.name} hasToken={Boolean(stored)} status={<StatusChip status={github} />} />
+        <p className="muted small">
+          Een fine-grained token, alleen-lezen: GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token. Kies je eigen
+          account, Repository access: All repositories, en bij Permissions alleen <strong>Contents: Read-only</strong> (Metadata gaat vanzelf mee).
+          De token blijft op deze computer.
+        </p>
+      </section>
+
+      <section className="card stack-m">
+        <div className="row between">
+          <h2 className="row">
+            <Icon name="shield" /> Gegevens
+          </h2>
+          <span className="chip good">Lokaal</span>
+        </div>
+        <p className="muted small">
+          {dbMode() === 'memory' ? (
+            'De database staat in het geheugen (test): niets blijft bewaard.'
+          ) : (
+            <>
+              Je gegevens staan in <code>{dbDir()}</code>. Maak daar af en toe een kopie van.
+            </>
+          )}
+        </p>
+        <UpdateNowButton />
       </section>
     </div>
   )

@@ -13,7 +13,7 @@ export const XP_RULES = {
   metric: { xp: 10, dailyCap: 5 },
   intake: { xp: 25, dailyCap: Infinity },
   plan: { xp: 20, dailyCap: 3 },
-  // Making drafts costs money: it earns a little, never a lot.
+  // Having drafts made is not doing: it earns a little, never a lot.
   generate: { xp: 5, dailyCap: 5 },
 } as const
 export type XpKind = keyof typeof XP_RULES

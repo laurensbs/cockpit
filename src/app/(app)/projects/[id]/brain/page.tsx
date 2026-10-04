@@ -1,8 +1,7 @@
 import { and, desc, eq, like } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AiButton } from '@/components/AiButton'
-import { CostMeter } from '@/components/CostMeter'
+import { ClaudeButton } from '@/components/ClaudeButton'
 import { PlanActions } from '@/components/PlanActions'
 import { ProjectHeader } from '@/components/ProjectHeader'
 import { QuickWin } from '@/components/QuickWin'
@@ -10,13 +9,10 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { EFFORT_LABELS, planFromJson, profileFromJson } from '@/lib/ai/schemas'
 import { ago } from '@/lib/time'
-import { budgetState } from '@/server/ai/budget'
 import { loadJobContext } from '@/server/ai/context'
-import { JOBS } from '@/server/ai/jobs'
-import { estimate } from '@/server/ai/run'
+import { claudeBlocked } from '@/server/claude-status'
 import { isIntakeDone } from '@/server/game'
 import { requireOwner } from '@/server/session'
-import { aiStatus } from '@/server/status'
 
 export const metadata = { title: 'Marketingbrein' }
 
@@ -33,7 +29,7 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
       .where(and(eq(s.brief.projectId, id), eq(s.brief.kind, kind)))
       .orderBy(desc(s.brief.createdAt))
       .limit(1)
-  const [[profileBrief], [planBrief], budget] = await Promise.all([latest('profile'), latest('plan'), budgetState(db, owner.userId)])
+  const [[profileBrief], [planBrief], blocked] = await Promise.all([latest('profile'), latest('plan'), claudeBlocked()])
   const profile = profileBrief ? profileFromJson(profileBrief.content) : null
   const plan = planBrief ? planFromJson(planBrief.content) : null
   const keys = async (prefix: string) =>
@@ -45,21 +41,15 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
     ).map((r) => r.key!.slice(prefix.length))
   const acceptedActions = planBrief ? await keys(`plan:${planBrief.id}:`) : []
   const acceptedWins = profileBrief ? await keys(`win:${profileBrief.id}:`) : []
-
-  const status = aiStatus()
-  const profileCost = estimate(JOBS.profile, ctx)
-  const planCost = estimate(JOBS.plan, ctx)
-  const blocked = (worst: number) =>
-    status === 'off' ? 'Zet ANTHROPIC_API_KEY in Vercel om Claude te laten werken.' : budget.remainingMicros < worst ? 'Het AI-budget van deze maand is op.' : null
   const now = new Date()
 
   return (
     <div className="stack-l">
       <ProjectHeader project={ctx.project} active="brain" />
-      <div className="card flat stack-s">
-        <CostMeter budget={budget} />
-        {status === 'fixtures' ? <p className="tiny muted">Testmodus: vaste antwoorden, kost niets.</p> : null}
-      </div>
+      <p className="tiny muted">
+        Een knop opent Claude Code op je eigen account. Claude leest dit project via de cockpit, denkt na, en zet het resultaat hier terug. Je kunt
+        in dat venster meepraten.
+      </p>
       {!isIntakeDone(ctx.project) ? (
         <p className="notice warn row between">
           <span>De intake is nog niet af. Hoe meer Claude weet, hoe beter het wordt.</span>
@@ -75,9 +65,7 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
             <h2>Marketingprofiel</h2>
             {profileBrief ? <p className="tiny muted">Gemaakt {ago(profileBrief.createdAt, now)}</p> : null}
           </div>
-          {profile ? (
-            <AiButton kind="profile" projectId={id} label="Opnieuw" estimateMicros={profileCost.typicalMicros} disabledReason={blocked(profileCost.worstMicros)} variant="secondary" />
-          ) : null}
+          {profile ? <ClaudeButton task="profile" projectId={id} label="Opnieuw" disabledReason={blocked} variant="secondary" /> : null}
         </div>
         {profile ? (
           <div className="stack-l">
@@ -174,7 +162,7 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
               Claude leest je intake{ctx.input.repos.length ? `, ${ctx.input.repos.length === 1 ? 'je repo' : `je ${ctx.input.repos.length} repo’s`}` : ''} en je cijfers, en maakt een profiel: voor wie,
               waar ze zitten, welke kanalen eerst, en wat je deze week al kunt doen.
             </p>
-            <AiButton kind="profile" projectId={id} label="Maak het profiel" estimateMicros={profileCost.typicalMicros} disabledReason={blocked(profileCost.worstMicros)} />
+            <ClaudeButton task="profile" projectId={id} label="Maak het profiel" disabledReason={blocked} />
           </div>
         )}
       </section>
@@ -185,7 +173,7 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
             <h2>Plan voor 90 dagen</h2>
             {planBrief ? <p className="tiny muted">Gemaakt {ago(planBrief.createdAt, now)}</p> : null}
           </div>
-          {plan ? <AiButton kind="plan" projectId={id} label="Opnieuw" estimateMicros={planCost.typicalMicros} disabledReason={blocked(planCost.worstMicros)} variant="secondary" /> : null}
+          {plan ? <ClaudeButton task="plan" projectId={id} label="Opnieuw" disabledReason={blocked} variant="secondary" /> : null}
         </div>
         {plan && planBrief ? (
           <>
@@ -195,7 +183,7 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
         ) : profile ? (
           <div className="stack-m">
             <p className="muted">Drie fases van 30 dagen, met acties per week. De acties die je kiest, worden quests.</p>
-            <AiButton kind="plan" projectId={id} label="Maak het plan" estimateMicros={planCost.typicalMicros} disabledReason={blocked(planCost.worstMicros)} />
+            <ClaudeButton task="plan" projectId={id} label="Maak het plan" disabledReason={blocked} />
           </div>
         ) : (
           <p className="muted small">Eerst het profiel; het plan bouwt daarop voort.</p>

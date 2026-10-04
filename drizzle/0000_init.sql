@@ -1,23 +1,3 @@
-CREATE TABLE "ai_run" (
-	"id" text PRIMARY KEY NOT NULL,
-	"owner_id" text NOT NULL,
-	"project_id" text,
-	"kind" text NOT NULL,
-	"options" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"status" text DEFAULT 'running' NOT NULL,
-	"model" text NOT NULL,
-	"input_tokens" integer DEFAULT 0 NOT NULL,
-	"output_tokens" integer DEFAULT 0 NOT NULL,
-	"cache_read_tokens" integer DEFAULT 0 NOT NULL,
-	"cache_write_tokens" integer DEFAULT 0 NOT NULL,
-	"web_searches" integer DEFAULT 0 NOT NULL,
-	"cost_micros" integer DEFAULT 0 NOT NULL,
-	"reserved_micros" integer DEFAULT 0 NOT NULL,
-	"error" text,
-	"started_at" timestamp DEFAULT now() NOT NULL,
-	"finished_at" timestamp
-);
---> statement-breakpoint
 CREATE TABLE "brief" (
 	"id" text PRIMARY KEY NOT NULL,
 	"owner_id" text NOT NULL,
@@ -105,6 +85,7 @@ CREATE TABLE "project" (
 	"site_url" text,
 	"site_status" integer,
 	"site_checked_at" timestamp,
+	"local_path" text,
 	"links" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"monthly_budget" integer,
 	"sort_order" integer DEFAULT 0 NOT NULL,
@@ -152,6 +133,14 @@ CREATE TABLE "repo" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "setting" (
+	"id" text PRIMARY KEY NOT NULL,
+	"owner_id" text NOT NULL,
+	"key" text NOT NULL,
+	"value" text NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "xp_event" (
 	"id" text PRIMARY KEY NOT NULL,
 	"owner_id" text NOT NULL,
@@ -163,101 +152,15 @@ CREATE TABLE "xp_event" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "account" (
-	"id" text PRIMARY KEY NOT NULL,
-	"account_id" text NOT NULL,
-	"provider_id" text NOT NULL,
-	"user_id" text NOT NULL,
-	"access_token" text,
-	"refresh_token" text,
-	"id_token" text,
-	"access_token_expires_at" timestamp,
-	"refresh_token_expires_at" timestamp,
-	"scope" text,
-	"password" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "passkey" (
-	"id" text PRIMARY KEY NOT NULL,
-	"name" text,
-	"public_key" text NOT NULL,
-	"user_id" text NOT NULL,
-	"credential_id" text NOT NULL,
-	"counter" integer NOT NULL,
-	"device_type" text NOT NULL,
-	"backed_up" boolean NOT NULL,
-	"transports" text,
-	"created_at" timestamp,
-	"aaguid" text
-);
---> statement-breakpoint
-CREATE TABLE "rate_limit" (
-	"id" text PRIMARY KEY NOT NULL,
-	"key" text NOT NULL,
-	"count" integer NOT NULL,
-	"last_request" bigint NOT NULL,
-	CONSTRAINT "rate_limit_key_unique" UNIQUE("key")
-);
---> statement-breakpoint
-CREATE TABLE "session" (
-	"id" text PRIMARY KEY NOT NULL,
-	"expires_at" timestamp NOT NULL,
-	"token" text NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp NOT NULL,
-	"ip_address" text,
-	"user_agent" text,
-	"user_id" text NOT NULL,
-	CONSTRAINT "session_token_unique" UNIQUE("token")
-);
---> statement-breakpoint
-CREATE TABLE "user" (
-	"id" text PRIMARY KEY NOT NULL,
-	"name" text NOT NULL,
-	"email" text NOT NULL,
-	"email_verified" boolean DEFAULT false NOT NULL,
-	"image" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "user_email_unique" UNIQUE("email")
-);
---> statement-breakpoint
-CREATE TABLE "verification" (
-	"id" text PRIMARY KEY NOT NULL,
-	"identifier" text NOT NULL,
-	"value" text NOT NULL,
-	"expires_at" timestamp NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-ALTER TABLE "ai_run" ADD CONSTRAINT "ai_run_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ai_run" ADD CONSTRAINT "ai_run_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "brief" ADD CONSTRAINT "brief_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "brief" ADD CONSTRAINT "brief_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "company" ADD CONSTRAINT "company_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "contact" ADD CONSTRAINT "contact_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "contact" ADD CONSTRAINT "contact_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "content_item" ADD CONSTRAINT "content_item_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "content_item" ADD CONSTRAINT "content_item_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "content_item" ADD CONSTRAINT "content_item_contact_id_contact_id_fk" FOREIGN KEY ("contact_id") REFERENCES "public"."contact"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "metric" ADD CONSTRAINT "metric_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "metric" ADD CONSTRAINT "metric_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "project" ADD CONSTRAINT "project_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project" ADD CONSTRAINT "project_company_id_company_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."company"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "quest" ADD CONSTRAINT "quest_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quest" ADD CONSTRAINT "quest_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "repo" ADD CONSTRAINT "repo_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "repo" ADD CONSTRAINT "repo_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "xp_event" ADD CONSTRAINT "xp_event_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "xp_event" ADD CONSTRAINT "xp_event_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "passkey" ADD CONSTRAINT "passkey_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "ai_run_owner_started_idx" ON "ai_run" USING btree ("owner_id","started_at");--> statement-breakpoint
-CREATE INDEX "ai_run_project_idx" ON "ai_run" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX "brief_owner_kind_idx" ON "brief" USING btree ("owner_id","kind","created_at");--> statement-breakpoint
 CREATE INDEX "brief_project_idx" ON "brief" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX "company_owner_idx" ON "company" USING btree ("owner_id");--> statement-breakpoint
@@ -272,10 +175,6 @@ CREATE INDEX "quest_owner_status_idx" ON "quest" USING btree ("owner_id","status
 CREATE UNIQUE INDEX "quest_source_idx" ON "quest" USING btree ("owner_id","source_key");--> statement-breakpoint
 CREATE UNIQUE INDEX "repo_owner_full_name_idx" ON "repo" USING btree ("owner_id","full_name");--> statement-breakpoint
 CREATE INDEX "repo_project_idx" ON "repo" USING btree ("project_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "setting_owner_key_idx" ON "setting" USING btree ("owner_id","key");--> statement-breakpoint
 CREATE UNIQUE INDEX "xp_event_ref_idx" ON "xp_event" USING btree ("owner_id","kind","ref_id");--> statement-breakpoint
-CREATE INDEX "xp_event_owner_day_idx" ON "xp_event" USING btree ("owner_id","day");--> statement-breakpoint
-CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "passkey_userId_idx" ON "passkey" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "passkey_credentialID_idx" ON "passkey" USING btree ("credential_id");--> statement-breakpoint
-CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");
+CREATE INDEX "xp_event_owner_day_idx" ON "xp_event" USING btree ("owner_id","day");

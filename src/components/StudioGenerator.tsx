@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { LANGUAGE_LABELS } from '@/lib/options'
-import { AiButton } from './AiButton'
+import { ClaudeButton } from './ClaudeButton'
 
 const PURPOSES: Record<string, string> = {
   outreach: 'Eerste mail aan een organisatie',
@@ -26,7 +26,6 @@ interface Props {
   kind: 'emails' | 'posts' | 'ideas' | 'opportunities'
   projectId: string
   languages: string[]
-  estimateMicros: number
   disabledReason: string | null
 }
 
@@ -37,8 +36,8 @@ const languageOptions = (languages: string[]) =>
     </option>
   ))
 
-/** The few choices a batch needs, then the button that asks Claude for it. */
-export function StudioGenerator({ kind, projectId, languages, estimateMicros, disabledReason }: Props) {
+/** The few choices a batch needs, then the button that hands it to Claude Code. */
+export function StudioGenerator({ kind, projectId, languages, disabledReason }: Props) {
   const langs = languages.length ? languages : ['nl']
   const [language, setLanguage] = useState(langs[0])
   const [purpose, setPurpose] = useState('outreach')
@@ -112,7 +111,7 @@ export function StudioGenerator({ kind, projectId, languages, estimateMicros, di
         </label>
       ) : null}
       {kind === 'opportunities' ? <p className="tiny muted">Claude zoekt op het web naar communities, gidsen, media en partners. Nooit privépersonen.</p> : null}
-      <AiButton kind={kind} projectId={projectId} label={label} estimateMicros={estimateMicros} disabledReason={disabledReason} options={options} />
+      <ClaudeButton task={kind} projectId={projectId} label={label} disabledReason={disabledReason} options={options} />
     </div>
   )
 }

@@ -8,10 +8,8 @@ export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
   description: 'Al je projecten en bedrijven op één plek: marketing, quests en XP.',
   applicationName: APP_NAME,
-  manifest: '/manifest.webmanifest',
   icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
   robots: { index: false, follow: false },
-  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
 }
 

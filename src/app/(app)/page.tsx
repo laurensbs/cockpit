@@ -6,6 +6,7 @@ import { Sparkline } from '@/components/Sparkline'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
+import { claudeBlocked } from '@/server/claude-status'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
 import { questViews } from '@/server/quest-views'
 import { requireOwner } from '@/server/session'
@@ -30,9 +31,7 @@ export default async function TodayPage() {
           </p>
           <span className="chip xp num">+{stats.todayXp} XP vandaag</span>
         </div>
-        <h1>
-          {greeting(new Date())}, {owner.name.split(' ')[0]}
-        </h1>
+        <h1>{owner.name ? `${greeting(new Date())}, ${owner.name.split(' ')[0]}` : greeting(new Date())}</h1>
         <div className="row nowrap" style={{ gap: '1rem' }}>
           <div className="level-badge num" aria-hidden="true">
             {level.level}
@@ -59,7 +58,7 @@ export default async function TodayPage() {
         </div>
       </section>
 
-      {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} /> : null}
+      {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={await claudeBlocked()} /> : null}
 
       <section className="card stack-s">
         <div className="row between">

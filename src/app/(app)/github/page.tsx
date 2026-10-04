@@ -9,6 +9,7 @@ import { ago } from '@/lib/time'
 import { githubSource, type RepoMeta } from '@/server/github/source'
 import { syncErrorText } from '@/server/github/sync'
 import { requireOwner } from '@/server/session'
+import { githubToken } from '@/server/settings'
 
 export const metadata = { title: 'GitHub' }
 
@@ -28,7 +29,7 @@ export default async function GithubPage({ searchParams }: { searchParams: Promi
   const requested = (await searchParams).project
   const defaultProject = projects.some((p) => p.id === requested) ? requested! : ''
 
-  const source = githubSource()
+  const source = githubSource(await githubToken(db, owner.userId))
   let all: RepoMeta[] = []
   let error: string | null = null
   if (source) {
@@ -60,7 +61,7 @@ export default async function GithubPage({ searchParams }: { searchParams: Promi
       </header>
       {!source ? (
         <p className="notice warn">
-          GitHub is nog niet gekoppeld. Zet een alleen-lezen token in Vercel (<Link href="/settings">zo doe je dat</Link>).
+          GitHub is nog niet gekoppeld. Zet een alleen-lezen token bij de <Link href="/settings">instellingen</Link>.
         </p>
       ) : null}
       {error ? <p className="notice bad">{error}</p> : null}

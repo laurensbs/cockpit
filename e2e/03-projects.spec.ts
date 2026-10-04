@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { newVisitor, shot, signInOwner } from './helpers'
+import { newVisitor, shot } from './helpers'
 
 test('the five projects go in at once, linked to GitHub, with a company overview', async ({ browser }) => {
   const { context, page } = await newVisitor(browser)
-  await signInOwner(page)
 
   await page.goto('/projects')
   await expect(page.getByRole('heading', { name: 'Zet je projecten erin' })).toBeVisible()
@@ -58,7 +57,7 @@ test('the five projects go in at once, linked to GitHub, with a company overview
   const text = await csv.text()
   expect(text).toContain('bedrijf;project;maand;soort;waarde')
   expect(text).toMatch(/^Webstability;Webstability;\d{4}-\d{2};Omzet \(€\);1500\r?$/m)
-  const { context: anonymous } = await newVisitor(browser)
+  const { context: anonymous } = await newVisitor(browser, {}, { anonymous: true })
   expect((await anonymous.request.get('/api/export/metrics.csv')).status()).toBe(401)
   await anonymous.close()
   await context.close()

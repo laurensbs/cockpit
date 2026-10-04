@@ -1,7 +1,6 @@
 // Fixed answers instead of Claude for tests (AI_FIXTURES=1, never in production). They must pass
 // the same wire schemas as real answers; a test checks that.
 
-export const FIXTURE_USAGE = { input_tokens: 9_000, output_tokens: 2_400, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 
 export const profileFixture = (name: string) => ({
   oneLiner: `${name}: het rondje dat je week beter maakt.`,
