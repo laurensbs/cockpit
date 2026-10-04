@@ -76,7 +76,7 @@ npm run electron:build      # next build → release/server → dist-electron �
 npm run test:electron       # rooktest van de app (onder Linux: xvfb-run -a …)
 ```
 
-Bij elke push naar `main` bouwt de workflow `.github/workflows/release.yml` de Mac-app (dmg en zip, voor Apple Silicon en Intel) op macOS en de installer en portable versie op Windows, en start hij op beide systemen de verpakte app één keer. Bij een tag `v*` hangt hij alles aan een GitHub Release.
+Bij elke push naar `main` bouwt de workflow `.github/workflows/release.yml` de Mac-app (dmg en zip, voor Apple Silicon en Intel) op macOS en de installer en portable versie op Windows, en start hij op beide systemen de verpakte app één keer. Daarna hangt hij alles aan de GitHub Release van de versie in `package.json` (bijvoorbeeld `v0.3.0`); verhoog de versie voor een nieuwe release.
 
 ## Database
 
