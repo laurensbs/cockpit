@@ -37,10 +37,10 @@ export const desktopConfig = (token: string) =>
 /** What Claude Code is told when a button opens it: just the ticket; the task comes through MCP. */
 export const launchPrompt = (ticket: string) => `Haal met de cockpit-tool get_task de taak met ticket ${ticket} op en voer die uit.`
 
-/** Only letters, digits and plain punctuation go into a command line. */
+/** Only letters, digits and plain punctuation go into a command line (no ";": Windows Terminal splits on it). */
 export const cleanPrompt = (text: string) =>
   text
-    .replace(/[^\p{L}\p{N} .,:;()_/-]/gu, ' ')
+    .replace(/[^\p{L}\p{N} .,:()_/-]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 300)

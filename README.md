@@ -1,67 +1,71 @@
 # Cockpit
 
-Al je projecten en bedrijven op één plek: gekoppeld aan GitHub, met AI-marketing (profiel, plan voor 90 dagen, mails, posts, ideeën en kansen van het web), quests met XP, levels en streaks, en een overzicht per bedrijf met omzet, kosten en winst.
+Al je projecten en bedrijven op één plek, als app op je Windows-pc. De cockpit leest je GitHub, houdt je cijfers bij en maakt van marketing een spel met quests, XP, levels en streaks. **Claude Code is het brein:** het draait op je eigen Claude-abonnement, dus zonder API-kosten.
 
-Privé en voor één eigenaar. **Niets gaat vanzelf naar buiten:** Claude maakt concepten; jij kopieert, plant, verstuurt en post zelf.
+**Niets gaat vanzelf naar buiten.** Claude maakt concepten; jij kopieert, plant, verstuurt en post zelf.
 
-## Wat er in zit
+## Zo werkt het
+
+1. Je drukt in de cockpit op een knop, bijvoorbeeld **Maak het profiel**, **Maak 5 posts** of **Zoek kansen op het web**.
+2. De cockpit opent Claude Code in een eigen venster, met een ticket voor die taak. Heeft het project een **lokale map**, dan start Claude daar en kan hij ook de code lezen.
+3. Claude haalt via de cockpit (MCP) alles op wat hij moet weten: de intake, de rode lijnen, README en docs, cijfers, en wat je van eerdere concepten vond. Dan doet hij het werk en zet hij het resultaat terug in de cockpit.
+4. De pagina ververst vanzelf zodra het binnen is. In het venster van Claude Code kun je meepraten en bijsturen.
+
+Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedschapskist, met tools als `list_projects`, `get_project`, `get_task` en `save_posts`, en prompts als `/mcp__cockpit__profile Rondje`.
 
 | Plek | Wat je er doet |
 |---|---|
-| **Vandaag** | Level, XP en streaks, de focus van de week, je quests, en per project de gezondheid (0–100) met de reden als die laag is |
-| **Projecten** | Je projecten per bedrijf of per fase. Per project: intake (vijf vragen), activiteit uit GitHub, repo’s, cijfers per maand, en of de site online is |
-| **Marketingbrein** (per project) | Profiel: doelgroepen en waar ze zitten, kanalen met een eerste stap, KPI’s, risico’s, quick wins. Plan voor 90 dagen: acties die je met een vinkje quests maakt |
-| **Studio** | Mails (outreach, partners, pers, nieuwsbrief, lancering, opvolgreeks), 5 posts per platform, een weekkalender, het idee-lab (zes manieren van denken, met een impact/moeite-matrix) en kansen zoeken op het web |
-| **Contacten** (per project) | Organisaties met hun wettelijke basis om te mailen, een persoonlijke mail per contact, en de status tot en met “antwoord” |
-| **Quests** | Quests van regels, van het plan, van de weekfocus of van jezelf; terugkerende quests (btw, domeinen); badges en XP-historie |
-| **Bedrijven** | Omzet, kosten en winst per maand, per bedrijf en in totaal; KvK/btw, land en notities; alle cijfers als CSV voor je boekhouder |
-| **GitHub** | Alle repo’s, slim gegroepeerd; kies wat bij welk project hoort |
+| **Vandaag** | Level, XP en streaks, de focus van de week, je quests, en per project de gezondheid (0–100) |
+| **Projecten** | Per project: intake (vijf vragen), activiteit uit GitHub, repo’s, cijfers per maand, en of de site online is |
+| **Marketingbrein** | Profiel (doelgroepen, kanalen, KPI’s, quick wins) en een plan voor 90 dagen; acties worden quests |
+| **Studio** | Mails, posts per platform, een weekkalender, het idee-lab en kansen van het web |
+| **Contacten** | Organisaties met hun wettelijke basis om te mailen, een persoonlijke mail per contact, en de status tot en met “antwoord” |
+| **Quests** | Quests van regels, van het plan, van de weekfocus of van jezelf; terugkerende quests; badges |
+| **Bedrijven** | Omzet, kosten en winst per maand, per bedrijf en in totaal; alles als CSV voor je boekhouder |
 
-## Zo zet je hem aan
+## Installeren
 
-1. **Vercel-project** gekoppeld aan deze repo, met **Fluid compute aan** (AI-taken mogen tot 5 minuten duren).
-2. **Database:** een Postgres-database (Neon, gratis) in `DATABASE_URL`. Een database van neon.new moet je binnen 72 uur claimen, anders verdwijnt hij.
-3. **Inloggen:** zet `OWNER_EMAILS` (jouw adres), `OWNER_SETUP_CODE` (een eenmalige code) en `BETTER_AUTH_SECRET` (lang en willekeurig). Open de site, kies **Eerste keer**, vul de code in, en voeg daarna Face ID toe. Zonder de code kan niemand de cockpit claimen, ook niet met jouw adres.
-4. **GitHub:** maak een *fine-grained token*, alleen-lezen: GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Eigen account, *All repositories*, en bij Permissions alleen **Contents: Read-only** (Metadata komt vanzelf mee). Zet hem in `GITHUB_TOKEN`. Laat hem na een jaar verlopen en maak dan een nieuwe.
-5. **Claude:** maak in de Anthropic Console een eigen workspace “Cockpit” met een **maandlimiet van $10**, en daarin een API-key → `ANTHROPIC_API_KEY`. De cockpit heeft zelf ook een harde limiet (`AI_MONTHLY_BUDGET_USD`, standaard 10) en geeft per dag hooguit een vijfde uit. Elke run reserveert vooraf het slechtste geval en toont na afloop wat hij echt kostte. Server-side fallbacks staan aan: weigert het model een verzoek, dan probeert Anthropic het met een ander model.
-6. **Dagelijkse taak:** zet `CRON_SECRET` (lang en willekeurig). Elke dag om 05:00 UTC: GitHub opnieuw lezen, sites controleren, quests maken. Op maandag ook de weekmail (met `RESEND_API_KEY` en `EMAIL_FROM` van een geverifieerd domein) en, met `WEEKLY_AI=1`, de weekfocus.
-7. **Op je iPhone:** open de site in Safari → Deel → **Zet op beginscherm**.
+1. **Claude Code:** open PowerShell, typ `irm https://claude.ai/install.ps1 | iex` en start daarna `claude` één keer om in te loggen met je Claude-account (Pro of Max).
+2. **Cockpit:** start `Cockpit-Setup-….exe` (installeert) of `Cockpit-…-portable.exe` (draait zonder installatie). De app is niet digitaal ondertekend, dus Windows SmartScreen vraagt de eerste keer om bevestiging: **Meer info → Toch uitvoeren**.
+3. **Instellingen** in de cockpit:
+   - je naam;
+   - een GitHub-token, alleen-lezen. Maak er een via GitHub → Settings → Developer settings → Fine-grained tokens. Kies je eigen account en *All repositories*, en zet bij Permissions alleen **Contents: Read-only**;
+   - **Koppel aan Claude Code**. Dat registreert de cockpit bij Claude Code voor jouw account op deze pc.
+4. **Projecten:** zet je projecten erin. Wat nog niet op GitHub staat, werkt ook: dan is de intake de bron.
 
-Alle instellingen staan in [`.env.example`](.env.example). `/api/health` laat zien wat er gekoppeld is, zonder sleutels.
-
-## Kosten
-
-- **Claude:** een profiel of plan ongeveer $0,10–0,30, mails of posts een paar cent, kansen zoeken (met web search) ongeveer $0,20–0,60. Binnen de limiet die je zelf zet.
-- **Vercel:** het gratis Hobby-plan is bedoeld voor niet-commercieel gebruik. Gebruik je de cockpit voor je bedrijven, dan is Pro (ongeveer $20 per maand) de nette keuze.
-- **Neon:** de gratis laag is ruim genoeg.
+Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* staat de configuratie om te plakken.
 
 ## Veiligheid en privacy
 
-- De cockpit **leest** GitHub (README, docs, stack, commits); hij schrijft er nooit iets. Wat op een sleutel lijkt, wordt weggepoetst voordat het wordt opgeslagen of naar de AI gaat. Per repo kun je de AI uitzetten (bijvoorbeeld voor code van een klant).
-- Tekst uit repo’s en contacten gaat als gegevens naar Claude, in tags die hij niet kan openbreken, met de regel dat er nooit instructies uit worden opgevolgd. Claude heeft geen gereedschap behalve (bij kansen) web search; alles wat terugkomt is een concept.
-- Alleen echte webadressen (http/https) worden klikbaar. Een mail opent in je eigen mailapp; ontvangers komen alleen uit je contacten.
-- Strikte CSP met nonce, `noindex` overal, sleutels alleen in Vercel.
-- Contacten: alleen organisaties, zakelijke adressen of mensen met wie je al contact hebt. Elke mail krijgt een afmeldregel. Dit is geen juridisch advies.
+- Alles staat op je pc, in `%APPDATA%\Cockpit`: de database (PGlite), de GitHub-token en de toegangscode van deze installatie.
+- De lokale server luistert alleen op `127.0.0.1` en antwoordt alleen aan de app zelf en aan Claude Code, met de toegangscode van deze installatie. Andere websites kunnen er niet bij, ook niet via een omweg met DNS.
+- De cockpit **leest** GitHub; hij schrijft er nooit iets. Wat op een sleutel lijkt, wordt weggepoetst voordat het wordt opgeslagen of naar Claude gaat. Per repo kun je Claude uitzetten (bijvoorbeeld voor code van een klant).
+- Tekst uit repo’s en contacten gaat als gegevens naar Claude, nooit als instructie. Claude ziet de namen en je notities bij contacten, nooit hun e-mailadres.
+- Claude krijgt geen gereedschap om te mailen of te posten. Een mail opent in je eigen mailapp.
 
 ## Ontwikkelen
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000, met een lokale database in .pglite
-```
-
-Zet `OWNER_EMAILS` (en eventueel `OWNER_SETUP_CODE`) in `.env.local` om in te loggen. Met `AI_FIXTURES=1` en `GITHUB_FIXTURES=1` werkt alles met vaste antwoorden, zonder sleutels en zonder kosten (in productie worden die altijd genegeerd).
-
-```bash
+npm run dev                 # http://127.0.0.1:3000/auth?token=dev
 npm run lint && npm run typecheck && npm test
 npx next build && E2E_SERVER_CMD="npx next start --port 3300" npx playwright test
 ```
 
-De e2e-tests lopen in volgorde (01–06) door één verhaal: claimen, spelen, projecten, brein, studio, cron.
+Met `GITHUB_FIXTURES=1` werkt GitHub met vaste antwoorden, zonder token. De e2e-tests spelen de rol van Claude Code: ze praten via MCP met de cockpit, precies zoals Claude dat doet.
+
+**De Windows-app:**
+
+```bash
+npm run electron:build      # next build → release/server → dist-electron → release/dist/*.exe
+npm run test:electron       # rooktest van de app (onder Linux: xvfb-run -a …)
+```
+
+Bij elke push naar `main` bouwt de workflow `.github/workflows/windows.yml` op Windows de installer en de portable versie. Bij een tag `v*` hangt hij ze aan een GitHub Release.
 
 ## Database
 
-Migraties staan in `drizzle/` en worden in `src/db/migrations.json` ingebed; de app migreert zichzelf bij de eerste request. Na een schemawijziging:
+Migraties staan in `drizzle/` en worden in `src/db/migrations.json` ingebed; de app migreert zichzelf bij de start. Na een schemawijziging:
 
 ```bash
 npx drizzle-kit generate --name <wat> && node scripts/embed-migrations.mjs

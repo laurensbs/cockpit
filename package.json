@@ -45,5 +45,9 @@
   },
   "main": "dist-electron/main.js",
   "description": "Al je projecten en bedrijven op één plek, met Claude Code als marketingbrein.",
-  "author": "Laurens Bos"
+  "author": "Laurens Bos",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/laurensbs/cockpit.git"
+  }
 }
