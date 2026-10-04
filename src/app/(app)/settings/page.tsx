@@ -1,13 +1,16 @@
+import { AutopilotToggle } from '@/components/AutopilotToggle'
 import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/Icon'
+import { MailSettingsForm } from '@/components/MailSettingsForm'
 import { SettingsForm } from '@/components/SettingsForm'
 import { UpdateNowButton } from '@/components/UpdateNowButton'
 import { dbDir, dbMode, getDb } from '@/db'
 import { expectedToken } from '@/lib/local'
 import { claudeVersion, connectCommand, desktopConfig, mcpUrl } from '@/server/claude'
+import { mailConfig } from '@/server/outbox'
 import { requireOwner } from '@/server/session'
-import { getSetting, githubToken } from '@/server/settings'
+import { getSetting, githubTokenSource } from '@/server/settings'
 import { githubStatus, type ServiceStatus } from '@/server/status'
 
 export const metadata = { title: 'Instellingen' }
@@ -21,11 +24,13 @@ function StatusChip({ status }: { status: ServiceStatus }) {
 export default async function SettingsPage() {
   const owner = await requireOwner('/settings')
   const db = await getDb()
-  const [token, stored, version, connectedAt] = await Promise.all([
-    githubToken(db, owner.userId),
+  const [{ token, from }, stored, version, connectedAt, mail, autopilot] = await Promise.all([
+    githubTokenSource(db, owner.userId),
     getSetting(db, owner.userId, 'github_token'),
     claudeVersion(),
     getSetting(db, owner.userId, 'claude_connected'),
+    mailConfig(db, owner.userId),
+    getSetting(db, owner.userId, 'autopilot_weekly'),
   ])
   const github = githubStatus(token)
   const appToken = expectedToken() ?? ''
@@ -69,6 +74,7 @@ export default async function SettingsPage() {
           taak; Claude leest het project via de cockpit en zet het resultaat hier terug. Dat loopt op je eigen Claude-abonnement, zonder
           API-kosten.
         </p>
+        {version ? <AutopilotToggle on={autopilot === '1'} /> : null}
         {version ? (
           <ConnectClaudeButton connectedAt={connectedAt} />
         ) : (
@@ -99,15 +105,32 @@ export default async function SettingsPage() {
         </details>
       </section>
 
+      <section className="card stack-m" id="mail">
+        <div className="row between">
+          <h2 className="row">
+            <Icon name="mail" /> Mails versturen
+          </h2>
+          {mail.ready && mail.enabled ? <span className="chip good">Aan</span> : mail.ready ? <span className="chip warn">Uit</span> : <span className="chip">Niet ingesteld</span>}
+        </div>
+        <p className="muted small">
+          De cockpit verstuurt alleen mails die jij hebt goedgekeurd, vanaf je eigen mailbox, naar zakelijke adressen van organisaties of mensen die
+          ermee instemden. Elke mail heeft een afmeldregel. Het wachtwoord blijft op deze computer; gebruik waar het kan een app-wachtwoord.
+        </p>
+        <MailSettingsForm
+          values={{ host: mail.host, port: mail.port, secure: mail.secure, user: mail.user, hasPass: Boolean(mail.pass), fromName: mail.fromName, fromEmail: mail.fromEmail, cap: mail.cap, enabled: mail.enabled }}
+        />
+      </section>
+
       <section className="card stack-m">
         <h2 className="row">
           <Icon name="key" /> Jij en GitHub
         </h2>
         <SettingsForm name={owner.name} hasToken={Boolean(stored)} status={<StatusChip status={github} />} />
+        {from === 'gh' ? <p className="tiny muted">De cockpit gebruikt nu je login van de GitHub CLI (gh). Een eigen token hierboven gaat voor.</p> : null}
         <p className="muted small">
           Een fine-grained token, alleen-lezen: GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token. Kies je eigen
           account, Repository access: All repositories, en bij Permissions alleen <strong>Contents: Read-only</strong> (Metadata gaat vanzelf mee).
-          De token blijft op deze computer.
+          De token blijft op deze computer. Heb je de GitHub CLI (<code>gh</code>) en ben je daar ingelogd, dan werkt het ook zonder token.
         </p>
       </section>
 

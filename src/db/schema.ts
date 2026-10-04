@@ -221,6 +221,34 @@ export const metric = pgTable(
   (t) => [uniqueIndex('metric_project_month_key_idx').on(t.projectId, t.month, t.key)],
 )
 
+/**
+ * A mail that goes out on its own, after he approved it once: a first mail or one of its follow-ups.
+ * Follow-ups wait until the mail before was sent; a reply or a "no" cancels the rest of the sequence.
+ */
+export const emailJob = pgTable(
+  'email_job',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    contactId: text('contact_id').references(() => contact.id, { onDelete: 'cascade' }),
+    contentItemId: text('content_item_id').references(() => contentItem.id, { onDelete: 'set null' }),
+    sequenceId: text('sequence_id').notNull(),
+    step: integer('step').notNull().default(0),
+    toAddress: text('to_address').notNull(),
+    subject: text('subject').notNull(),
+    body: text('body').notNull(),
+    // waiting (a follow-up whose turn has not come) → queued → sent | failed | cancelled
+    status: text('status').notNull().default('queued'),
+    sendAfter: timestamp('send_after'),
+    sentAt: timestamp('sent_at'),
+    messageId: text('message_id'),
+    error: text('error'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('email_job_owner_status_idx').on(t.ownerId, t.status, t.sendAfter), index('email_job_sequence_idx').on(t.sequenceId)],
+)
+
 /** One value per key: the owner's name, the GitHub token, what is connected. */
 export const setting = pgTable(
   'setting',

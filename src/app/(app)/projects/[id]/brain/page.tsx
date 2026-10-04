@@ -2,12 +2,14 @@ import { and, desc, eq, like } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ClaudeButton } from '@/components/ClaudeButton'
+import { CopyButton } from '@/components/CopyButton'
 import { PlanActions } from '@/components/PlanActions'
 import { ProjectHeader } from '@/components/ProjectHeader'
 import { QuickWin } from '@/components/QuickWin'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
-import { EFFORT_LABELS, planFromJson, profileFromJson } from '@/lib/ai/schemas'
+import { EFFORT_LABELS, linkedinFromJson, planFromJson, profileFromJson } from '@/lib/ai/schemas'
+import { linkedinShareUrl } from '@/lib/share'
 import { ago } from '@/lib/time'
 import { loadJobContext } from '@/server/ai/context'
 import { claudeBlocked } from '@/server/claude-status'
@@ -29,7 +31,8 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
       .where(and(eq(s.brief.projectId, id), eq(s.brief.kind, kind)))
       .orderBy(desc(s.brief.createdAt))
       .limit(1)
-  const [[profileBrief], [planBrief], blocked] = await Promise.all([latest('profile'), latest('plan'), claudeBlocked()])
+  const [[profileBrief], [planBrief], [linkedinBrief], blocked] = await Promise.all([latest('profile'), latest('plan'), latest('linkedin'), claudeBlocked()])
+  const linkedin = linkedinBrief ? linkedinFromJson(linkedinBrief.content) : null
   const profile = profileBrief ? profileFromJson(profileBrief.content) : null
   const plan = planBrief ? planFromJson(planBrief.content) : null
   const keys = async (prefix: string) =>
@@ -187,6 +190,89 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
           </div>
         ) : (
           <p className="muted small">Eerst het profiel; het plan bouwt daarop voort.</p>
+        )}
+      </section>
+
+      <section className="card stack-m">
+        <div className="row between">
+          <div className="stack-xs">
+            <h2>LinkedIn</h2>
+            {linkedinBrief ? <p className="tiny muted">Gemaakt {ago(linkedinBrief.createdAt, now)}</p> : null}
+          </div>
+          {linkedin ? <ClaudeButton task="linkedin" projectId={id} label="Opnieuw" disabledReason={blocked} variant="secondary" /> : null}
+        </div>
+        {linkedin ? (
+          <div className="stack-l">
+            <div className="stack-xs">
+              <p className="eyebrow">Je kop</p>
+              <p className="brain-quote">{linkedin.headline}</p>
+              <CopyButton text={linkedin.headline} label="Kopieer kop" />
+            </div>
+            <div className="stack-xs">
+              <p className="eyebrow">Over jou</p>
+              <p className="prewrap small">{linkedin.about}</p>
+              <CopyButton text={linkedin.about} label="Kopieer tekst" />
+            </div>
+            <div className="grid">
+              <div className="stack-s">
+                <p className="eyebrow">Uitlichten</p>
+                <ul className="small stack-xs">
+                  {linkedin.featured.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="stack-s">
+                <p className="eyebrow">Je weekritme</p>
+                <ul className="small stack-xs">
+                  {linkedin.routine.map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="stack-s">
+              <p className="eyebrow">Met wie je moet connecten</p>
+              <ul className="list">
+                {linkedin.connect.map((c) => (
+                  <li key={c.who} className="stack-xs">
+                    <strong>{c.who}</strong>
+                    <span className="small muted">{c.why}</span>
+                    <span className="small prewrap">“{c.message}”</span>
+                    <CopyButton text={c.message} label="Kopieer bericht" />
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="stack-s">
+              <p className="eyebrow">Posts</p>
+              <div className="grid">
+                {linkedin.posts.map((post, i) => {
+                  const text = [post.text, post.hashtags.join(' ')].filter(Boolean).join('\n\n')
+                  return (
+                    <article key={i} className="card sunken stack-s">
+                      <strong>{post.hook}</strong>
+                      <p className="prewrap small">{post.text}</p>
+                      {post.hashtags.length ? <p className="small" style={{ color: 'var(--accent-ink)' }}>{post.hashtags.join(' ')}</p> : null}
+                      <div className="row">
+                        <a className="button primary small" href={linkedinShareUrl(text)} target="_blank" rel="noreferrer noopener">
+                          Post op LinkedIn
+                        </a>
+                        <CopyButton text={text} label="Kopieer" />
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="stack-m">
+            <p className="muted">
+              Je profielkop, een about-tekst, met wie je moet connecten (met een bericht), een weekritme en vijf posts. Jij post zelf, met één klik.
+            </p>
+            <ClaudeButton task="linkedin" projectId={id} label="Maak je LinkedIn-plan" disabledReason={blocked} />
+          </div>
         )}
       </section>
     </div>

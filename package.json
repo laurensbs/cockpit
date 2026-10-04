@@ -1,6 +1,6 @@
 {
   "name": "cockpit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -25,6 +25,7 @@
     "@modelcontextprotocol/sdk": "^1.32.0",
     "drizzle-orm": "^0.45.3",
     "next": "16.3.8",
+    "nodemailer": "^10.0.14",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.5",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "drizzle-kit": "^0.31.11",

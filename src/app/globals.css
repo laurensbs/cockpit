@@ -1182,3 +1182,14 @@ a.chip {
 a.chip:hover {
   color: var(--ink);
 }
+
+/* The experiment board: three columns on a wide screen, one below the other on a phone. */
+.board {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  align-items: start;
+}
+.outbox-row + .outbox-row {
+  border-top: 1px solid var(--line, rgba(127, 127, 127, 0.15));
+}

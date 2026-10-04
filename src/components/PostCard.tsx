@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { shareUrl } from '@/lib/share'
 import { planContent } from '@/server/actions/content'
 import { ContentActions } from './ContentActions'
 import { CopyButton } from './CopyButton'
@@ -28,6 +29,7 @@ const PLATFORM_LABELS: Record<string, string> = { instagram: 'Instagram', tiktok
 export function PostCard({ post }: { post: PostView }) {
   const [pending, start] = useTransition()
   const copy = [post.caption, post.hashtags.join(' ')].filter(Boolean).join('\n\n')
+  const share = shareUrl(post.platform, copy)
   return (
     <article className="card stack-s draft">
       <div className="row between">
@@ -46,6 +48,11 @@ export function PostCard({ post }: { post: PostView }) {
       </p>
       <div className="row between">
         <div className="row">
+          {share ? (
+            <a className="button primary small" href={share} target="_blank" rel="noreferrer noopener">
+              Post op {PLATFORM_LABELS[post.platform]}
+            </a>
+          ) : null}
           <CopyButton text={copy} label="Kopieer tekst" />
           <label className="row nowrap small" style={{ gap: '0.35rem' }}>
             <span className="muted">Plan</span>

@@ -95,3 +95,27 @@ describe('weekly schema', () => {
     expect(normalizeWeekly(many).focus).toHaveLength(3)
   })
 })
+
+import { articlesFixture, experimentsFixture, linkedinFixture } from './fixtures'
+import { ArticlesWire, ExperimentsWire, LinkedinWire, normalizeArticles, normalizeExperiments, normalizeLinkedin, slugify } from './schemas'
+
+describe('organic growth schemas', () => {
+  it('accept the fixtures and normalize them', () => {
+    const a = normalizeArticles(ArticlesWire.parse(articlesFixture()))
+    expect(a.articles[0].slug).toBe('vrijwilligerswerk-met-honden')
+    expect(a.articles[1].slug).toBe('wat-je-moet-weten-voor-je-eerste-rondje')
+    expect(a.keywords[0].difficulty).toBe('S')
+    const e = normalizeExperiments(ExperimentsWire.parse(experimentsFixture()))
+    expect(e[0].ice).toBe(7.3)
+    expect(e.map((x) => x.ice)).toEqual([...e.map((x) => x.ice)].sort((x, y) => y - x))
+    const l = normalizeLinkedin(LinkedinWire.parse(linkedinFixture()))
+    expect(l.posts[0].hashtags).toEqual(['#vrijwilligerswerk', '#dierenwelzijn', '#Rondje'])
+  })
+
+  it('makes clean slugs and clamps scores', () => {
+    expect(slugify('Ça va? Hoe wérkt "X" — echt!')).toBe('ca-va-hoe-werkt-x-echt')
+    expect(slugify('!!!')).toBe('artikel')
+    const [x] = normalizeExperiments({ experiments: [{ ...experimentsFixture().experiments[0], impact: 99, confidence: -3, ease: Number.NaN }] })
+    expect([x.impact, x.confidence, x.ease]).toEqual([10, 1, 5])
+  })
+})

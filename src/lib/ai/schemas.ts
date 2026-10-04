@@ -268,3 +268,131 @@ export const weeklyFromJson = (value: unknown): Weekly | null => {
   const r = WeeklyWire.safeParse(value)
   return r.success ? normalizeWeekly(r.data) : null
 }
+
+// ---------- organic growth ----------
+
+export const ArticlesWire = z.object({
+  keywords: z.array(z.object({ keyword: str, intent: str, difficulty: str, why: str })),
+  articles: z.array(z.object({ title: str, slug: str, metaDescription: str, keywords: z.array(str), outline: z.array(str), body: str })),
+})
+
+export interface KeywordIdea {
+  keyword: string
+  intent: string
+  difficulty: Effort
+  why: string
+}
+export interface Article {
+  title: string
+  slug: string
+  metaDescription: string
+  keywords: string[]
+  outline: string[]
+  markdown: string
+}
+
+/** "Hoe werkt X?" → "hoe-werkt-x"; at most 80 characters, never empty. */
+export function slugify(text: string): string {
+  const slug = text
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/, '')
+  return slug || 'artikel'
+}
+
+export function normalizeArticles(w: z.infer<typeof ArticlesWire>): { keywords: KeywordIdea[]; articles: Article[] } {
+  return {
+    keywords: w.keywords.slice(0, 12).map((k) => ({ keyword: clean(k.keyword, 80), intent: clean(k.intent, 60), difficulty: effortOf(k.difficulty), why: clean(k.why, 300) })),
+    articles: w.articles.slice(0, 5).map((a) => ({
+      title: clean(a.title, 120),
+      slug: slugify(a.slug || a.title),
+      metaDescription: clean(a.metaDescription, 160),
+      keywords: list(a.keywords, 8, 60),
+      outline: list(a.outline, 12, 160),
+      markdown: a.body.replace(/\r\n/g, '\n').trim().slice(0, 20_000),
+    })),
+  }
+}
+
+export const ExperimentsWire = z.object({
+  experiments: z.array(
+    z.object({ title: str, hypothesis: str, channel: str, steps: z.array(str), metric: str, target: str, impact: z.number(), confidence: z.number(), ease: z.number(), cost: str }),
+  ),
+})
+
+export interface Experiment {
+  title: string
+  hypothesis: string
+  channel: string
+  steps: string[]
+  metric: string
+  target: string
+  impact: number
+  confidence: number
+  ease: number
+  /** ICE: the average of impact, confidence and ease (1–10). */
+  ice: number
+  cost: string
+}
+
+const ten = (n: number) => (Number.isFinite(n) ? Math.min(10, Math.max(1, Math.round(n))) : 5)
+
+export const normalizeExperiments = (w: z.infer<typeof ExperimentsWire>): Experiment[] =>
+  w.experiments
+    .slice(0, 8)
+    .map((e) => {
+      const impact = ten(e.impact)
+      const confidence = ten(e.confidence)
+      const ease = ten(e.ease)
+      return {
+        title: clean(e.title, 120),
+        hypothesis: clean(e.hypothesis, 400),
+        channel: clean(e.channel, 60),
+        steps: list(e.steps, 8, 240),
+        metric: clean(e.metric, 120),
+        target: clean(e.target, 120),
+        impact,
+        confidence,
+        ease,
+        ice: Math.round(((impact + confidence + ease) / 3) * 10) / 10,
+        cost: clean(e.cost, 60),
+      }
+    })
+    .sort((a, b) => b.ice - a.ice)
+
+export const LinkedinWire = z.object({
+  headline: str,
+  about: str,
+  featured: z.array(str),
+  connect: z.array(z.object({ who: str, why: str, message: str })),
+  routine: z.array(str),
+  posts: z.array(z.object({ hook: str, text: str, hashtags: z.array(str) })),
+})
+
+export interface LinkedinPlan {
+  headline: string
+  about: string
+  featured: string[]
+  connect: { who: string; why: string; message: string }[]
+  routine: string[]
+  posts: { hook: string; text: string; hashtags: string[] }[]
+}
+
+export const normalizeLinkedin = (w: z.infer<typeof LinkedinWire>): LinkedinPlan => ({
+  headline: clean(w.headline, 220),
+  about: clean(w.about, 2600),
+  featured: list(w.featured, 4, 200),
+  // LinkedIn allows 300 characters in a connection note.
+  connect: w.connect.slice(0, 6).map((c) => ({ who: clean(c.who, 100), why: clean(c.why, 300), message: clean(c.message, 300) })),
+  routine: list(w.routine, 7, 200),
+  posts: w.posts.slice(0, 6).map((p) => ({ hook: clean(p.hook, 200), text: clean(p.text, 3000), hashtags: hashtags(p.hashtags).slice(0, 5) })),
+})
+
+export const linkedinFromJson = (value: unknown): LinkedinPlan | null => {
+  const r = LinkedinWire.safeParse(value)
+  return r.success ? normalizeLinkedin(r.data) : null
+}

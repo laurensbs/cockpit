@@ -23,7 +23,7 @@ export const MODES: Record<string, string> = {
 }
 
 interface Props {
-  kind: 'emails' | 'posts' | 'ideas' | 'opportunities'
+  kind: 'emails' | 'posts' | 'ideas' | 'opportunities' | 'seo' | 'experiments'
   projectId: string
   languages: string[]
   disabledReason: string | null
@@ -47,8 +47,16 @@ export function StudioGenerator({ kind, projectId, languages, disabledReason }: 
   const [persona, setPersona] = useState('')
 
   const options =
-    kind === 'emails' ? { purpose, language, note } : kind === 'posts' ? { platform, language } : kind === 'ideas' ? { mode, persona } : { language }
-  const label = kind === 'emails' ? 'Schrijf mails' : kind === 'posts' ? 'Maak 5 posts' : kind === 'ideas' ? 'Bedenk 6 ideeën' : 'Zoek kansen op het web'
+    kind === 'emails' ? { purpose, language, note } : kind === 'posts' ? { platform, language } : kind === 'ideas' ? { mode, persona } : kind === 'experiments' ? {} : { language }
+  const LABELS = {
+    emails: 'Schrijf mails',
+    posts: 'Maak 5 posts',
+    ideas: 'Bedenk 6 ideeën',
+    opportunities: 'Zoek kansen op het web',
+    seo: 'Zoekwoorden en een artikel',
+    experiments: 'Bedenk 5 groei-experimenten',
+  }
+  const label = LABELS[kind]
 
   return (
     <div className="card stack-m">
@@ -95,7 +103,7 @@ export function StudioGenerator({ kind, projectId, languages, disabledReason }: 
             <input className="input" value={persona} onChange={(e) => setPersona(e.target.value)} maxLength={80} placeholder="Bijv. Duolingo, een punkband, de gemeente" />
           </label>
         ) : null}
-        {kind !== 'ideas' ? (
+        {kind !== 'ideas' && kind !== 'experiments' ? (
           <label className="field">
             <span className="tiny">Taal</span>
             <select className="select" value={language} onChange={(e) => setLanguage(e.target.value)}>
@@ -111,6 +119,8 @@ export function StudioGenerator({ kind, projectId, languages, disabledReason }: 
         </label>
       ) : null}
       {kind === 'opportunities' ? <p className="tiny muted">Claude zoekt op het web naar communities, gidsen, media en partners. Nooit privépersonen.</p> : null}
+      {kind === 'seo' ? <p className="tiny muted">Claude kijkt op het web waar je doelgroep op zoekt en wat er nu bovenaan staat, en schrijft het beste artikel helemaal uit.</p> : null}
+      {kind === 'experiments' ? <p className="tiny muted">Kleine proeven van twee weken, gesorteerd op ICE (impact, zekerheid, gemak). Claude leert van wat je eerder afrondde.</p> : null}
       <ClaudeButton task={kind} projectId={projectId} label={label} disabledReason={disabledReason} options={options} />
     </div>
   )

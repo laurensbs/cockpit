@@ -39,6 +39,16 @@ test('the five projects go in at once, linked to GitHub, with a company overview
   await expect(page.getByText('2 gekoppeld.')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Gekoppeld' })).toBeVisible()
 
+  // "Alles binnenhalen" turns what has no project yet into projects, named after the group.
+  await page.reload()
+  await expect(page.getByText(/2 repo's nog niet in de cockpit, in 1 groep/)).toBeVisible()
+  await page.getByRole('button', { name: 'Alles binnenhalen' }).click()
+  await expect(page.getByRole('status').filter({ hasText: "2 repo's binnengehaald: 1 nieuw project (Caravanstallingspanje)" })).toBeVisible()
+  await page.goto('/projects')
+  await expect(page.getByRole('link', { name: /Caravanstallingspanje/ }).first()).toBeVisible()
+  await page.goto('/github')
+  await expect(page.getByText('Alles van GitHub staat erin.')).toBeVisible()
+
   // Numbers per month add up per company and in total.
   await page.goto('/companies')
   const form = page.locator('form').filter({ has: page.getByLabel('Waarde') })

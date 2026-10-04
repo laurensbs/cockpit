@@ -31,6 +31,7 @@ const KIND_LABELS: Record<string, string> = {
   intake: 'Intake af',
   plan: 'Plan gemaakt',
   generate: 'Concepten gemaakt',
+  experiment: 'Experiment afgerond',
 }
 
 export default async function QuestsPage() {

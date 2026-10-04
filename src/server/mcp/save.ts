@@ -4,7 +4,13 @@ import type { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import {
+  type ArticlesWire,
   type EmailsWire,
+  type ExperimentsWire,
+  type LinkedinWire,
+  normalizeArticles,
+  normalizeExperiments,
+  normalizeLinkedin,
   type IdeasWire,
   normalizeEmails,
   normalizeIdeas,
@@ -88,12 +94,13 @@ export async function saveEmails(
           .where(eq(s.contact.id, input.contactId))
       : []
     if (!contact || contact.projectId !== project.id) return 'Niets opgeslagen: dat contact hoort niet bij dit project (zie list_contacts).'
-    const [draft] = drafts
+    const [draft, ...rest] = drafts
+    const followups = rest.slice(0, 2).map((f) => ({ subject: f.subject, body: f.body }))
     await insertDrafts(db, ownerId, project.id, 'email', 'contact', input.language, [
-      { title: `Mail aan ${contact.organization}`, body: { subject: draft.subject, body: draft.body, ps: draft.ps }, contactId: contact.id },
+      { title: `Mail aan ${contact.organization}`, body: { subject: draft.subject, body: draft.body, ps: draft.ps, followups }, contactId: contact.id },
     ])
     if (contact.status === 'new') await db.update(s.contact).set({ status: 'drafted' }).where(eq(s.contact.id, contact.id))
-    return `Opgeslagen: een persoonlijke mail aan ${contact.organization}. Hij opent hem vanuit Contacten in zijn mailapp.`
+    return `Opgeslagen: een persoonlijke mail aan ${contact.organization}${followups.length ? ` met ${followups.length} opvolgmail${followups.length === 1 ? '' : 's'}` : ''}. Hij keurt hem goed in Contacten; daarna gaat hij vanzelf de deur uit.`
   }
   const n = await insertDrafts(
     db,
@@ -154,4 +161,40 @@ export async function saveWeekly(db: Db, ownerId: string, wire: z.infer<typeof W
   const weekly = normalizeWeekly(wire)
   await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: null, kind: 'weekly', content: weekly, runId: SOURCE })
   return `Opgeslagen: de focus van deze week (“${weekly.headline}”), met ${weekly.focus.length} projecten en de boss “${weekly.boss.title}”. Hij ziet het op Vandaag.`
+}
+
+export async function saveArticles(db: Db, ownerId: string, project: { id: string; name: string }, input: { language: string }, wire: z.infer<typeof ArticlesWire>): Promise<string> {
+  const { keywords, articles } = normalizeArticles(wire)
+  if (keywords.length) await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: project.id, kind: 'seo', content: { keywords }, runId: SOURCE })
+  const n = await insertDrafts(
+    db,
+    ownerId,
+    project.id,
+    'article',
+    'seo',
+    input.language,
+    articles.map(({ title, ...body }) => ({ title, body })),
+  )
+  const full = articles.filter((a) => a.markdown).length
+  return `Opgeslagen: ${keywords.length} zoekwoorden en ${n} artikel${n === 1 ? '' : 'en'} voor ${project.name}${full ? ` (${full} helemaal uitgeschreven)` : ''}. Hij vindt ze onder Marketing → Artikelen.`
+}
+
+export async function saveExperiments(db: Db, ownerId: string, project: { id: string; name: string }, wire: z.infer<typeof ExperimentsWire>): Promise<string> {
+  const experiments = normalizeExperiments(wire)
+  const n = await insertDrafts(
+    db,
+    ownerId,
+    project.id,
+    'experiment',
+    'growth',
+    'nl',
+    experiments.map(({ title, ...body }) => ({ title, body: { ...body, result: '', learning: '' } })),
+  )
+  return n ? `Opgeslagen: ${n} groei-experiment${n === 1 ? '' : 'en'} voor ${project.name}, met de hoogste ICE-score bovenaan. Hij start ze vanaf het bord onder Marketing → Experimenten.` : 'Niets opgeslagen: er zaten geen experimenten in.'
+}
+
+export async function saveLinkedin(db: Db, ownerId: string, project: { id: string; name: string }, wire: z.infer<typeof LinkedinWire>): Promise<string> {
+  const plan = normalizeLinkedin(wire)
+  await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: project.id, kind: 'linkedin', content: plan, runId: SOURCE })
+  return `Opgeslagen: LinkedIn voor ${project.name}: een kop, een about-tekst, ${plan.connect.length} soorten connecties en ${plan.posts.length} posts. Hij ziet het onder Marketingbrein en post zelf, met één klik.`
 }

@@ -52,3 +52,10 @@ export async function connectClaude(): Promise<{ ok: boolean; message: string }>
   revalidatePath('/settings')
   return result
 }
+
+/** The autopilot: on Monday morning Claude Code makes the weekly focus by itself. */
+export async function setAutopilot(on: boolean): Promise<void> {
+  const owner = await actionOwner()
+  await setSetting(await getDb(), owner.userId, 'autopilot_weekly', on ? '1' : null)
+  revalidatePath('/settings')
+}

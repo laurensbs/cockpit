@@ -2,6 +2,7 @@
 
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 import { getDb, type Db } from '@/db'
 import * as s from '@/db/schema'
 import { safeLink } from '@/lib/ai/schemas'
@@ -28,8 +29,9 @@ export async function markContentDone(id: string, done: boolean): Promise<{ xp: 
   const owner = await actionOwner()
   const db = await getDb()
   const item = await own(db, owner.userId, id)
-  if (!item || (item.kind !== 'social' && item.kind !== 'email')) return { xp: 0 }
-  const kind = item.kind === 'social' ? 'post' : 'email'
+  if (!item || (item.kind !== 'social' && item.kind !== 'email' && item.kind !== 'article')) return { xp: 0 }
+  // A published article counts as a post: content that went out.
+  const kind = item.kind === 'email' ? 'email' : 'post'
   await db
     .update(s.contentItem)
     .set({ status: done ? 'done' : 'draft', doneAt: done ? new Date() : null })
@@ -133,4 +135,31 @@ export async function opportunityToContact(id: string): Promise<{ contactId: str
   await db.update(s.contentItem).set({ status: 'done', doneAt: new Date() }).where(eq(s.contentItem.id, item.id))
   refresh(item.projectId)
   return { contactId }
+}
+
+/** A growth experiment moves on the board: from the backlog to running. */
+export async function startExperiment(id: string): Promise<void> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  const item = await own(db, owner.userId, id)
+  if (!item || item.kind !== 'experiment') return
+  await db.update(s.contentItem).set({ status: 'planned' }).where(eq(s.contentItem.id, item.id))
+  refresh(item.projectId)
+}
+
+/** An experiment is done, won or lost, with what he learned: that learning goes into the next round. */
+export async function finishExperiment(id: string, result: string, learning: string): Promise<{ xp: number }> {
+  const owner = await actionOwner()
+  const parsed = z.object({ result: z.enum(['won', 'lost']), learning: z.string().trim().max(400) }).safeParse({ result, learning })
+  if (!parsed.success) return { xp: 0 }
+  const db = await getDb()
+  const item = await own(db, owner.userId, id)
+  if (!item || item.kind !== 'experiment') return { xp: 0 }
+  await db
+    .update(s.contentItem)
+    .set({ status: 'done', doneAt: new Date(), body: { ...(item.body as Record<string, unknown>), result: parsed.data.result, learning: parsed.data.learning } })
+    .where(eq(s.contentItem.id, item.id))
+  const xp = await award(db, owner.userId, { kind: 'experiment', refId: item.id, projectId: item.projectId })
+  refresh(item.projectId)
+  return { xp }
 }

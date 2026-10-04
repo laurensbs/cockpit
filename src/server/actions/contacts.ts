@@ -8,6 +8,7 @@ import * as s from '@/db/schema'
 import { EMAIL } from '@/lib/mailto'
 import { CONTACT_STATUSES } from '@/lib/options'
 import { normalizeUrl } from '@/lib/urls'
+import { cancelForContact } from '../outbox'
 import { actionOwner } from '../session'
 import { award, revoke } from '../xp'
 import type { FormState } from './types'
@@ -71,6 +72,8 @@ export async function setContactStatus(contactId: string, status: string): Promi
     .where(and(eq(s.contact.id, String(contactId)), eq(s.contact.ownerId, owner.userId)))
     .returning({ id: s.contact.id, projectId: s.contact.projectId })
   if (!row) return { xp: 0 }
+  // An answer or a "no" stops whatever was still to go out to them.
+  if (parsed.data === 'replied' || parsed.data === 'no') await cancelForContact(db, owner.userId, row.id)
   let xp = 0
   if (parsed.data === 'replied') xp = await award(db, owner.userId, { kind: 'reply', refId: row.id, projectId: row.projectId })
   else await revoke(db, owner.userId, 'reply', row.id)

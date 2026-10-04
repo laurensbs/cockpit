@@ -1,10 +1,13 @@
 import { asc, eq } from 'drizzle-orm'
 import Link from 'next/link'
 import { RepoAssign } from '@/components/RepoAssign'
+import { ImportAll } from '@/components/ImportAll'
 import { RepoImport, type ImportableRepo } from '@/components/RepoImport'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { suggestGroups } from '@/lib/group-repos'
+import { planImport } from '@/lib/import-plan'
+import { companiesOf } from '@/server/queries'
 import { ago } from '@/lib/time'
 import { githubSource, type RepoMeta } from '@/server/github/source'
 import { syncErrorText } from '@/server/github/sync'
@@ -52,6 +55,9 @@ export default async function GithubPage({ searchParams }: { searchParams: Promi
   const archived = fresh.filter((r) => r.archived)
   const byName = new Map(live.map((r) => [r.fullName, r]))
   const groups = suggestGroups(live.map((r) => r.fullName)).map((g) => g.map((n) => toItem(byName.get(n)!)))
+  const plan = planImport(all, new Map(linked.map((r) => [r.fullName, r.projectId])), now)
+  const openCount = plan.toExisting.reduce((n, g) => n + g.names.length, 0) + plan.newProjects.reduce((n, p) => n + p.names.length, 0)
+  const companies = (await companiesOf(db, owner.userId)).map((c) => ({ id: c.id, name: c.name }))
 
   return (
     <div className="stack-l">
@@ -65,6 +71,8 @@ export default async function GithubPage({ searchParams }: { searchParams: Promi
         </p>
       ) : null}
       {error ? <p className="notice bad">{error}</p> : null}
+      {source && !error ? <ImportAll newCount={openCount} groupCount={plan.toExisting.length + plan.newProjects.length} companies={companies} /> : null}
+      {source && !error && groups.length ? <h2>Of kies zelf</h2> : null}
       {source && !error ? <RepoImport groups={groups} projects={projects} defaultProject={defaultProject} /> : null}
       {linked.length ? (
         <section className="card stack-m">

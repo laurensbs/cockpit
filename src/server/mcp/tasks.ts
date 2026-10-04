@@ -4,8 +4,12 @@ import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import {
+  contactBatchTask,
   contactEmailTask,
   EMAIL_PURPOSES,
+  experimentsTask,
+  linkedinTask,
+  seoTask,
   emailsTask,
   IDEA_MODES,
   ideasTask,
@@ -21,7 +25,7 @@ import { dayOf } from '@/lib/dates'
 import { LANGUAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 
-export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'posts', 'ideas', 'opportunities', 'weekly'] as const
+export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly'] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 export const isTaskKind = (v: unknown): v is TaskKind => typeof v === 'string' && (TASK_KINDS as readonly string[]).includes(v)
 
@@ -29,10 +33,14 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   profile: 'Marketingprofiel',
   plan: 'Plan voor 90 dagen',
   emails: 'Mails',
-  contact_mail: 'Persoonlijke mail aan een contact',
+  contact_mail: 'Persoonlijke mail aan een contact, met twee opvolgmails',
+  contact_mails: 'Persoonlijke mails aan alle nieuwe contacten',
   posts: 'Posts voor een platform',
   ideas: 'Ideeën',
   opportunities: 'Kansen zoeken op het web',
+  seo: 'Zoekwoorden en een artikel (SEO)',
+  experiments: 'Groei-experimenten',
+  linkedin: 'LinkedIn-profiel en posts',
   weekly: 'Focus van de week',
 }
 
@@ -61,6 +69,19 @@ async function pastTitles(db: Db, projectId: string, kind: string): Promise<stri
     .limit(30)
   return rows.map((r) => r.title)
 }
+
+const contactBrief = (contact: typeof s.contact.$inferSelect) => ({
+  organization: contact.organization,
+  name: contact.name,
+  website: contact.website,
+  note: contact.note,
+  basis:
+    contact.basis === 'consent'
+      ? 'they agreed to be contacted'
+      : contact.basis === 'relation'
+        ? 'there is an existing relationship'
+        : 'a business address of an organisation, with a clear reason to write (legitimate interest)',
+})
 
 export interface Brief {
   text: string
@@ -103,22 +124,27 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
         .from(s.contact)
         .where(and(eq(s.contact.id, options.contactId), eq(s.contact.projectId, project.id)))
       if (!contact) return { error: `No contact with id ${options.contactId} on ${name}. Use list_contacts.` }
-      body = contactEmailTask(
-        {
-          organization: contact.organization,
-          name: contact.name,
-          website: contact.website,
-          note: contact.note,
-          basis:
-            contact.basis === 'consent'
-              ? 'they agreed to be contacted'
-              : contact.basis === 'relation'
-                ? 'there is an existing relationship'
-                : 'a business address of an organisation, with a clear reason to write (legitimate interest)',
-        },
+      body = contactEmailTask(contactBrief(contact), language)
+      handBack = `\`save_emails\` with { "project": ${quoted}, "purpose": "contact", "contactId": "${contact.id}", "language": "${language}", "drafts": [ first, followUp1, followUp2 ] } (each { "title", "subject", "body", "ps" })`
+      break
+    }
+    case 'contact_mails': {
+      if (!project) return { error: 'contact_mails needs a project.' }
+      const contacts = (
+        await db
+          .select()
+          .from(s.contact)
+          .where(and(eq(s.contact.projectId, project.id), eq(s.contact.status, 'new')))
+          .orderBy(desc(s.contact.createdAt))
+      )
+        .filter((c) => c.email)
+        .slice(0, 10)
+      if (!contacts.length) return { error: `${name} has no new contacts with an email address. He adds them under Contacten.` }
+      body = contactBatchTask(
+        contacts.map((c) => ({ id: c.id, ...contactBrief(c) })),
         language,
       )
-      handBack = `\`save_emails\` with { "project": ${quoted}, "purpose": "contact", "contactId": "${contact.id}", "language": "${language}", "drafts": [ { "title", "subject", "body", "ps" } ] } (exactly one draft)`
+      handBack = `\`save_emails\` once per contact, with { "project": ${quoted}, "purpose": "contact", "contactId": "<the contact's id>", "language": "${language}", "drafts": [ first, followUp1, followUp2 ] }`
       break
     }
     case 'posts': {
@@ -137,6 +163,33 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
       body = opportunitiesTask(language, project?.markets ?? [])
       handBack = `\`save_opportunities\` with { "project": ${quoted}, "language": "${language}", "opportunities": [ { "name", "type", "url", "why", "howToApproach" } ] }`
       extra = 'Use your web search and web fetch tools to find and check these places; list only what you actually found.'
+      break
+    case 'seo':
+      body = seoTask(language, project?.markets ?? [], project?.siteUrl ?? null)
+      handBack = `\`save_articles\` with { "project": ${quoted}, "language": "${language}", "keywords": [ { "keyword", "intent", "difficulty", "why" } ], "articles": [ { "title", "slug", "metaDescription", "keywords", "outline", "body" } ] }`
+      extra = 'Use your web search and web fetch tools for this.'
+      break
+    case 'experiments': {
+      const past = project
+        ? (
+            await db
+              .select({ title: s.contentItem.title, body: s.contentItem.body })
+              .from(s.contentItem)
+              .where(and(eq(s.contentItem.projectId, project.id), eq(s.contentItem.kind, 'experiment')))
+              .orderBy(desc(s.contentItem.createdAt))
+              .limit(20)
+          ).map((r) => {
+            const b = r.body as { result?: string; learning?: string }
+            return { title: r.title, result: b.result === 'won' ? 'worked' : b.result === 'lost' ? 'did not work' : '', learning: b.learning ?? '' }
+          })
+        : []
+      body = experimentsTask(past)
+      handBack = `\`save_experiments\` with { "project": ${quoted}, "experiments": [ { "title", "hypothesis", "channel", "steps", "metric", "target", "impact", "confidence", "ease", "cost" } ] }`
+      break
+    }
+    case 'linkedin':
+      body = linkedinTask(name, language)
+      handBack = `\`save_linkedin\` with { "project": ${quoted}, "linkedin": { "headline", "about", "featured", "connect", "routine", "posts" } }`
       break
     case 'weekly':
       body = weeklyTask(dayOf(new Date()))

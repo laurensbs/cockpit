@@ -4,14 +4,14 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { EmailsWire, IdeasWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
+import { ArticlesWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
 import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { LANGUAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { isIntakeDone, playerStats } from '../game'
 import { resolveProject, type ProjectRef } from './projects'
-import { saveEmails, saveIdeas, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
+import { saveArticles, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
 
@@ -184,7 +184,8 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     'save_emails',
     {
       title: 'Save email drafts',
-      description: 'Stores email drafts for a project. Purpose "contact" with a contactId stores one personal mail for that contact.',
+      description:
+        'Stores email drafts for a project. Purpose "contact" with a contactId stores a personal sequence for that contact: the first mail and up to two follow-ups, in order. He approves it once; then it goes out on its own.',
       inputSchema: {
         project: PROJECT_ARG,
         purpose: z.enum([...EMAIL_PURPOSE_KEYS, 'contact']),
@@ -216,6 +217,28 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
       inputSchema: { project: PROJECT_ARG, language: z.enum(LANGUAGES), opportunities: OpportunitiesWire.shape.opportunities },
     },
     async ({ project, language, opportunities }) => withProject(project, async (p) => text(await saveOpportunities(db, ownerId, p, { language }, { opportunities }))),
+  )
+
+  server.registerTool(
+    'save_articles',
+    {
+      title: 'Save keywords and articles',
+      description: 'Stores the keyword plan and the articles (one written in full, in markdown) for a project.',
+      inputSchema: { project: PROJECT_ARG, language: z.enum(LANGUAGES), keywords: ArticlesWire.shape.keywords, articles: ArticlesWire.shape.articles },
+    },
+    async ({ project, language, keywords, articles }) => withProject(project, async (p) => text(await saveArticles(db, ownerId, p, { language }, { keywords, articles }))),
+  )
+
+  server.registerTool(
+    'save_experiments',
+    { title: 'Save growth experiments', description: 'Stores organic growth experiments with their ICE scores; he runs them from a board.', inputSchema: { project: PROJECT_ARG, experiments: ExperimentsWire.shape.experiments } },
+    async ({ project, experiments }) => withProject(project, async (p) => text(await saveExperiments(db, ownerId, p, { experiments }))),
+  )
+
+  server.registerTool(
+    'save_linkedin',
+    { title: 'Save a LinkedIn plan', description: 'Stores his LinkedIn headline, about text, people to connect with, routine and post drafts for a project.', inputSchema: { project: PROJECT_ARG, linkedin: LinkedinWire } },
+    async ({ project, linkedin }) => withProject(project, async (p) => text(await saveLinkedin(db, ownerId, p, linkedin))),
   )
 
   server.registerTool(

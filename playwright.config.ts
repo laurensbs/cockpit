@@ -36,6 +36,13 @@ export default defineConfig({
           GITHUB_FIXTURES: '1',
           // "Open in Claude Code" writes the command here instead of opening a terminal.
           COCKPIT_FAKE_TERMINAL: `${process.cwd()}/test-results/claude-launch.txt`,
+          // Mails go to a file, at any hour, without the gap between them; the tests run the outbox themselves.
+          COCKPIT_FAKE_SMTP: `${process.cwd()}/test-results/smtp.jsonl`,
+          COCKPIT_MAIL_ANYTIME: '1',
+          COCKPIT_MAIL_GAP_MS: '0',
+          COCKPIT_NO_WORKER: '1',
+          // Never pick up the GitHub CLI of the machine the tests run on.
+          COCKPIT_NO_GH: '1',
         },
       },
 })

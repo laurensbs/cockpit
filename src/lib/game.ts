@@ -13,13 +13,15 @@ export const XP_RULES = {
   metric: { xp: 10, dailyCap: 5 },
   intake: { xp: 25, dailyCap: Infinity },
   plan: { xp: 20, dailyCap: 3 },
+  // A finished growth experiment, won or lost: the learning is the point.
+  experiment: { xp: 30, dailyCap: 5 },
   // Having drafts made is not doing: it earns a little, never a lot.
   generate: { xp: 5, dailyCap: 5 },
 } as const
 export type XpKind = keyof typeof XP_RULES
 
 /** Kinds that count as "doing" for the action streak (commits have their own streak). */
-export const ACTION_KINDS: readonly XpKind[] = ['quest', 'post', 'email', 'reply', 'metric', 'intake', 'plan']
+export const ACTION_KINDS: readonly XpKind[] = ['quest', 'post', 'email', 'reply', 'metric', 'intake', 'plan', 'experiment']
 
 export const QUEST_XP = [10, 25, 50, 100] as const
 export const BOSS_XP = 250

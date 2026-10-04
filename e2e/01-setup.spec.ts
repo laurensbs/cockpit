@@ -21,9 +21,10 @@ test('only requests with the app token get in', async ({ browser, request }) => 
 test('the owner sets a name, and health says what is connected without leaking keys', async ({ browser, request }) => {
   const { context, page } = await newVisitor(browser)
   await page.goto('/settings')
-  await page.getByLabel('Hoe heet je?').fill('Laurens')
-  await page.getByRole('button', { name: 'Bewaren' }).click()
-  await expect(page.getByRole('status')).toContainText('Bewaard.')
+  const form = page.locator('form').filter({ has: page.getByLabel('Hoe heet je?') })
+  await form.getByLabel('Hoe heet je?').fill('Laurens')
+  await form.getByRole('button', { name: 'Bewaren' }).click()
+  await expect(form.getByRole('status')).toContainText('Bewaard.')
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Laurens')
 

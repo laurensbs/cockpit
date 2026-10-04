@@ -18,7 +18,9 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
   const { context, page } = await newVisitor(browser)
   await page.goto('/studio')
   await page.getByRole('navigation', { name: 'Project' }).getByRole('link', { name: 'Rondje' }).click()
-  await expect(page.getByText('Concepten van Claude voor Rondje.')).toBeVisible()
+  await expect(page.getByText('Alles voor de groei van Rondje')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Organische groei: wat nu?' })).toBeVisible()
+  await page.getByRole('link', { name: 'Concepten' }).click()
 
   // A generator button opens Claude Code with the choices made here.
   await page.getByRole('button', { name: /Schrijf mails/ }).click()

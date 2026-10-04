@@ -78,3 +78,59 @@ export const weeklyFixture = () => ({
   avoiding: 'De cijfers van vorige maand blijven liggen.',
   boss: { title: 'Organiseer de eerste groepswandeling', project: 'Rondje', why: 'Dat is het verhaal voor alle kanalen.' },
 })
+
+export const articlesFixture = () => ({
+  keywords: [
+    { keyword: 'vrijwilligerswerk met honden', intent: 'informatief', difficulty: 'laag', why: 'Studenten zoeken dit vlak voor de zomer.' },
+    { keyword: 'hond uitlaten asiel', intent: 'transactioneel', difficulty: 'middel', why: 'Mensen die al willen helpen.' },
+  ],
+  articles: [
+    {
+      title: 'Vrijwilligerswerk met honden: zo begin je in 4 stappen',
+      slug: 'Vrijwilligerswerk met honden!',
+      metaDescription: 'Zin om honden uit te laten? Zo vind je een opvang, wat je nodig hebt en hoe je eerste rondje gaat.',
+      keywords: ['vrijwilligerswerk met honden', 'hond uitlaten asiel'],
+      outline: ['Waarom opvangen hulp zoeken', 'Stap 1: kies een opvang', 'Stap 2: kennismaken'],
+      body: '# Vrijwilligerswerk met honden\n\n## Waarom opvangen hulp zoeken\n\nVeel opvangen hebben te weinig handen.\n\n## Stap 1: kies een opvang\n\nBegin dichtbij huis.',
+    },
+    { title: 'Wat je moet weten voor je eerste rondje', slug: '', metaDescription: 'Riem, route en regels.', keywords: ['eerste keer hond uitlaten'], outline: ['De riem', 'De route'], body: '' },
+  ],
+})
+
+export const experimentsFixture = () => ({
+  experiments: [
+    {
+      title: 'Flyer met QR bij de bieb van de universiteit',
+      hypothesis: 'Als studenten een QR zien op hun vaste studieplek, melden er 10 per week aan.',
+      channel: 'Offline',
+      steps: ['Maak een A5-flyer met QR', 'Vraag de bieb om toestemming', 'Hang 10 flyers op'],
+      metric: 'Aanmeldingen via de QR',
+      target: '10 per week',
+      impact: 7,
+      confidence: 6,
+      ease: 9,
+      cost: '€15',
+    },
+    {
+      title: 'Wekelijkse hond-van-de-week op Instagram',
+      hypothesis: 'Een vaste rubriek levert elke week nieuwe volgers op.',
+      channel: 'Instagram',
+      steps: ['Kies elke maandag een hond', 'Post op vrijdag 17:00'],
+      metric: 'Nieuwe volgers per week',
+      target: '+25',
+      impact: 5,
+      confidence: 7,
+      ease: 8,
+      cost: '€0',
+    },
+  ],
+})
+
+export const linkedinFixture = () => ({
+  headline: 'Bouwer van Rondje: jongeren en asielhonden samen op pad',
+  about: 'Ik bouw Rondje, een gratis platform dat jonge vrijwilligers koppelt aan honden in opvangen.',
+  featured: ['De site van Rondje', 'Het verhaal achter Rondje'],
+  connect: [{ who: 'Coördinatoren van dierenopvangen', why: 'Zij beslissen over vrijwilligers.', message: 'Hoi! Ik bouw Rondje: gratis wandelingen voor jullie honden door jonge vrijwilligers. Mag ik je toevoegen?' }],
+  routine: ['Maandag: één post', 'Dagelijks: drie reacties bij opvangen en vrijwilligersorganisaties'],
+  posts: [{ hook: 'Elke hond in een opvang wacht op één ding.', text: 'Elke hond in een opvang wacht op één ding: een rondje. Daarom bouw ik Rondje.', hashtags: ['#vrijwilligerswerk', 'dierenwelzijn', '#Rondje'] }],
+})

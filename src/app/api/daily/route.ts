@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/db'
+import { maybeAutopilot } from '@/server/autopilot'
 import { dailyRound } from '@/server/game'
 import { syncAll } from '@/server/github/sync'
 import { bearerOwner, getOwner } from '@/server/session'
@@ -18,5 +19,6 @@ export async function POST(request: Request) {
   const github = await syncAll(db, owner.userId, 120_000)
   const sites = await checkSites(db, owner.userId)
   await dailyRound(db, owner.userId)
-  return NextResponse.json({ ok: true, github, sites })
+  const autopilot = await maybeAutopilot(db, owner.userId)
+  return NextResponse.json({ ok: true, github, sites, autopilot })
 }

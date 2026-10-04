@@ -115,3 +115,23 @@ export async function connectClaudeCode(token: string): Promise<{ ok: boolean; m
     ? { ok: true, message: 'Claude Code kent de cockpit nu. Een nieuwe Claude Code-sessie ziet de tools meteen.' }
     : { ok: false, message: r.out.slice(0, 300) || 'Koppelen lukte niet.' }
 }
+
+/**
+ * Runs Claude Code without a window (`claude -p`), on his own account, with only the cockpit's tools
+ * allowed. Used by the autopilot; the result comes back through MCP like any other task.
+ */
+export async function runHeadless(prompt: string): Promise<{ started: boolean; command: string }> {
+  const command = `claude -p "${cleanPrompt(prompt)}" ${CLAUDE_ARGS}`
+  const fake = fakeTerminal()
+  if (fake) {
+    record(fake, { command, headless: true })
+    return { started: true, command }
+  }
+  if (!(await claudeVersion())) return { started: false, command }
+  try {
+    spawn(command, { shell: true, detached: true, stdio: 'ignore', windowsHide: true, cwd: homedir() }).unref()
+    return { started: true, command }
+  } catch {
+    return { started: false, command }
+  }
+}

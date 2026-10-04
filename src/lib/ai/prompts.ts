@@ -169,14 +169,28 @@ export interface ContactBrief {
   basis: string
 }
 
-export function contactEmailTask(contact: ContactBrief, language: string): string {
-  return `Task: one personal email to this contact, in ${lang(language)}, as JSON with drafts holding exactly one draft (title, subject, body, ps).
-<contact>
+const contactBlock = (contact: ContactBrief & { id?: string }) => `<contact${contact.id ? ` id="${neutralize(contact.id)}"` : ''}>
 Organisation: ${neutralize(contact.organization)}
 ${contact.name ? `Person: ${neutralize(contact.name)}\n` : ''}${contact.website ? `Website: ${neutralize(contact.website)}\n` : ''}${contact.note ? `His notes: ${neutralize(contact.note)}\n` : ''}Why mailing them is allowed: ${contact.basis}
-</contact>
+</contact>`
+
+const SEQUENCE_RULES = `- drafts: exactly three, in this order. 1: the first email. 2: a short follow-up for 4 days later if there is no answer (2–4 sentences, refers to the first mail, adds one small new reason). 3: a last, friendly follow-up a week after that, which closes the loop without pressure. Each with title, subject, body and ps (empty when not needed); a follow-up may keep the subject empty to reply in the same thread.
 - Make it about them: why this project fits their organisation, and one small, concrete ask.
-- Subject under 60 characters, body under 140 words.
+- Subject under 60 characters; the first body under 140 words, follow-ups under 70.
+- These mails may go out automatically once he approves them, so they must stand on their own: no placeholders in square brackets except [naam] for his signature.`
+
+export function contactEmailTask(contact: ContactBrief, language: string): string {
+  return `Task: a personal email to this contact with two follow-ups, in ${lang(language)}, as JSON.
+${contactBlock(contact)}
+${SEQUENCE_RULES}
+${DRAFT_RULES}`
+}
+
+/** Personal mails for several contacts at once; each is saved on its own. */
+export function contactBatchTask(contacts: (ContactBrief & { id: string })[], language: string): string {
+  return `Task: for each contact below, a personal email with two follow-ups, in ${lang(language)}. Save each contact's three drafts with its own save call before you start the next.
+${contacts.map(contactBlock).join('\n')}
+${SEQUENCE_RULES}
 ${DRAFT_RULES}`
 }
 
@@ -261,4 +275,37 @@ export function weeklyTask(today: string): string {
 - wins: up to three things that went well recently (only from the information given; empty when there is nothing).
 - avoiding: one honest, kind sentence about what he seems to be putting off, based on skipped quests (empty when nothing stands out).
 - boss: the one bigger task for this week, with title (starts with a verb), project (exact name) and why.`
+}
+
+// ---------- organic growth ----------
+
+export function seoTask(language: string, markets: string[], siteUrl: string | null): string {
+  return `Task: organic search for this project, in ${lang(language)}${markets.length ? `, for these markets: ${markets.join(', ')}` : ''}.${siteUrl ? ` The site is ${neutralize(siteUrl)}; look at it first.` : ''}
+Use web search (and web fetch) to see what his audience actually searches for and what already ranks. Do not invent search volumes; describe what you saw.
+- keywords: 6–10 topics or search phrases, each with intent (informational, comparing, wanting to act), difficulty ("low", "medium" or "high", your estimate from what ranks now) and why it fits.
+- articles: three article ideas, best first. Each with title, slug, metaDescription (under 155 characters), keywords and outline (the H2s). Write the FIRST one in full in body: 800–1200 words of markdown, practical and specific, with H2s, no invented facts, numbers or quotes, and one natural call to action for the project at the end. Leave body empty for the other two.
+- If you are working in the project's code folder and the site has a blog or content folder, you may offer to add the full article there as a file; ask him first and never commit or push.`
+}
+
+export interface PastExperiment {
+  title: string
+  result: string
+  learning: string
+}
+
+export function experimentsTask(past: PastExperiment[]): string {
+  return `Task: five organic growth experiments for this project, as JSON. Organic first: content, communities, partnerships, referrals, SEO, PR, product loops; paid ads only within the budget.
+- experiments: each with title (starts with a verb), hypothesis ("If we …, then …, because …"), channel, steps (3–6, concrete, the first one doable today), metric, target (a number within two weeks, marked as an assumption), impact, confidence and ease (each 1–10) and cost (in euros, as text).
+- Each must be runnable by him alone within two weeks.${past.length ? `\n<feedback>\nEarlier experiments and what came out (learn from them, do not repeat them):\n${past.map((p) => `- ${neutralize(p.title)}: ${p.result || 'still running'}${p.learning ? ` (${neutralize(p.learning)})` : ''}`).join('\n')}\n</feedback>` : ''}`
+}
+
+export function linkedinTask(name: string, language: string): string {
+  return `Task: LinkedIn for the founder of ${name}, in ${lang(language)}, as JSON. He posts himself; this is his plan and his words.
+- headline: his profile headline (under 220 characters): what he builds and for whom.
+- about: his About section in the first person (under 2000 characters), concrete, ending with what kind of contact he welcomes.
+- featured: 2–4 things to pin on his profile.
+- connect: 3–6 kinds of people to connect with for this project (roles or types of organisations, never named private persons), each with why and a connection note under 300 characters.
+- routine: a weekly routine of small steps (posting, commenting, messages) that fits a busy founder.
+- posts: five post drafts, each with a hook (the first line), the full text (under 1300 characters, short paragraphs, no engagement bait) and 3 hashtags.
+- Never invent results, numbers or testimonials; put what he must fill in in [square brackets].`
 }
