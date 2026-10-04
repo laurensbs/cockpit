@@ -79,6 +79,17 @@ describe('project health', () => {
     const h = projectHealth(health({ hasRepos: false, actionDays: set('2026-10-01', '2026-10-02', '2026-10-03') }))
     expect(h.parts.activity).toBe(15)
   })
+
+  it('with a growth model, counts the outcome for half and puts its tip first', () => {
+    const busy = health({ planDay: '2026-09-20', questsDone: 4 })
+    const effort = projectHealth(busy).score
+    const behind = projectHealth(busy, { status: 'far_behind', tip: 'Achter op schema: nodig +€130/week' })
+    expect(behind.score).toBe(Math.round((effort + 25) / 2))
+    expect(behind.parts.outcome).toBe(25)
+    expect(behind.tips[0]).toBe('Achter op schema: nodig +€130/week')
+    expect(projectHealth(busy, { status: 'ahead' }).score).toBe(Math.round((effort + 100) / 2))
+    expect(projectHealth(busy, null)).toEqual(projectHealth(busy))
+  })
 })
 
 describe('badges', () => {

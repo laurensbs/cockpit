@@ -3,6 +3,9 @@ import { eq } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
+import { dayOf } from '@/lib/dates'
+import { normalizeModel } from '@/lib/growth-model'
+import { normalizePoints } from '@/lib/metrics'
 import {
   type ArticlesWire,
   type EmailsWire,
@@ -25,6 +28,7 @@ import {
   type ProfileWire,
   type WeeklyWire,
 } from '@/lib/ai/schemas'
+import { rollupMonths, upsertPoints } from '../points'
 import { award } from '../xp'
 
 // What Claude Code hands back goes through the same normalizers as before: clamped, trimmed, safe
@@ -197,4 +201,32 @@ export async function saveLinkedin(db: Db, ownerId: string, project: { id: strin
   const plan = normalizeLinkedin(wire)
   await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: project.id, kind: 'linkedin', content: plan, runId: SOURCE })
   return `Opgeslagen: LinkedIn voor ${project.name}: een kop, een about-tekst, ${plan.connect.length} soorten connecties en ${plan.posts.length} posts. Hij ziet het onder Marketingbrein en post zelf, met één klik.`
+}
+
+/** A growth model from Claude: kept as a proposal; it only counts once he accepts it under Cijfers. */
+export async function saveModelProposal(db: Db, ownerId: string, project: { id: string; name: string }, input: unknown): Promise<{ ok: boolean; text: string }> {
+  const result = normalizeModel(input, dayOf(new Date()))
+  if ('error' in result) return { ok: false, text: result.error }
+  const m = result.model
+  await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: project.id, kind: 'model', content: m, runId: SOURCE })
+  return {
+    ok: true,
+    text: `Voorstel opgeslagen voor ${project.name}: ${m.northStar.key} naar ${m.northStar.target} vóór ${m.northStar.deadline}, met de trechter ${m.funnel.map((f) => f.key).join(' → ')}. Hij neemt het over (of past het aan) onder Cijfers; pas dan telt het.`,
+  }
+}
+
+/** Numbers Claude was given or read himself, with where they came from; they count as Claude's for those days. */
+export async function saveClaudeMetrics(db: Db, ownerId: string, project: { id: string; name: string }, points: { key: string; value: number; day?: string; note: string }[]): Promise<{ ok: boolean; text: string }> {
+  const today = dayOf(new Date())
+  const { ok, rejected } = normalizePoints(
+    points.map((p) => ({ key: p.key, value: p.value, day: p.day ?? today, note: p.note.trim().slice(0, 200) })),
+    today,
+  )
+  if (!ok.length) return { ok: false, text: `Niets opgeslagen: ${rejected.map((r) => `${r.point.key} op ${r.point.day}: ${r.why}`).join('; ')}.` }
+  await upsertPoints(db, ownerId, project.id, 'claude', ok)
+  await rollupMonths(db, ownerId, project.id, [...new Set(ok.map((p) => p.key))])
+  return {
+    ok: true,
+    text: `${ok.length} cijfer${ok.length === 1 ? '' : 's'} opgeslagen voor ${project.name}.${rejected.length ? ` Overgeslagen: ${rejected.map((r) => `${r.point.key} op ${r.point.day} (${r.why})`).join('; ')}.` : ''}`,
+  }
 }

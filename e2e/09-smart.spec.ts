@@ -15,7 +15,7 @@ test('Vandaag: the next step per project, and a free question for Claude through
   const { context, page } = await newVisitor(browser)
   await page.goto('/')
   const next = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Nu doen' }) })
-  await expect(next.getByRole('link').first()).toBeVisible()
+  await expect(next.locator('.project-chip').first()).toBeVisible()
   await shot(page, '20-today-smart')
 
   // He asks about one project; the question travels in the ticket, never in the terminal command.

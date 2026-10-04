@@ -18,7 +18,9 @@ import {
   type Streak,
 } from '@/lib/game'
 import { ACTIVE_STAGES, isStage } from '@/lib/options'
+import type { PaceStatus } from '@/lib/pace'
 import { ruleQuests, type RuleProject } from '@/lib/quests'
+import { type OutcomeState, paceTip } from './outcome-state'
 import { award } from './xp'
 
 export const isIntakeDone = (p: { oneLiner: string; what: string; audience: string; goal: string }) =>
@@ -72,6 +74,12 @@ export async function dailyRound(db: Db, ownerId: string, now = new Date()): Pro
     .select({ projectId: s.metric.projectId })
     .from(s.metric)
     .where(and(eq(s.metric.ownerId, ownerId), eq(s.metric.month, lastMonth)))
+  const connectors = await db
+    .select({ id: s.connector.id, projectId: s.connector.projectId, kind: s.connector.kind, lastError: s.connector.lastError, lastOkAt: s.connector.lastOkAt, createdAt: s.connector.createdAt })
+    .from(s.connector)
+    .where(and(eq(s.connector.ownerId, ownerId), eq(s.connector.enabled, true)))
+  // A source counts as failing when it has delivered nothing for three days (or never, three days after it was added).
+  const threeDaysAgo = new Date(now.getTime() - 3 * 86_400_000)
 
   const ruleProjects: RuleProject[] = []
   for (const p of projects) {
@@ -101,6 +109,11 @@ export async function dailyRound(db: Db, ownerId: string, now = new Date()): Pro
       quietDays,
       hasMetricsLastMonth: metricRows.some((m) => m.projectId === p.id),
       syncError: own.some((r) => r.syncError),
+      stage: p.stage,
+      hasModel: Boolean(p.growthModel),
+      failingSources: connectors
+        .filter((c) => c.projectId === p.id && c.lastError && (c.lastOkAt ?? c.createdAt) < threeDaysAgo)
+        .map((c) => ({ id: c.id, label: c.kind.charAt(0).toUpperCase() + c.kind.slice(1), error: c.lastError ?? '' })),
     })
   }
   const candidates = ruleQuests(ruleProjects, today, true)
@@ -184,10 +197,12 @@ export interface ProjectPulse {
   health: Health
   trend: Trend
   spark: number[]
+  /** Pace towards the growth model's target, when there is one. */
+  pace: PaceStatus | null
 }
 
 /** Health and momentum for every active project, worst first: where attention is needed. */
-export async function projectPulses(db: Db, ownerId: string, now = new Date()): Promise<ProjectPulse[]> {
+export async function projectPulses(db: Db, ownerId: string, now = new Date(), outcomes?: Map<string, OutcomeState>): Promise<ProjectPulse[]> {
   const today = dayOf(now)
   const from = addDays(today, -60)
   const [projects, repos, events, plans, quests] = await Promise.all([
@@ -227,6 +242,7 @@ export async function projectPulses(db: Db, ownerId: string, now = new Date()): 
       const recent = quests.filter((q) => q.projectId === p.id)
       const questsDone = recent.filter((q) => q.status === 'done' && q.doneAt && dayOf(q.doneAt) >= twoWeeksAgo).length
       const questsMissed = recent.filter((q) => (q.status === 'open' && q.dueOn != null && q.dueOn < today && q.dueOn >= twoWeeksAgo) || (q.status === 'skipped' && q.doneAt && dayOf(q.doneAt) >= twoWeeksAgo)).length
+      const outcome = outcomes?.get(p.id)
       const health = projectHealth({
         today,
         hasRepos: own.length > 0,
@@ -237,14 +253,14 @@ export async function projectPulses(db: Db, ownerId: string, now = new Date()): 
         questsDone,
         questsMissed,
         intakeDone: isIntakeDone(p),
-      })
+      }, outcome?.model && outcome.pace ? { status: outcome.pace.status, tip: paceTip(outcome.model, outcome.pace) } : null)
       // Momentum: commits and actions of the last 7 days against the 7 before.
       const daily = series(commitDays, today, 14).map((c, i) => c + (actionDays.has(addDays(today, i - 13)) ? 1 : 0))
       const trend = momentum(
         daily.slice(7).reduce((a, b) => a + b, 0),
         daily.slice(0, 7).reduce((a, b) => a + b, 0),
       )
-      return { id: p.id, name: p.name, color: p.color ?? '#8a90b0', stage: p.stage, health, trend, spark: daily }
+      return { id: p.id, name: p.name, color: p.color ?? '#8a90b0', stage: p.stage, health, trend, spark: daily, pace: outcome?.pace?.status ?? null }
     })
     .sort((a, b) => a.health.score - b.health.score)
 }

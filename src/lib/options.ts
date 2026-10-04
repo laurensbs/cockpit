@@ -35,26 +35,31 @@ export const MARKETS = ['NL', 'BE', 'ES', 'DE', 'FR', 'UK', 'US', 'Online'] as c
 
 export const COMPANY_COLORS = ['#8b7bff', '#22c55e', '#f97316', '#06b6d4', '#ec4899', '#eab308', '#ef4444', '#64748b'] as const
 
-export const METRIC_KEYS = ['revenue', 'costs', 'users', 'leads', 'followers'] as const
-export type MetricKey = (typeof METRIC_KEYS)[number]
-export const METRIC_LABELS: Record<MetricKey, string> = {
-  revenue: 'Omzet (€)',
-  costs: 'Kosten (€)',
-  users: 'Gebruikers',
-  leads: 'Leads',
-  followers: 'Volgers',
-}
-export const isMetricKey = (v: unknown): v is MetricKey => typeof v === 'string' && (METRIC_KEYS as readonly string[]).includes(v)
+// The numbers live in ./metrics (the catalog: label, unit, how each adds up); these names stay for the forms.
+export { isMetricKey, METRIC_KEYS, type MetricKey } from './metrics'
+import { METRIC_DEFS, type MetricKey as Key } from './metrics'
+export const METRIC_LABELS = Object.fromEntries(Object.entries(METRIC_DEFS).map(([k, d]) => [k, d.label])) as Record<Key, string>
 
-export const CONTACT_STATUSES = ['new', 'drafted', 'sent', 'replied', 'no'] as const
+export const CONTACT_STATUSES = ['new', 'drafted', 'sent', 'replied', 'meeting', 'offer', 'won', 'lost', 'no'] as const
 export type ContactStatus = (typeof CONTACT_STATUSES)[number]
 export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
   new: 'Nieuw',
   drafted: 'Concept klaar',
   sent: 'Gemaild',
   replied: 'Antwoord!',
+  meeting: 'Gesprek',
+  offer: 'Offerte',
+  won: 'Gewonnen!',
+  lost: 'Verloren',
   no: 'Geen interesse',
 }
+/** They answered (and maybe went further): worth the reply XP, and counted as answers. */
+export const ANSWERED_STATUSES: readonly string[] = ['replied', 'meeting', 'offer', 'won', 'lost']
+/** Nothing more goes out to them on its own: they answered, or said no. */
+export const STOP_STATUSES: readonly string[] = [...ANSWERED_STATUSES, 'no']
+export const isStopped = (status: string | null | undefined) => STOP_STATUSES.includes(status ?? '')
+/** The pipeline stages that count in the funnel, and the number each one feeds. */
+export const PIPELINE_METRICS: Record<string, 'leads' | 'meetings' | 'offers' | 'deals_won'> = { replied: 'leads', meeting: 'meetings', offer: 'offers', won: 'deals_won' }
 export const CONTACT_BASIS_LABELS: Record<string, string> = {
   business: 'Zakelijk adres (gerechtvaardigd belang)',
   relation: 'Bestaande relatie',

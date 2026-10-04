@@ -1612,3 +1612,112 @@ a.chip:hover {
   opacity: 0.55;
   cursor: default;
 }
+
+/* ---------- growth: target, funnel, proposal, deal ---------- */
+
+.growth-card {
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+}
+.growth-card h2 svg {
+  color: var(--accent);
+}
+.growth-now {
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.growth-bar {
+  position: relative;
+  height: 10px;
+}
+.growth-line {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--ink);
+  opacity: 0.55;
+}
+.funnel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+}
+.funnel > li {
+  flex: 1 1 0;
+  min-width: 92px;
+  display: flex;
+  align-items: center;
+}
+.funnel-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.7rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  text-align: center;
+}
+.funnel-stage strong {
+  font-size: 1.15rem;
+}
+.funnel-step {
+  flex: none;
+  padding: 0 0.35rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.funnel-step::after {
+  content: ' →';
+}
+.funnel > li.leak .funnel-stage {
+  border-color: var(--flame);
+  background: var(--flame-soft);
+}
+.funnel > li.leak .funnel-step {
+  color: var(--flame);
+  font-weight: 700;
+}
+.funnel-verdict {
+  color: var(--ink);
+}
+.proposal {
+  border-color: color-mix(in srgb, var(--xp) 45%, var(--line));
+  background:
+    radial-gradient(120% 160% at 100% 0%, color-mix(in srgb, var(--xp) 10%, transparent), transparent 60%),
+    var(--surface);
+}
+.proposal-funnel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0.35rem;
+}
+.funnel-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.funnel-field .select {
+  max-width: 220px;
+}
+.deal summary {
+  cursor: pointer;
+  list-style: none;
+}
+.deal summary::-webkit-details-marker {
+  display: none;
+}
+.deal-late {
+  color: var(--bad);
+  font-weight: 600;
+}

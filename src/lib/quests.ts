@@ -32,6 +32,10 @@ export interface RuleProject {
   quietDays: number | null
   hasMetricsLastMonth: boolean
   syncError: boolean
+  /** For the growth rules: the stage, whether a growth model is set, and sources that keep failing. */
+  stage?: string
+  hasModel?: boolean
+  failingSources?: { id: string; label: string; error: string }[]
 }
 
 export interface QuestCandidate {
@@ -82,6 +86,26 @@ export function ruleQuests(projects: readonly RuleProject[], today: string, aiAv
         detail: 'Pak het op met één kleine stap, of zet het bewust op pauze. Allebei is goed, twijfelen niet.',
         xp: 25,
         dueOn: addDays(today, 3),
+      })
+    }
+    if (p.intakeDone && p.hasModel === false && (p.stage === 'growth' || p.stage === 'launch')) {
+      out.push({
+        sourceKey: `model:${p.id}`,
+        projectId: p.id,
+        title: `Zet een groeidoel voor ${p.name}`,
+        detail: 'Eén doelcijfer met een deadline en de trechter ernaartoe. Claude stelt het voor onder Cijfers; jij neemt het over.',
+        xp: 25,
+        dueOn: addDays(today, 3),
+      })
+    }
+    for (const source of p.failingSources ?? []) {
+      out.push({
+        sourceKey: `source:${source.id}:${weekStart(today)}`,
+        projectId: p.id,
+        title: `${source.label} van ${p.name} levert geen cijfers`,
+        detail: `${source.error} Kijk de bron na onder Cijfers.`,
+        xp: 10,
+        dueOn: null,
       })
     }
     if (earlyInMonth && !p.hasMetricsLastMonth) {

@@ -4,6 +4,7 @@ import { Icon } from '@/components/Icon'
 import { QuestItem } from '@/components/QuestItem'
 import { Sparkline } from '@/components/Sparkline'
 import { AskClaude } from '@/components/AskClaude'
+import { PaceChip } from '@/components/GrowthCard'
 import { NextSteps, SetupChecklist, type NextStepGroup } from '@/components/NextSteps'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { getDb } from '@/db'
@@ -12,6 +13,7 @@ import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
 import { claudeBlocked } from '@/server/claude-status'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
+import { outcomeHref, outcomeStates } from '@/server/outcome-state'
 import { questViews } from '@/server/quest-views'
 import { requireOwner } from '@/server/session'
 import { setupSteps } from '@/server/setup'
@@ -22,26 +24,37 @@ export default async function TodayPage() {
   const owner = await requireOwner()
   const db = await getDb()
   await dailyRound(db, owner.userId)
+  const outcomes = await outcomeStates(db, owner.userId)
   const [stats, quests, pulses, growth, blocked] = await Promise.all([
     playerStats(db, owner.userId),
     questViews(db, owner.userId, { status: 'open', limit: 50 }),
-    projectPulses(db, owner.userId),
+    projectPulses(db, owner.userId, new Date(), outcomes),
     growthStates(db, owner.userId),
     claudeBlocked(),
   ])
   const setup = await setupSteps(db, owner.userId, pulses.length)
   const setupLeft = setup.some((step) => !step.done && !step.optional)
-  // One step per project, the least healthy project first: that is where attention pays off most.
-  // The same step for several projects becomes one row.
-  const groups: NextStepGroup[] = []
+  // One step per project, the least healthy project first: that is where attention pays off most. What
+  // the numbers say (the leak, a missing model or missing numbers) comes before the usual marketing
+  // steps. The same step for several projects becomes one row.
+  const groups: (NextStepGroup & { fromNumbers: boolean })[] = []
   for (const p of pulses) {
+    const fromNumbers = outcomes.get(p.id)?.step
     const [first] = nextActions(growth.get(p.id) ?? EMPTY_GROWTH)
-    if (!first) continue
-    const item = { projectId: p.id, projectName: p.name, color: p.color, href: actionHref(p.id, first.tab), task: ACTION_TASKS[first.key] ?? null }
-    const same = groups.find((g) => g.key === first.key && g.title === first.title)
+    const step = fromNumbers
+      ? { key: fromNumbers.key, title: fromNumbers.title, why: fromNumbers.why, href: outcomeHref(p.id, fromNumbers.place), task: fromNumbers.task, options: fromNumbers.options }
+      : first
+        ? { key: first.key, title: first.title, why: first.why, href: actionHref(p.id, first.tab), task: ACTION_TASKS[first.key] ?? null, options: undefined }
+        : null
+    if (!step) continue
+    const item = { projectId: p.id, projectName: p.name, color: p.color, href: step.href, task: step.task, options: step.options }
+    // The same step with the same reason groups; a step with this project's numbers in its reason stands alone.
+    const same = groups.find((g) => g.title === step.title && g.why === step.why)
     if (same) same.projects.push(item)
-    else groups.push({ key: first.key, title: first.title, why: first.why, projects: [item] })
+    else groups.push({ key: `${step.key}-${groups.length}`, title: step.title, why: step.why, projects: [item], fromNumbers: Boolean(fromNumbers) })
   }
+  // What the numbers ask for comes first; the order within stays least healthy first.
+  const ordered = [...groups.filter((g) => g.fromNumbers), ...groups.filter((g) => !g.fromNumbers)]
   const now = quests.filter((q) => q.bucket === 'overdue' || q.bucket === 'today' || q.kind === 'boss').slice(0, 5)
   const shown = now.length >= 3 ? now : [...now, ...quests.filter((q) => !now.includes(q))].slice(0, 3)
   const { level, actionStreak, buildStreak } = stats
@@ -86,7 +99,7 @@ export default async function TodayPage() {
 
       <AskClaude projects={pulses.map((p) => ({ id: p.id, name: p.name }))} disabledReason={blocked} />
 
-      {pulses.length ? <NextSteps groups={groups.slice(0, 5)} disabledReason={blocked} /> : null}
+      {pulses.length ? <NextSteps groups={ordered.slice(0, 5).map((g) => ({ key: g.key, title: g.title, why: g.why, projects: g.projects }))} disabledReason={blocked} /> : null}
 
       {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}
 
@@ -133,6 +146,7 @@ export default async function TodayPage() {
                       <span title={TREND[p.trend].label} style={{ color: TREND[p.trend].color, fontSize: '0.7rem' }}>
                         {TREND[p.trend].icon}
                       </span>
+                      {p.pace ? <PaceChip status={p.pace} /> : null}
                     </span>
                     <span className="tiny muted">{p.health.tips[0] ?? 'Loopt goed'}</span>
                   </span>

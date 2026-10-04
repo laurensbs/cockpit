@@ -3,10 +3,10 @@ import { and, eq, inArray, ne } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayOf, monthStart, weekStart } from '@/lib/dates'
+import { isStopped } from '@/lib/options'
 import type { GrowthState } from '@/lib/growth'
 import { mailStatus } from './outbox-views'
 
-const stopped = (status: string | undefined) => status === 'replied' || status === 'no'
 
 /**
  * Where each project stands on organic growth, for the "what now?" lists: the marketing hub shows one
@@ -61,7 +61,7 @@ export async function growthStates(db: Db, ownerId: string, now = new Date()): P
       readyDrafts: own.filter((e) => {
         if (e.kind !== 'email' || e.status !== 'draft' || !e.contactId || inQueue.has(e.id)) return false
         const contact = contactById.get(e.contactId)
-        return Boolean(contact?.email) && !stopped(contact?.status)
+        return Boolean(contact?.email) && !isStopped(contact?.status)
       }).length,
       postsDoneThisWeek: posts.filter((p) => p.status === 'done' && p.doneAt && dayOf(p.doneAt) >= week).length,
       postsPlannedThisWeek: posts.filter((p) => p.status !== 'done' && p.plannedFor && p.plannedFor >= today && p.plannedFor <= addDays(week, 6)).length,

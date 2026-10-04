@@ -7,11 +7,13 @@ import * as s from '@/db/schema'
 import { ArticlesWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
 import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
+import { METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { isIntakeDone, playerStats } from '../game'
+import { outcomeStates, paceLine } from '../outcome-state'
 import { resolveProject, type ProjectRef } from './projects'
-import { saveArticles, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
+import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
 
@@ -58,6 +60,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         .where(eq(s.project.ownerId, ownerId))
         .orderBy(asc(s.project.sortOrder), asc(s.project.name))
       const briefs = await db.select({ projectId: s.brief.projectId, kind: s.brief.kind }).from(s.brief).where(eq(s.brief.ownerId, ownerId))
+      const outcomes = await outcomeStates(db, ownerId)
       const repos = await db.select({ projectId: s.repo.projectId, fullName: s.repo.fullName }).from(s.repo).where(eq(s.repo.ownerId, ownerId))
       const quests = await db
         .select({ projectId: s.quest.projectId })
@@ -76,6 +79,11 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         localFolder: p.localPath,
         hasProfile: briefs.some((b) => b.projectId === p.id && b.kind === 'profile'),
         hasPlan: briefs.some((b) => b.projectId === p.id && b.kind === 'plan'),
+        hasModel: Boolean(outcomes.get(p.id)?.model),
+        pace: (() => {
+          const o = outcomes.get(p.id)
+          return o?.model && o.pace ? paceLine(o.model, o.pace) : null
+        })(),
         openQuests: quests.filter((q) => q.projectId === p.id).length,
       }))
       return text(out.length ? JSON.stringify(out, null, 2) : 'No projects yet. He adds them in the cockpit under Projecten.')
@@ -239,6 +247,59 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     'save_linkedin',
     { title: 'Save a LinkedIn plan', description: 'Stores his LinkedIn headline, about text, people to connect with, routine and post drafts for a project.', inputSchema: { project: PROJECT_ARG, linkedin: LinkedinWire } },
     async ({ project, linkedin }) => withProject(project, async (p) => text(await saveLinkedin(db, ownerId, p, linkedin))),
+  )
+
+  server.registerTool(
+    'save_metrics',
+    {
+      title: 'Record numbers',
+      description:
+        'Records numbers for a project (e.g. followers he told you, members on a public page you read). Only numbers he gave you or that you read yourself from a source you name in the note; never estimates or guesses. A day defaults to today; no future days. Keys: ' +
+        METRIC_KEYS.join(', ') +
+        '.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        points: z
+          .array(
+            z.object({
+              key: z.enum(METRIC_KEYS),
+              value: z.number().describe('Euros for money keys; a count otherwise. A level (mrr, users, followers…) is the value on that day; a flow (leads, visitors, revenue…) is the total of that day.'),
+              day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('YYYY-MM-DD; default today'),
+              note: z.string().trim().min(3).max(200).describe('Where the number comes from: "he told me", or the page you read'),
+            }),
+          )
+          .min(1)
+          .max(60),
+      },
+    },
+    async ({ project, points }) =>
+      withProject(project, async (p) => {
+        const result = await saveClaudeMetrics(db, ownerId, p, points)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
+  )
+
+  server.registerTool(
+    'save_model',
+    {
+      title: 'Propose a growth model',
+      description:
+        'Stores a growth model as a proposal: one target number with a deadline and the funnel of 2–5 stages that leads to it. He accepts or changes it in the cockpit; you never set his targets yourself. Use get_task with task "model" first for the brief.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        model: z.object({
+          northStar: z.object({ key: z.enum(METRIC_KEYS), target: z.number(), deadline: z.string().describe('YYYY-MM-DD, 14–365 days from today') }),
+          funnel: z.array(z.object({ key: z.enum(METRIC_KEYS), label: z.string().max(40).optional(), rate: z.number().nullable().optional().describe('Expected conversion from the stage before, 0–1; null for the first') })).min(2).max(5),
+          valuePerDeal: z.number().nullable().optional().describe('Euros per deal or customer (per month for a subscription)'),
+          note: z.string().max(400).optional().describe('Why this target, and the assumptions'),
+        }),
+      },
+    },
+    async ({ project, model }) =>
+      withProject(project, async (p) => {
+        const result = await saveModelProposal(db, ownerId, p, model)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
   )
 
   server.registerTool(

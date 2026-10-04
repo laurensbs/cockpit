@@ -3,13 +3,15 @@ import { notFound } from 'next/navigation'
 import { ClaudeButton } from '@/components/ClaudeButton'
 import { ContactForm } from '@/components/ContactForm'
 import { ContactStatus } from '@/components/ContactStatus'
+import { DealFields } from '@/components/DealFields'
 import { EmailDraftCard } from '@/components/EmailDraftCard'
 import { MailBanner } from '@/components/Outbox'
 import { ProjectHeader } from '@/components/ProjectHeader'
 import { ScheduleAllButton } from '@/components/ScheduleButton'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
-import { CONTACT_BASIS_LABELS } from '@/lib/options'
+import { dayOf } from '@/lib/dates'
+import { ANSWERED_STATUSES, CONTACT_BASIS_LABELS, isStopped } from '@/lib/options'
 import { hostOf } from '@/lib/urls'
 import { loadJobContext } from '@/server/ai/context'
 import { claudeBlocked } from '@/server/claude-status'
@@ -25,6 +27,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
   const ctx = await loadJobContext(db, owner.userId, id)
   if (!ctx) notFound()
   const contacts = await db.select().from(s.contact).where(eq(s.contact.projectId, id)).orderBy(desc(s.contact.createdAt))
+  const today = dayOf(new Date())
   const drafts = contacts.length
     ? await db
         .select()
@@ -43,7 +46,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
   const [blocked, status, rows] = await Promise.all([claudeBlocked(), mailStatus(db, owner.userId), outboxRows(db, owner.userId, id)])
   const queue = queueByItem(rows)
   const language = ctx.project.languages[0] ?? 'nl'
-  const stopped = (status: string) => status === 'replied' || status === 'no'
+  const stopped = isStopped
   const ready = drafts.filter((d) => {
     const c = contacts.find((x) => x.id === d.contactId)
     return d.status === 'draft' && c?.email && !stopped(c.status) && !queue.get(d.id)
@@ -89,6 +92,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
                   <ContactStatus contactId={c.id} status={c.status} />
                 </div>
                 {c.note ? <p className="small muted">{c.note}</p> : null}
+                {ANSWERED_STATUSES.includes(c.status) ? <DealFields contactId={c.id} value={c.dealValue} period={c.dealPeriod} nextStep={c.nextStep} nextStepOn={c.nextStepOn} today={today} /> : null}
                 <ClaudeButton task="contact_mail" projectId={id} label={mine.length ? 'Schrijf een nieuwe mail' : 'Schrijf een persoonlijke mail'} disabledReason={blocked} options={{ contactId: c.id, language }} variant="secondary" />
                 {mine.map((d) => {
                   const body = d.body as { subject?: string; body?: string; ps?: string; followups?: { subject?: string; body?: string }[] }

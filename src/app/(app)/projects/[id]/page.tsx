@@ -2,6 +2,8 @@ import { and, desc, eq } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AskClaude } from '@/components/AskClaude'
+import { FunnelStrip } from '@/components/FunnelStrip'
+import { GrowthCard } from '@/components/GrowthCard'
 import { Heatmap } from '@/components/Heatmap'
 import { Icon } from '@/components/Icon'
 import { MetricForm } from '@/components/MetricForm'
@@ -20,6 +22,7 @@ import { ago, formatEuro, formatNumber } from '@/lib/time'
 import { hostOf } from '@/lib/urls'
 import { claudeBlocked } from '@/server/claude-status'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
+import { outcomeHref, outcomeStates } from '@/server/outcome-state'
 import { metricsSince } from '@/server/queries'
 import { requireOwner } from '@/server/session'
 
@@ -64,10 +67,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 8)
   const intakeDone = Boolean(project.oneLiner && project.what && project.audience && project.goal)
-  const [growth, blocked] = await Promise.all([growthStates(db, owner.userId, now), claudeBlocked()])
-  const steps = nextActions(growth.get(project.id) ?? EMPTY_GROWTH)
-    .slice(0, 3)
-    .map((a) => ({ key: a.key, title: a.title, why: a.why, projects: [{ projectId: project.id, projectName: project.name, color: company?.color ?? null, href: actionHref(project.id, a.tab), task: ACTION_TASKS[a.key] ?? null }] }))
+  const [growth, blocked, outcomes] = await Promise.all([growthStates(db, owner.userId, now), claudeBlocked(), outcomeStates(db, owner.userId, now)])
+  const outcome = outcomes.get(project.id)
+  const item = (href: string, task: string | null, options?: Record<string, unknown>) => ({ projectId: project.id, projectName: project.name, color: company?.color ?? null, href, task, options })
+  // The step from the numbers first (the leak, or a model or numbers that are missing), then the usual marketing steps.
+  const steps = [
+    ...(outcome?.step ? [{ key: outcome.step.key, title: outcome.step.title, why: outcome.step.why, projects: [item(outcomeHref(project.id, outcome.step.place), outcome.step.task, outcome.step.options)] }] : []),
+    ...nextActions(growth.get(project.id) ?? EMPTY_GROWTH).map((a) => ({ key: a.key, title: a.title, why: a.why, projects: [item(actionHref(project.id, a.tab), ACTION_TASKS[a.key] ?? null)] })),
+  ].slice(0, 3)
 
   return (
     <div className="stack-l">
@@ -119,6 +126,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </Link>
         </div>
       ) : null}
+
+      {outcome?.model && outcome.pace ? <GrowthCard projectId={project.id} model={outcome.model} pace={outcome.pace} spark={outcome.spark} sources={outcome.sources} /> : null}
+      {outcome?.model && outcome.funnel ? <FunnelStrip stages={outcome.stages} funnel={outcome.funnel} /> : null}
 
       <NextSteps groups={steps} disabledReason={blocked} project={project.name} />
 

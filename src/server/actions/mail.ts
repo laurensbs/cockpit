@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { EMAIL } from '@/lib/mailto'
+import { STOP_STATUSES } from '@/lib/options'
 import { MAX_DAILY_CAP } from '@/lib/outbox'
 import { cancelSequence, retryJob, runOutbox, scheduleDraft, sendTestMail } from '../outbox'
 import { actionOwner } from '../session'
@@ -91,7 +92,7 @@ export async function scheduleAllDrafts(projectId: string): Promise<{ ok: boolea
         eq(s.contentItem.projectId, String(projectId)),
         eq(s.contentItem.kind, 'email'),
         eq(s.contentItem.status, 'draft'),
-        notInArray(s.contact.status, ['replied', 'no']),
+        notInArray(s.contact.status, [...STOP_STATUSES]),
       ),
     )
   // One sequence per contact: the newest draft wins.

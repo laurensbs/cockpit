@@ -5,6 +5,7 @@ import * as s from '@/db/schema'
 import { portfolioContext, projectContext, type ContextInput, type PortfolioInput } from '@/lib/ai/prompts'
 import { profileFromJson, type Profile } from '@/lib/ai/schemas'
 import { addMonths, dayOf, monthStart } from '@/lib/dates'
+import { bottleneckLine, growthText, outcomeStates, paceLine } from '../outcome-state'
 
 export interface JobContext {
   ownerId: string
@@ -53,6 +54,7 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
     .where(and(eq(s.brief.projectId, projectId), eq(s.brief.kind, 'profile')))
     .orderBy(desc(s.brief.createdAt))
     .limit(1)
+  const outcome = (await outcomeStates(db, ownerId)).get(projectId)
   return {
     ownerId,
     project,
@@ -80,6 +82,7 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
       others,
       liked: rated.filter((r) => r.rating > 0).map((r) => r.title),
       disliked: rated.filter((r) => r.rating < 0).map((r) => r.title),
+      growth: outcome ? growthText(outcome) : null,
     },
   }
 }
@@ -88,9 +91,10 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
 export async function loadPortfolioContext(db: Db, ownerId: string): Promise<JobContext> {
   const { playerStats, projectPulses } = await import('../game')
   const today = dayOf(new Date())
+  const outcomes = await outcomeStates(db, ownerId)
   const [stats, pulses, quests, metrics, done] = await Promise.all([
     playerStats(db, ownerId),
-    projectPulses(db, ownerId),
+    projectPulses(db, ownerId, new Date(), outcomes),
     db.select({ projectId: s.quest.projectId, title: s.quest.title, status: s.quest.status, dueOn: s.quest.dueOn, doneAt: s.quest.doneAt }).from(s.quest).where(eq(s.quest.ownerId, ownerId)),
     db
       .select({ projectId: s.metric.projectId, value: s.metric.value })
@@ -121,6 +125,12 @@ export async function loadPortfolioContext(db: Db, ownerId: string): Promise<Job
         trend: p.trend,
         openQuests: quests.filter((q) => q.projectId === p.id && q.status === 'open').length,
         revenueThisMonth: metrics.find((m) => m.projectId === p.id)?.value ?? null,
+        growth: (() => {
+          const o = outcomes.get(p.id)
+          if (!o?.model || !o.pace) return null
+          const leak = bottleneckLine(o)
+          return `${paceLine(o.model, o.pace)}${leak ? `; ${leak}` : ''}.`
+        })(),
       })),
       doneThisWeek: [
         ...quests.filter((q) => q.status === 'done' && q.doneAt && q.doneAt > weekAgo).map((q) => q.title),

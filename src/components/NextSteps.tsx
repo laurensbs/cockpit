@@ -11,8 +11,9 @@ export interface NextStepProject {
   projectName: string
   color: string | null
   href: string
-  /** The Claude Code job that does this step, when Claude can do it. */
+  /** The Claude Code job that does this step, when Claude can do it, and its choices (such as the metric to move). */
   task: string | null
+  options?: Record<string, unknown>
 }
 
 export interface NextStepGroup {
@@ -53,7 +54,7 @@ export function NextSteps({ groups, disabledReason, project }: { groups: NextSte
                       className="project-chip claude"
                       disabled={pending}
                       title={`Laat Claude Code dit doen voor ${p.projectName}`}
-                      onClick={() => void open(p.task!, p.projectId)}
+                      onClick={() => void open(p.task!, p.projectId, p.options ?? {})}
                     >
                       {project ? null : <span className="dot" style={{ background: p.color ?? 'var(--accent)' }} aria-hidden="true" />}
                       {label(p, true)}

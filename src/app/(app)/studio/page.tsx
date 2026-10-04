@@ -13,7 +13,7 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayLabel, dayOf, weekStart } from '@/lib/dates'
 import { actionHref, nextActions, type HubTab } from '@/lib/growth'
-import { ACTIVE_STAGES, isStage } from '@/lib/options'
+import { ACTIVE_STAGES, ANSWERED_STATUSES, isStage, isStopped } from '@/lib/options'
 import { claudeBlocked } from '@/server/claude-status'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { mailStatus, outboxRows, queueByItem } from '@/server/outbox-views'
@@ -116,7 +116,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const today = dayOf(now)
   const week = weekStart(today)
 
-  const stopped = (st: string | undefined) => st === 'replied' || st === 'no'
+  const stopped = isStopped
   const emailCard = (r: Row) => {
     const contact = contacts.find((c) => c.id === r.contactId)
     return (
@@ -201,7 +201,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
           </div>
           <div className="kpi card flat">
             <span className="eyebrow">Antwoorden</span>
-            <span className="value">{contacts.filter((c) => c.status === 'replied').length}</span>
+            <span className="value">{contacts.filter((c) => ANSWERED_STATUSES.includes(c.status)).length}</span>
             <span className="tiny muted">van {contacts.length} contacten</span>
           </div>
           <div className="kpi card flat">

@@ -21,12 +21,16 @@ import {
   RULES,
   weeklyTask,
   askTask,
+  modelTask,
 } from '@/lib/ai/prompts'
-import { dayOf } from '@/lib/dates'
+import { addDays, dayOf } from '@/lib/dates'
+import { METRIC_DEFS, METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
+import { dataSummary } from '../outcome-state'
+import { loadPoints } from '../points'
 
-export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly', 'ask'] as const
+export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model'] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 export const isTaskKind = (v: unknown): v is TaskKind => typeof v === 'string' && (TASK_KINDS as readonly string[]).includes(v)
 
@@ -44,6 +48,7 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   linkedin: 'LinkedIn-profiel en posts',
   weekly: 'Focus van de week',
   ask: 'Een vraag of opdracht van hem, in zijn eigen woorden',
+  model: 'Groeimodel: één doelcijfer met een deadline en de trechter ernaartoe (een voorstel)',
 }
 
 export const EMAIL_PURPOSE_KEYS = Object.keys(EMAIL_PURPOSES) as [keyof typeof EMAIL_PURPOSES]
@@ -60,6 +65,7 @@ export const TaskOptions = z.object({
   note: z.string().trim().max(300).optional().describe('emails: what must be in this batch'),
   contactId: z.string().trim().max(64).optional().describe('contact_mail: the contact (see list_contacts)'),
   question: z.string().trim().max(600).optional().describe('ask: his question or request, in his own words'),
+  focus: z.enum(METRIC_KEYS).optional().describe('experiments: the metric the experiments must move (where the funnel leaks)'),
 })
 export type TaskOptions = z.infer<typeof TaskOptions>
 
@@ -187,7 +193,7 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
             return { title: r.title, result: b.result === 'won' ? 'worked' : b.result === 'lost' ? 'did not work' : '', learning: b.learning ?? '' }
           })
         : []
-      body = experimentsTask(past)
+      body = experimentsTask(past, options.focus ? { key: options.focus, label: METRIC_DEFS[options.focus].label } : null)
       handBack = `\`save_experiments\` with { "project": ${quoted}, "experiments": [ { "title", "hypothesis", "channel", "steps", "metric", "target", "impact", "confidence", "ease", "cost" } ] }`
       break
     }
@@ -195,6 +201,15 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
       body = linkedinTask(name, language)
       handBack = `\`save_linkedin\` with { "project": ${quoted}, "linkedin": { "headline", "about", "featured", "connect", "routine", "posts" } }`
       break
+    case 'model': {
+      if (!project) return { error: 'model needs a project.' }
+      const today = dayOf(new Date())
+      const rows = await loadPoints(db, ownerId, addDays(today, -70), { projectIds: [project.id] })
+      const catalog = METRIC_KEYS.map((key) => ({ key, label: METRIC_DEFS[key].label, kind: METRIC_DEFS[key].agg === 'sum' ? ('flow' as const) : ('level' as const) }))
+      body = modelTask(name, today, catalog, dataSummary(rows, project.id, today))
+      handBack = `\`save_model\` with { "project": ${quoted}, "model": { "northStar": { "key", "target", "deadline" }, "funnel": [ { "key", "label", "rate" } ], "valuePerDeal", "note" } }`
+      break
+    }
     case 'ask':
       if (!options.question) return { error: 'ask needs his question (question).' }
       body = askTask(options.question, project ? name : 'his projects')

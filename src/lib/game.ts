@@ -2,6 +2,7 @@
 // ledger and what is in the database, so nothing can drift out of step.
 
 import { addDays, daysBetween, weekStart } from './dates'
+import type { PaceStatus } from './pace'
 
 /** How much each kind of action is worth. Outcomes (a reply) beat activity (a mail sent). */
 export const XP_RULES = {
@@ -17,11 +18,13 @@ export const XP_RULES = {
   experiment: { xp: 30, dailyCap: 5 },
   // Having drafts made is not doing: it earns a little, never a lot.
   generate: { xp: 5, dailyCap: 5 },
+  // A won deal: the result everything else is for.
+  deal: { xp: 75, dailyCap: Infinity },
 } as const
 export type XpKind = keyof typeof XP_RULES
 
 /** Kinds that count as "doing" for the action streak (commits have their own streak). */
-export const ACTION_KINDS: readonly XpKind[] = ['quest', 'post', 'email', 'reply', 'metric', 'intake', 'plan', 'experiment']
+export const ACTION_KINDS: readonly XpKind[] = ['quest', 'post', 'email', 'reply', 'deal', 'metric', 'intake', 'plan', 'experiment']
 
 export const QUEST_XP = [10, 25, 50, 100] as const
 export const BOSS_XP = 250
@@ -129,9 +132,17 @@ export interface HealthInput {
 
 export interface Health {
   score: number
-  parts: { activity: number; marketing: number; plan: number; quests: number }
+  parts: { activity: number; marketing: number; plan: number; quests: number; outcome?: number }
   tips: string[]
 }
+
+/** How a project with a growth model is doing on its target, for the health score. */
+export interface OutcomeHealth {
+  status: PaceStatus
+  tip?: string | null
+}
+
+const OUTCOME_SCORE: Record<PaceStatus, number> = { done: 100, ahead: 100, on_track: 85, behind: 50, far_behind: 25, overdue: 15, no_data: 30 }
 
 const countDays = (days: Iterable<string>, today: string, n: number) => {
   const from = addDays(today, -(n - 1))
@@ -140,8 +151,11 @@ const countDays = (days: Iterable<string>, today: string, n: number) => {
   return c
 }
 
-/** 0–100: building, marketing, a fresh plan and keeping your word, each with a reason when low. */
-export function projectHealth(h: HealthInput): Health {
+/**
+ * 0–100: building, marketing, a fresh plan and keeping your word, each with a reason when low. With a
+ * growth model, half of the score is the outcome: is the target on schedule.
+ */
+export function projectHealth(h: HealthInput, outcome?: OutcomeHealth | null): Health {
   const commitDays = Object.keys(h.commitDays).filter((d) => h.commitDays[d] > 0)
   const busy = h.hasRepos ? Math.max(countDays(commitDays, h.today, 14), countDays(h.actionDays, h.today, 14)) : countDays(h.actionDays, h.today, 14)
   const activity = Math.round(Math.min(busy / 6, 1) * 30)
@@ -156,7 +170,10 @@ export function projectHealth(h: HealthInput): Health {
   if (marketing === 0) tips.push('Twee weken geen marketing')
   if (plan === 0) tips.push(planAge === null ? 'Nog geen marketingplan' : 'Plan is ouder dan twee maanden')
   if (total > 0 && quests < 10) tips.push('Quests blijven liggen')
-  return { score: activity + marketing + plan + quests, parts: { activity, marketing, plan, quests }, tips }
+  const effort = activity + marketing + plan + quests
+  if (!outcome) return { score: effort, parts: { activity, marketing, plan, quests }, tips }
+  const result = OUTCOME_SCORE[outcome.status]
+  return { score: Math.round((effort + result) / 2), parts: { activity, marketing, plan, quests, outcome: result }, tips: outcome.tip ? [outcome.tip, ...tips] : tips }
 }
 
 // ---------- badges ----------

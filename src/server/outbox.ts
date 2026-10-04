@@ -7,6 +7,7 @@ import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { dayOf } from '@/lib/dates'
 import { EMAIL } from '@/lib/mailto'
+import { STOP_STATUSES } from '@/lib/options'
 import { allowance, dailyCap, finalBody, inSendWindow, nextFollowupAt } from '@/lib/outbox'
 import { getSetting, setSetting } from './settings'
 import { fixturesAllowed } from './status'
@@ -106,7 +107,6 @@ export async function sendTestMail(db: Db, ownerId: string): Promise<{ ok: boole
   }
 }
 
-const STOP_STATUSES = ['replied', 'no']
 
 /** Stops whatever is still to go out to a contact (a reply, a "no", or he deleted the contact). */
 export async function cancelForContact(db: Db, ownerId: string, contactId: string): Promise<number> {

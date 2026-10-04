@@ -50,5 +50,28 @@
       "CREATE INDEX \"email_job_owner_status_idx\" ON \"email_job\" USING btree (\"owner_id\",\"status\",\"send_after\");",
       "CREATE INDEX \"email_job_sequence_idx\" ON \"email_job\" USING btree (\"sequence_id\");"
     ]
+  },
+  {
+    "tag": "0002_outcomes",
+    "statements": [
+      "CREATE TABLE \"connector\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text NOT NULL,\n\t\"kind\" text NOT NULL,\n\t\"config\" jsonb DEFAULT '{}'::jsonb NOT NULL,\n\t\"enabled\" boolean DEFAULT true NOT NULL,\n\t\"last_run_at\" timestamp,\n\t\"last_ok_at\" timestamp,\n\t\"last_error\" text,\n\t\"created_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "CREATE TABLE \"contact_event\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text NOT NULL,\n\t\"contact_id\" text NOT NULL,\n\t\"status\" text NOT NULL,\n\t\"day\" date NOT NULL,\n\t\"created_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "CREATE TABLE \"metric_point\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text NOT NULL,\n\t\"key\" text NOT NULL,\n\t\"day\" date NOT NULL,\n\t\"value\" double precision NOT NULL,\n\t\"source\" text NOT NULL,\n\t\"note\" text DEFAULT '' NOT NULL,\n\t\"created_at\" timestamp DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "ALTER TABLE \"contact\" ADD COLUMN \"deal_value\" integer;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"deal_period\" text;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"next_step\" text DEFAULT '' NOT NULL;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"next_step_on\" date;",
+      "ALTER TABLE \"metric\" ADD COLUMN \"source\" text DEFAULT 'manual' NOT NULL;",
+      "ALTER TABLE \"project\" ADD COLUMN \"growth_model\" jsonb;",
+      "ALTER TABLE \"connector\" ADD CONSTRAINT \"connector_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "ALTER TABLE \"contact_event\" ADD CONSTRAINT \"contact_event_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "ALTER TABLE \"contact_event\" ADD CONSTRAINT \"contact_event_contact_id_contact_id_fk\" FOREIGN KEY (\"contact_id\") REFERENCES \"public\".\"contact\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "ALTER TABLE \"metric_point\" ADD CONSTRAINT \"metric_point_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "CREATE UNIQUE INDEX \"connector_project_kind_idx\" ON \"connector\" USING btree (\"project_id\",\"kind\");",
+      "CREATE INDEX \"connector_owner_idx\" ON \"connector\" USING btree (\"owner_id\");",
+      "CREATE INDEX \"contact_event_project_idx\" ON \"contact_event\" USING btree (\"project_id\",\"day\");",
+      "CREATE UNIQUE INDEX \"metric_point_unique_idx\" ON \"metric_point\" USING btree (\"project_id\",\"key\",\"day\",\"source\");",
+      "CREATE INDEX \"metric_point_owner_idx\" ON \"metric_point\" USING btree (\"owner_id\",\"project_id\",\"key\",\"day\");"
+    ]
   }
 ]

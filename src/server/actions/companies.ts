@@ -95,10 +95,11 @@ export async function saveMetric(_prev: FormState, form: FormData): Promise<Form
   const month = `${m.month}-01`
   await db
     .insert(s.metric)
-    .values({ id: crypto.randomUUID(), ownerId: owner.userId, projectId: m.projectId, month, key: m.key, value: m.value })
+    .values({ id: crypto.randomUUID(), ownerId: owner.userId, projectId: m.projectId, month, key: m.key, value: m.value, source: 'manual' })
     .onConflictDoUpdate({
       target: [s.metric.projectId, s.metric.month, s.metric.key],
-      set: { value: m.value, updatedAt: new Date() },
+      // What he types wins over what came in by itself, also later.
+      set: { value: m.value, source: 'manual', updatedAt: new Date() },
     })
   const xp = await award(db, owner.userId, { kind: 'metric', refId: `${m.projectId}:${month}:${m.key}`, projectId: m.projectId })
   revalidatePath('/companies')

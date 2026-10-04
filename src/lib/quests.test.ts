@@ -45,6 +45,17 @@ describe('rule quests', () => {
     expect(ruleQuests([project({ hasMetricsLastMonth: false })], '2026-10-15', true)).toEqual([])
   })
 
+  it('asks for a growth target once a launched or growing project has its intake, and not again with a model', () => {
+    expect(ruleQuests([project({ stage: 'growth', hasModel: false })], '2026-10-20', true)[0]).toMatchObject({ sourceKey: 'model:p1', title: 'Zet een groeidoel voor Rondje' })
+    expect(ruleQuests([project({ stage: 'build', hasModel: false })], '2026-10-20', true)).toEqual([])
+    expect(ruleQuests([project({ stage: 'growth', hasModel: true })], '2026-10-20', true)).toEqual([])
+  })
+
+  it('says when a source keeps failing, once a week', () => {
+    const [q] = ruleQuests([project({ failingSources: [{ id: 'c1', label: 'Stripe', error: 'De sleutel klopt niet of mag dit niet lezen.' }] })], '2026-10-20', true)
+    expect(q).toMatchObject({ sourceKey: 'source:c1:2026-10-19', title: 'Stripe van Rondje levert geen cijfers' })
+  })
+
   it('skips paused projects', () => {
     expect(ruleQuests([project({ active: false, intakeDone: false, quietDays: 50 })], '2026-10-03', true)).toEqual([])
   })

@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import type { GrowthModel } from '../lib/growth-model'
 // Every row belongs to an owner ('local' in the app on your own computer), so the cockpit can serve
 // more people later without a rewrite.
 const ownerId = () => text('owner_id').notNull()
@@ -63,6 +64,8 @@ export const project = pgTable(
     links: jsonb('links').$type<{ label: string; url: string }[]>().notNull().default([]),
     monthlyBudget: integer('monthly_budget'),
     sortOrder: integer('sort_order').notNull().default(0),
+    // The growth model he accepted: one target number with a deadline, and the funnel that leads to it.
+    growthModel: jsonb('growth_model').$type<GrowthModel>(),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -131,6 +134,11 @@ export const contact = pgTable(
     basis: text('basis').notNull().default('business'),
     status: text('status').notNull().default('new'),
     lastContactAt: timestamp('last_contact_at'),
+    // The deal: what it is worth (per month or once) and the next step, for the pipeline.
+    dealValue: integer('deal_value'),
+    dealPeriod: text('deal_period'),
+    nextStep: text('next_step').notNull().default(''),
+    nextStepOn: date('next_step_on'),
     createdAt: createdAt(),
   },
   (t) => [index('contact_project_idx').on(t.projectId)],
@@ -203,7 +211,10 @@ export const xpEvent = pgTable(
 )
 
 
-/** A number per project per month, entered by hand: revenue, costs, users, leads, followers. */
+/**
+ * A number per project per month: typed in by hand ('manual'), or the sum of the daily points that came
+ * in by themselves ('auto'). A number he typed always wins.
+ */
 export const metric = pgTable(
   'metric',
   {
@@ -215,10 +226,73 @@ export const metric = pgTable(
     month: date('month').notNull(),
     key: text('key').notNull(),
     value: doublePrecision('value').notNull(),
+    source: text('source').notNull().default('manual'),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [uniqueIndex('metric_project_month_key_idx').on(t.projectId, t.month, t.key)],
+)
+
+/** A number on a day, from a source: a payment provider, analytics, the pipeline, Claude, or him. */
+export const metricPoint = pgTable(
+  'metric_point',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    day: date('day').notNull(),
+    value: doublePrecision('value').notNull(),
+    source: text('source').notNull(),
+    note: text('note').notNull().default(''),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('metric_point_unique_idx').on(t.projectId, t.key, t.day, t.source),
+    index('metric_point_owner_idx').on(t.ownerId, t.projectId, t.key, t.day),
+  ],
+)
+
+/** Where a project's numbers come from by themselves (Stripe, Mollie, Plausible, …). Its key lives in `setting`. */
+export const connector = pgTable(
+  'connector',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    config: jsonb('config').$type<Record<string, string>>().notNull().default({}),
+    enabled: boolean('enabled').notNull().default(true),
+    lastRunAt: timestamp('last_run_at'),
+    lastOkAt: timestamp('last_ok_at'),
+    lastError: text('last_error'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('connector_project_kind_idx').on(t.projectId, t.kind), index('connector_owner_idx').on(t.ownerId)],
+)
+
+/** Every step a contact takes in the pipeline, so the funnel can count per week. */
+export const contactEvent = pgTable(
+  'contact_event',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    contactId: text('contact_id')
+      .notNull()
+      .references(() => contact.id, { onDelete: 'cascade' }),
+    status: text('status').notNull(),
+    day: date('day').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('contact_event_project_idx').on(t.projectId, t.day)],
 )
 
 /**
