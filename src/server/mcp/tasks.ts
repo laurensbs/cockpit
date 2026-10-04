@@ -194,7 +194,7 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
           })
         : []
       body = experimentsTask(past, options.focus ? { key: options.focus, label: METRIC_DEFS[options.focus].label } : null)
-      handBack = `\`save_experiments\` with { "project": ${quoted}, "experiments": [ { "title", "hypothesis", "channel", "steps", "metric", "target", "impact", "confidence", "ease", "cost" } ] }`
+      handBack = `\`save_experiments\` with { "project": ${quoted}, "experiments": [ { "title", "hypothesis", "channel", "steps", "metric", "target", "impact", "confidence", "ease", "cost", "metricKey", "targetValue", "days" } ] }`
       break
     }
     case 'linkedin':

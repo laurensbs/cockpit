@@ -119,3 +119,17 @@ describe('organic growth schemas', () => {
     expect([x.impact, x.confidence, x.ease]).toEqual([10, 1, 5])
   })
 })
+
+describe('measured experiments', () => {
+  it('keeps a known metric with its target and clamps the days; drops an unknown metric', () => {
+    const base = { title: 'Gratis check', hypothesis: 'Als…', channel: 'site', steps: ['a'], metric: 'aanvragen', target: '10', impact: 7, confidence: 6, ease: 8, cost: '€0' }
+    const [measured, unknown] = normalizeExperiments({
+      experiments: [
+        { ...base, metricKey: 'leads', targetValue: 10, days: 60 },
+        { ...base, title: 'B', metricKey: 'happiness', targetValue: 3 },
+      ],
+    })
+    expect(measured).toMatchObject({ metricKey: 'leads', targetValue: 10, days: 42 })
+    expect(unknown).toMatchObject({ metricKey: null, targetValue: null, days: 14 })
+  })
+})

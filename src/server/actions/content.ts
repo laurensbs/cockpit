@@ -7,6 +7,9 @@ import { getDb, type Db } from '@/db'
 import * as s from '@/db/schema'
 import { safeLink } from '@/lib/ai/schemas'
 import { addDays, dayOf } from '@/lib/dates'
+import { experimentActual, experimentBaseline, experimentDays } from '@/lib/experiments'
+import { isMetricKey, METRIC_DEFS } from '@/lib/metrics'
+import { dailySeries, loadPoints } from '../points'
 import { actionOwner } from '../session'
 import { award, revoke } from '../xp'
 
@@ -21,7 +24,10 @@ async function own(db: Db, ownerId: string, id: string) {
 function refresh(projectId: string | null) {
   revalidatePath('/studio')
   revalidatePath('/')
-  if (projectId) revalidatePath(`/projects/${projectId}/contacts`)
+  if (projectId) {
+    revalidatePath(`/projects/${projectId}/contacts`)
+    revalidatePath(`/projects/${projectId}/numbers`)
+  }
 }
 
 /** Posted or sent (by him, elsewhere): XP in. Unticked: XP out again. */
@@ -138,12 +144,28 @@ export async function opportunityToContact(id: string): Promise<{ contactId: str
 }
 
 /** A growth experiment moves on the board: from the backlog to running. */
+/** The daily values of one metric of a project, for measuring an experiment. */
+async function seriesFor(db: Db, ownerId: string, projectId: string | null, key: string, today: string) {
+  if (!projectId || !isMetricKey(key)) return null
+  const rows = await loadPoints(db, ownerId, addDays(today, -120), { projectIds: [projectId], keys: [key] })
+  return { def: METRIC_DEFS[key], daily: dailySeries(rows, projectId, key) }
+}
+
+/** Starts an experiment; one tied to a metric remembers where that metric stood, and when to measure. */
 export async function startExperiment(id: string): Promise<void> {
   const owner = await actionOwner()
   const db = await getDb()
   const item = await own(db, owner.userId, id)
   if (!item || item.kind !== 'experiment') return
-  await db.update(s.contentItem).set({ status: 'planned' }).where(eq(s.contentItem.id, item.id))
+  const body = item.body as Record<string, unknown>
+  const today = dayOf(new Date())
+  const days = experimentDays(body.days)
+  const series = await seriesFor(db, owner.userId, item.projectId, String(body.metricKey ?? ''), today)
+  const measured = series ? { startedOn: today, endsOn: addDays(today, days), days, baseline: experimentBaseline(series.def, series.daily, today, days) } : { startedOn: today, endsOn: addDays(today, days), days }
+  await db
+    .update(s.contentItem)
+    .set({ status: 'planned', body: { ...body, ...measured } })
+    .where(eq(s.contentItem.id, item.id))
   refresh(item.projectId)
 }
 
@@ -155,10 +177,29 @@ export async function finishExperiment(id: string, result: string, learning: str
   const db = await getDb()
   const item = await own(db, owner.userId, id)
   if (!item || item.kind !== 'experiment') return { xp: 0 }
+  const body = item.body as Record<string, unknown>
+  const today = dayOf(new Date())
+  // A measured experiment keeps what the numbers did during it.
+  const series = typeof body.startedOn === 'string' ? await seriesFor(db, owner.userId, item.projectId, String(body.metricKey ?? ''), today) : null
+  const actual = series ? experimentActual(series.def, series.daily, String(body.startedOn), String(body.endsOn ?? today), today) : null
+  const baseline = typeof body.baseline === 'number' ? body.baseline : null
+  const measured = series ? { actual, lift: actual != null && baseline != null ? actual - baseline : null } : {}
   await db
     .update(s.contentItem)
-    .set({ status: 'done', doneAt: new Date(), body: { ...(item.body as Record<string, unknown>), result: parsed.data.result, learning: parsed.data.learning } })
+    .set({ status: 'done', doneAt: new Date(), body: { ...body, ...measured, result: parsed.data.result, learning: parsed.data.learning } })
     .where(eq(s.contentItem.id, item.id))
+  // The lesson: what came out, kept for every brief Claude gets about this project.
+  await db.insert(s.contentItem).values({
+    id: crypto.randomUUID(),
+    ownerId: owner.userId,
+    projectId: item.projectId,
+    kind: 'lesson',
+    channel: 'experiment',
+    title: item.title,
+    status: 'done',
+    doneAt: new Date(),
+    body: { source: 'experiment', refId: item.id, result: parsed.data.result, learning: parsed.data.learning, metricKey: body.metricKey ?? null, baseline, actual: measured.actual ?? null, days: body.days ?? null },
+  })
   const xp = await award(db, owner.userId, { kind: 'experiment', refId: item.id, projectId: item.projectId })
   refresh(item.projectId)
   return { xp }

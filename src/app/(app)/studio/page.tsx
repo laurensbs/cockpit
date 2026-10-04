@@ -12,11 +12,14 @@ import { StudioGenerator } from '@/components/StudioGenerator'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayLabel, dayOf, weekStart } from '@/lib/dates'
+import { daysLeft, experimentActual, experimentVerdict } from '@/lib/experiments'
+import { isMetricKey, METRIC_DEFS } from '@/lib/metrics'
 import { actionHref, nextActions, type HubTab } from '@/lib/growth'
 import { ACTIVE_STAGES, ANSWERED_STATUSES, isStage, isStopped } from '@/lib/options'
 import { claudeBlocked } from '@/server/claude-status'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { mailStatus, outboxRows, queueByItem } from '@/server/outbox-views'
+import { dailySeries, loadPoints } from '@/server/points'
 import { requireOwner } from '@/server/session'
 
 export const metadata = { title: 'Marketing' }
@@ -159,6 +162,24 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       }}
     />
   )
+  // Running experiments tied to a metric: where it stood at the start, and where it is now.
+  const measuredKeys = [...new Set(rows.filter((r) => r.kind === 'experiment' && typeof b(r).metricKey === 'string').map((r) => String(b(r).metricKey)))]
+  const measuredRows = measuredKeys.length ? await loadPoints(db, owner.userId, addDays(today, -120), { projectIds: [current.id], keys: measuredKeys }) : []
+  const measure = (r: Row) => {
+    const key = str(b(r).metricKey)
+    if (!isMetricKey(key)) return null
+    const startedOn = str(b(r).startedOn)
+    const endsOn = str(b(r).endsOn)
+    const baseline = typeof b(r).baseline === 'number' ? (b(r).baseline as number) : null
+    const targetValue = typeof b(r).targetValue === 'number' ? (b(r).targetValue as number) : null
+    const actual =
+      typeof b(r).actual === 'number'
+        ? (b(r).actual as number)
+        : startedOn && endsOn
+          ? experimentActual(METRIC_DEFS[key], dailySeries(measuredRows, current.id, key), startedOn, endsOn, today)
+          : null
+    return { key, label: METRIC_DEFS[key].label, targetValue, startedOn: startedOn || null, endsOn: endsOn || null, baseline, actual, daysLeft: endsOn ? daysLeft(endsOn, today) : null, ...experimentVerdict({ baseline, actual, targetValue }) }
+  }
   const experimentView = (r: Row): ExperimentView => ({
     id: r.id,
     title: r.title,
@@ -175,6 +196,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     status: r.status,
     result: str(b(r).result),
     learning: str(b(r).learning),
+    measured: measure(r),
   })
 
   // ---------- the overview ----------

@@ -5,7 +5,7 @@ import * as s from '@/db/schema'
 import { portfolioContext, projectContext, type ContextInput, type PortfolioInput } from '@/lib/ai/prompts'
 import { profileFromJson, type Profile } from '@/lib/ai/schemas'
 import { addMonths, dayOf, monthStart } from '@/lib/dates'
-import { bottleneckLine, growthText, outcomeStates, paceLine } from '../outcome-state'
+import { bottleneckLine, growthText, lessonLine, type LessonBody, outcomeStates, paceLine } from '../outcome-state'
 
 export interface JobContext {
   ownerId: string
@@ -55,6 +55,12 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
     .orderBy(desc(s.brief.createdAt))
     .limit(1)
   const outcome = (await outcomeStates(db, ownerId)).get(projectId)
+  const lessons = await db
+    .select({ title: s.contentItem.title, body: s.contentItem.body })
+    .from(s.contentItem)
+    .where(and(eq(s.contentItem.projectId, projectId), eq(s.contentItem.kind, 'lesson')))
+    .orderBy(desc(s.contentItem.createdAt))
+    .limit(12)
   return {
     ownerId,
     project,
@@ -83,6 +89,7 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
       liked: rated.filter((r) => r.rating > 0).map((r) => r.title),
       disliked: rated.filter((r) => r.rating < 0).map((r) => r.title),
       growth: outcome ? growthText(outcome) : null,
+      lessons: lessons.map((l) => lessonLine(l.title, l.body as LessonBody)),
     },
   }
 }

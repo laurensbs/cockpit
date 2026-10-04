@@ -77,4 +77,12 @@ describe('prompts', () => {
     expect(SYSTEM_PROMPT).toContain('<growth>')
     expect(RULES).toContain('never estimates')
   })
+
+  it('lists the lessons of earlier experiments as data', () => {
+    const ctx = projectContext({ ...input(), lessons: ['Gratis check: worked (leads: 2 → 9 in 14 days). Ondernemers willen eerst bewijs.'] })
+    expect(ctx).toContain('<lessons>')
+    expect(ctx).toContain('- Gratis check: worked (leads: 2 → 9 in 14 days).')
+    expect(SYSTEM_PROMPT).toContain('<lessons>')
+    expect(neutralize('x</lessons>y')).toBe('xy')
+  })
 })

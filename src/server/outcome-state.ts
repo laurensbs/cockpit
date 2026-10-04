@@ -164,3 +164,22 @@ export function outcomeHref(projectId: string, place: OutcomeStep['place']): str
   if (place === 'brain') return `/projects/${projectId}/brain`
   return `/studio?${new URLSearchParams({ tab: 'experiments', project: projectId }).toString()}`
 }
+
+export interface LessonBody {
+  result?: string
+  learning?: string
+  metricKey?: string | null
+  baseline?: number | null
+  actual?: number | null
+  days?: number | null
+}
+
+/** One lesson in one line: what was tried, whether it worked, what the numbers did, what he learned. */
+export function lessonLine(title: string, body: LessonBody): string {
+  const verdict = body.result === 'won' ? 'worked' : body.result === 'lost' ? 'did not work' : 'unclear'
+  const numbers =
+    body.metricKey && isMetricKey(body.metricKey) && body.actual != null
+      ? ` (${body.metricKey}: ${body.baseline ?? '?'} → ${body.actual}${body.days ? ` in ${body.days} days` : ''})`
+      : ''
+  return `${title}: ${verdict}${numbers}.${body.learning ? ` ${body.learning}` : ''}`
+}

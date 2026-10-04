@@ -19,7 +19,7 @@ import {
 } from '@/lib/game'
 import { ACTIVE_STAGES, isStage } from '@/lib/options'
 import type { PaceStatus } from '@/lib/pace'
-import { ruleQuests, type RuleProject } from '@/lib/quests'
+import { experimentQuests, ruleQuests, type RuleProject } from '@/lib/quests'
 import { type OutcomeState, paceTip } from './outcome-state'
 import { award } from './xp'
 
@@ -116,7 +116,17 @@ export async function dailyRound(db: Db, ownerId: string, now = new Date()): Pro
         .map((c) => ({ id: c.id, label: c.kind.charAt(0).toUpperCase() + c.kind.slice(1), error: c.lastError ?? '' })),
     })
   }
-  const candidates = ruleQuests(ruleProjects, today, true)
+  const running = await db
+    .select({ id: s.contentItem.id, projectId: s.contentItem.projectId, title: s.contentItem.title, body: s.contentItem.body })
+    .from(s.contentItem)
+    .where(and(eq(s.contentItem.ownerId, ownerId), eq(s.contentItem.kind, 'experiment'), eq(s.contentItem.status, 'planned')))
+  const candidates = [
+    ...ruleQuests(ruleProjects, today, true),
+    ...experimentQuests(
+      running.map((e) => ({ id: e.id, projectId: e.projectId, title: e.title, endsOn: typeof (e.body as { endsOn?: unknown }).endsOn === 'string' ? ((e.body as { endsOn: string }).endsOn) : null })),
+      today,
+    ),
+  ]
   if (candidates.length) {
     await db
       .insert(s.quest)

@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { ClaudeButton } from '@/components/ClaudeButton'
 import { ConnectorForm, ConnectorList } from '@/components/Connectors'
@@ -12,11 +12,11 @@ import { ProjectHeader } from '@/components/ProjectHeader'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayLabel, dayOf } from '@/lib/dates'
-import { bucketWeeks, formatMetric, lastWeeks, METRIC_DEFS, METRIC_KEYS, SOURCE_LABELS, type Source } from '@/lib/metrics'
+import { bucketWeeks, formatMetric, isMetricKey, lastWeeks, METRIC_DEFS, METRIC_KEYS, SOURCE_LABELS, type Source } from '@/lib/metrics'
 import { ago } from '@/lib/time'
 import { claudeBlocked } from '@/server/claude-status'
 import { CONNECTOR_KINDS } from '@/server/connectors'
-import { outcomeStates } from '@/server/outcome-state'
+import { type LessonBody, outcomeStates } from '@/server/outcome-state'
 import { dailySeries, loadPoints } from '@/server/points'
 import { requireOwner } from '@/server/session'
 
@@ -34,11 +34,17 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
   const now = new Date()
   const today = dayOf(now)
   const weeks = lastWeeks(addDays(today, 7), 12)
-  const [states, rows, connectors, blocked] = await Promise.all([
+  const [states, rows, connectors, blocked, lessons] = await Promise.all([
     outcomeStates(db, owner.userId, now),
     loadPoints(db, owner.userId, addDays(weeks[0], -1), { projectIds: [id] }),
     db.select().from(s.connector).where(and(eq(s.connector.projectId, id), eq(s.connector.ownerId, owner.userId))),
     claudeBlocked(),
+    db
+      .select({ id: s.contentItem.id, title: s.contentItem.title, body: s.contentItem.body, doneAt: s.contentItem.doneAt })
+      .from(s.contentItem)
+      .where(and(eq(s.contentItem.projectId, id), eq(s.contentItem.ownerId, owner.userId), eq(s.contentItem.kind, 'lesson')))
+      .orderBy(desc(s.contentItem.createdAt))
+      .limit(20),
   ])
   const state = states.get(id)
   const keys = METRIC_KEYS.filter((k) => rows.some((r) => r.key === k))
@@ -104,6 +110,34 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
           </div>
         </details>
       </section>
+
+      {lessons.length ? (
+        <section className="card stack-s" aria-labelledby="lessons-title">
+          <h2 id="lessons-title" className="row">
+            <Icon name="idea" size={20} /> Lessen
+          </h2>
+          <p className="tiny muted">Wat de experimenten opleverden. Claude leest dit bij elke klus voor {project.name}.</p>
+          <ul className="list" style={{ margin: 0 }}>
+            {lessons.map((l) => {
+              const b = l.body as LessonBody
+              return (
+                <li key={l.id} className="stack-xs">
+                  <span className="row">
+                    <strong>{l.title}</strong>
+                    <span className={`chip ${b.result === 'won' ? 'good' : 'bad'}`}>{b.result === 'won' ? 'Werkte' : 'Werkte niet'}</span>
+                    {b.metricKey && isMetricKey(b.metricKey) && b.actual != null ? (
+                      <span className="tiny muted num">
+                        {METRIC_DEFS[b.metricKey].label}: {b.baseline == null ? '–' : formatMetric(b.metricKey, b.baseline)} → {formatMetric(b.metricKey, b.actual)}
+                      </span>
+                    ) : null}
+                  </span>
+                  {b.learning ? <span className="small">{b.learning}</span> : null}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="card stack-m" aria-labelledby="weeks-title">
         <h2 id="weeks-title">Per week</h2>

@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { experimentDays } from '../experiments'
+import { isMetricKey } from '../metrics'
 
 // "Wire" schemas are what Claude must return. They are lenient on purpose: structured outputs
 // only describe limits like enums and lengths to the model, they do not enforce them. The
@@ -320,7 +322,21 @@ export function normalizeArticles(w: z.infer<typeof ArticlesWire>): { keywords: 
 
 export const ExperimentsWire = z.object({
   experiments: z.array(
-    z.object({ title: str, hypothesis: str, channel: str, steps: z.array(str), metric: str, target: str, impact: z.number(), confidence: z.number(), ease: z.number(), cost: str }),
+    z.object({
+      title: str,
+      hypothesis: str,
+      channel: str,
+      steps: z.array(str),
+      metric: str,
+      target: str,
+      impact: z.number(),
+      confidence: z.number(),
+      ease: z.number(),
+      cost: str,
+      metricKey: z.string().optional().describe('The cockpit metric it moves (leads, signups, visitors, …), so it is measured'),
+      targetValue: z.number().optional().describe('The number of that metric to reach within the days'),
+      days: z.number().optional().describe('How long it runs: 3–42 days, default 14'),
+    }),
   ),
 })
 
@@ -337,6 +353,10 @@ export interface Experiment {
   /** ICE: the average of impact, confidence and ease (1–10). */
   ice: number
   cost: string
+  /** Measured against the numbers: the metric, the target within the days, and how many days. */
+  metricKey: string | null
+  targetValue: number | null
+  days: number
 }
 
 const ten = (n: number) => (Number.isFinite(n) ? Math.min(10, Math.max(1, Math.round(n))) : 5)
@@ -360,6 +380,9 @@ export const normalizeExperiments = (w: z.infer<typeof ExperimentsWire>): Experi
         ease,
         ice: Math.round(((impact + confidence + ease) / 3) * 10) / 10,
         cost: clean(e.cost, 60),
+        metricKey: e.metricKey && isMetricKey(e.metricKey) ? e.metricKey : null,
+        targetValue: e.metricKey && isMetricKey(e.metricKey) && e.targetValue != null && Number.isFinite(e.targetValue) ? e.targetValue : null,
+        days: experimentDays(e.days),
       }
     })
     .sort((a, b) => b.ice - a.ice)

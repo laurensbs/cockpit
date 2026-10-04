@@ -132,6 +132,20 @@ export function ruleQuests(projects: readonly RuleProject[], today: string, aiAv
   return out
 }
 
+/** An experiment whose time is up: measure it and say whether it worked, so the lesson is not lost. */
+export function experimentQuests(running: { id: string; projectId: string | null; title: string; endsOn: string | null }[], today: string): QuestCandidate[] {
+  return running
+    .filter((e) => e.endsOn && e.endsOn <= today)
+    .map((e) => ({
+      sourceKey: `experiment-end:${e.id}`,
+      projectId: e.projectId,
+      title: `Rond af: ${e.title}`.slice(0, 120),
+      detail: 'De tijd is om. Kijk wat de cijfers deden, zeg of het werkte en wat je leerde; dat gaat mee in elke volgende klus van Claude.',
+      xp: 10,
+      dueOn: today,
+    }))
+}
+
 export type QuestBucket = 'overdue' | 'today' | 'week' | 'later' | 'someday'
 
 /** Where an open quest belongs on the board. */
