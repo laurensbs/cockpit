@@ -1,4 +1,4 @@
 {
-  "version": "0.5.0",
-  "notes": "Groei op de meter: cijfers komen vanzelf binnen (Plausible, Stripe, Mollie), een groeimodel met doel en trechter, de cockpit ziet waar het lekt en kiest daar de klus voor. Experimenten worden gemeten en worden lessen voor Claude. Contacten krijgen gesprek, offerte en deal."
+  "version": "0.5.1",
+  "notes": "Alle projecten op de meter: Google Analytics, Search Console, Discord en je eigen apps als bron, één Google-account in Instellingen voor alles. En Aan laten staan: aan de stroom gaat je computer niet slapen zolang de Cockpit openstaat, zodat de ronde, je mails en Claude doorlopen terwijl jij weg bent."
 }
