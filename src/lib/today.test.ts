@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildNote, type DayStep, pickSteps, recentWork } from './today'
+import { buildNote, type DayStep, pickGivePlace, pickSteps, recentWork } from './today'
 
 const call = (n: number): DayStep => ({ kind: 'call', key: `call-${n}`, title: `Bel ${n}`, sub: '', projectId: 'p', questId: `q${n}`, phone: null, contactId: null, hasEmail: false })
 const growth: DayStep = { kind: 'growth', key: 'growth', title: 'Maak het groeimodel', sub: '', projectId: 'p', href: '/', task: 'model' }
@@ -15,6 +15,20 @@ describe('pickSteps', () => {
   it('fills up with more of a kind when there is little else, and skips what he put off', () => {
     expect(pickSteps([call(1), call(2), call(3)]).map((s) => s.key)).toEqual(['call-1', 'call-2', 'call-3'])
     expect(pickSteps([growth, build, prospects], new Set(['prospects-p'])).map((s) => s.key)).toEqual(['build-p', 'growth'])
+  })
+})
+
+describe('pickGivePlace', () => {
+  const place = (id: string, type: string, rating = 0, url: string | null = `https://${id}.example`) => ({ id, type, url, rating })
+  it('takes a place where people talk, the best rated first, and lets a place he just helped in rest', () => {
+    const places = [place('press', 'media', 1), place('forum', 'forum'), place('group', 'facebook-group', 1), place('dir', 'directory', 1)]
+    expect(pickGivePlace(places, new Set())?.id).toBe('group')
+    expect(pickGivePlace(places, new Set(['group']))?.id).toBe('forum')
+    expect(pickGivePlace(places, new Set(['group', 'forum']))).toBeNull()
+  })
+
+  it('skips a place without a link or with a thumbs down', () => {
+    expect(pickGivePlace([place('a', 'subreddit', -1), place('b', 'discord', 0, null)], new Set())).toBeNull()
   })
 })
 

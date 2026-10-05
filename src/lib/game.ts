@@ -22,13 +22,15 @@ export const XP_RULES = {
   deal: { xp: 75, dailyCap: Infinity },
   // Yes or no on something Claude prepared (a business it found): deciding is his part of the work.
   decide: { xp: 5, dailyCap: 20 },
+  // Value given in a community (an answer, a tip, no pitch): the slow, honest way people find his work.
+  give: { xp: 15, dailyCap: 3 },
   // The day goal of the day route: three things done, once a day.
   daily: { xp: 30, dailyCap: 1 },
 } as const
 export type XpKind = keyof typeof XP_RULES
 
 /** Kinds that count as "doing" for the action streak (commits have their own streak). */
-export const ACTION_KINDS: readonly XpKind[] = ['quest', 'post', 'email', 'reply', 'deal', 'metric', 'intake', 'plan', 'experiment', 'decide']
+export const ACTION_KINDS: readonly XpKind[] = ['quest', 'post', 'email', 'reply', 'deal', 'metric', 'intake', 'plan', 'experiment', 'decide', 'give']
 
 export const QUEST_XP = [10, 25, 50, 100] as const
 export const BOSS_XP = 250

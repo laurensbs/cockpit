@@ -53,3 +53,6 @@ next-env.d.ts
 # electron
 /dist-electron/
 /release/
+
+# Vitest JSON report (RTK)
+.vitest/

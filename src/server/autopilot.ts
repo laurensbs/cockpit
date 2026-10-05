@@ -4,7 +4,7 @@ import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { dayOf, hourOf, weekdayOf, weekStart } from '@/lib/dates'
 import { preferredPlatform, socialsOf } from '@/lib/socials'
-import { buildNote, recentWork } from '@/lib/today'
+import { buildNote, recentPulls, recentWork } from '@/lib/today'
 import { launchPrompt, runHeadless } from './claude'
 import { createTicket } from './mcp/tickets'
 import { getSetting, setSetting } from './settings'
@@ -84,7 +84,7 @@ export async function maybeBuildPosts(db: Db, ownerId: string, now = new Date())
   const today = dayOf(now)
   if (weekdayOf(today) > 5 || hourOf(now) < 7) return []
   const projects = await db.select().from(s.project).where(eq(s.project.ownerId, ownerId))
-  const repos = await db.select({ projectId: s.repo.projectId, recentCommits: s.repo.recentCommits }).from(s.repo).where(and(eq(s.repo.ownerId, ownerId), eq(s.repo.includeInAi, true)))
+  const repos = await db.select({ projectId: s.repo.projectId, recentCommits: s.repo.recentCommits, recentPulls: s.repo.recentPulls }).from(s.repo).where(and(eq(s.repo.ownerId, ownerId), eq(s.repo.includeInAi, true)))
   const since = new Date(now.getTime() - 2 * 86_400_000)
   const started: string[] = []
   for (const p of projects) {
@@ -92,7 +92,7 @@ export async function maybeBuildPosts(db: Db, ownerId: string, now = new Date())
     const key = `build_post_${p.id}`
     if ((await getSetting(db, ownerId, key)) === today) continue
     const socials = socialsOf(p.links)
-    const work = repos.filter((r) => r.projectId === p.id).flatMap((r) => recentWork(r.recentCommits, today))
+    const work = repos.filter((r) => r.projectId === p.id).flatMap((r) => [...recentPulls(r.recentPulls, today), ...recentWork(r.recentCommits, today)])
     if (!work.length && !Object.keys(socials).length) continue
     const [recent] = await db
       .select({ id: s.contentItem.id })

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { DayStep } from '@/lib/today'
 
-export const STEP_ICON: Record<DayStep['kind'], string> = { call: '📞', prospects: '🏢', reply: '💬', checkin: '📈', post: '📣', build: '🛠️', growth: '🚀' }
+export const STEP_ICON: Record<DayStep['kind'], string> = { call: '📞', prospects: '🏢', reply: '💬', give: '🤝', checkin: '📈', post: '📣', build: '🛠️', growth: '🚀' }
 
 function Ring({ done, goal }: { done: number; goal: number }) {
   const shown = Math.min(done, goal)

@@ -8,7 +8,7 @@ import { DealFields } from '@/components/DealFields'
 import { EmailDraftCard } from '@/components/EmailDraftCard'
 import { MailBanner } from '@/components/Outbox'
 import { ProjectHeader } from '@/components/ProjectHeader'
-import { ProspectList, ProspectPanel, type ProspectView, WantsInfo } from '@/components/Prospects'
+import { ProspectList, ProspectPanel, type ProspectView, WantsInfo, WriteAllMailsButton } from '@/components/Prospects'
 import { ScheduleAllButton } from '@/components/ScheduleButton'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
@@ -100,7 +100,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
             ze vanzelf de deur uit, binnen je daglimiet.
           </p>
           <div className="row">
-            <ClaudeButton task="contact_mails" projectId={id} label={`Schrijf mails voor ${newWithEmail} nieuw${newWithEmail === 1 ? ' contact' : 'e contacten'}`} disabledReason={newWithEmail ? blocked : 'Geen nieuwe contacten met een e-mailadres.'} options={{ language }} variant="secondary" />
+            <WriteAllMailsButton projectId={id} count={newWithEmail} disabledReason={blocked} />
             <ScheduleAllButton projectId={id} count={readyCount} />
           </div>
         </section>

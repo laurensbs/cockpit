@@ -151,7 +151,18 @@ export const fixtureSource: GithubSource = {
     const repo = byName(fullName)
     if (!repo) return []
     return repo.commitDaysAgo
-      .map((n, i) => ({ date: daysAgo(n, 9 + (i % 8)), message: `Werk aan ${repo.meta.fullName.split('/')[1]} (${i + 1})` }))
+      .map((n, i) => ({ sha: `sha${i}`, date: daysAgo(n, 9 + (i % 8)), message: `Werk aan ${repo.meta.fullName.split('/')[1]} (${i + 1})` }))
       .filter((c) => c.date >= sinceIso)
+  },
+  async pulls(fullName) {
+    if (!byName(fullName)) return []
+    return [
+      { number: 12, title: 'Partneraccounts voor webdevelopers', state: 'open', updatedAt: daysAgo(0, 10), body: 'Webdevelopers maken zelf per klant een formulier.' },
+      { number: 11, title: 'Snellere homepage op mobiel', state: 'merged', updatedAt: daysAgo(1, 15), body: '' },
+    ]
+  },
+  async commitFiles(fullName) {
+    if (!byName(fullName)) return null
+    return { files: [{ filename: 'app/portal/partners/page.tsx', additions: 120, deletions: 4 }, { filename: 'lib/partners.ts', additions: 60, deletions: 0 }, { filename: 'README.md', additions: 3, deletions: 1 }] }
   },
 }

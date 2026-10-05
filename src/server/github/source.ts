@@ -15,8 +15,21 @@ export interface RepoMeta {
 }
 
 export interface CommitInfo {
+  sha?: string
   date: string
   message: string
+}
+
+export interface PullInfo {
+  number: number
+  title: string
+  state: 'open' | 'merged' | 'closed'
+  updatedAt: string
+  body: string
+}
+
+export interface CommitFiles {
+  files: { filename: string; additions: number; deletions: number }[]
 }
 
 /** Everything the cockpit reads from GitHub. Read-only, by design. */
@@ -28,6 +41,10 @@ export interface GithubSource {
   dir(fullName: string, path: string): Promise<string[] | null>
   file(fullName: string, path: string): Promise<string | null>
   commits(fullName: string, sinceIso: string): Promise<CommitInfo[]>
+  /** The newest pull requests, open or closed: where the work in progress shows. */
+  pulls(fullName: string): Promise<PullInfo[]>
+  /** The files one commit changed. */
+  commitFiles(fullName: string, sha: string): Promise<CommitFiles | null>
 }
 
 export class GithubError extends Error {
@@ -117,17 +134,27 @@ function apiSource(token: string): GithubSource {
     async commits(fullName, sinceIso) {
       const out: CommitInfo[] = []
       for (let page = 1; page <= 3; page++) {
-        const commits = await json<{ commit: { message: string; author: { date: string } | null; committer: { date: string } | null } }[]>(
+        const commits = await json<{ sha: string; commit: { message: string; author: { date: string } | null; committer: { date: string } | null } }[]>(
           `/repos/${fullName}/commits?since=${encodeURIComponent(sinceIso)}&per_page=100&page=${page}`,
         )
         if (!commits?.length) break
         for (const c of commits) {
           const date = c.commit.author?.date ?? c.commit.committer?.date
-          if (date) out.push({ date, message: c.commit.message })
+          if (date) out.push({ sha: c.sha, date, message: c.commit.message })
         }
         if (commits.length < 100) break
       }
       return out
+    },
+    async pulls(fullName) {
+      const pulls = await json<{ number: number; title: string; state: string; merged_at: string | null; updated_at: string; body: string | null }[]>(
+        `/repos/${fullName}/pulls?state=all&sort=updated&direction=desc&per_page=10`,
+      )
+      return (pulls ?? []).map((p) => ({ number: p.number, title: p.title, state: p.merged_at ? 'merged' : p.state === 'open' ? 'open' : 'closed', updatedAt: p.updated_at, body: p.body ?? '' }))
+    },
+    async commitFiles(fullName, sha) {
+      const commit = await json<{ files?: { filename: string; additions: number; deletions: number }[] }>(`/repos/${fullName}/commits/${encodeURIComponent(sha)}`)
+      return commit ? { files: (commit.files ?? []).map((f) => ({ filename: f.filename, additions: f.additions, deletions: f.deletions })) } : null
     },
   }
 }

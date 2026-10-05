@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
-import { acceptProspect, prospectNow, prospectWantsInfo, setProspecting, skipProspect } from '@/server/actions/prospects'
+import { acceptProspect, prospectNow, prospectWantsInfo, setProspecting, skipProspect, writeAllMails } from '@/server/actions/prospects'
 
 const REASONS = ['past niet', 'klopt niet wat Claude zag', 'te groot', 'te ver weg', 'anders'] as const
 const VERB: Record<string, string> = { call: 'Ja, ik bel ze', visit: 'Ja, ik ga langs', form: 'Ja, ik vul hun formulier in', email: 'Ja, ik bel ze' }
@@ -31,12 +31,14 @@ function useWatch(active: boolean) {
   }, [active, router])
 }
 
+/** "Zoek nu" runs four searches side by side, so twenty businesses take as long as five. */
+const SEARCH_NOW = 20
+
 /** The switch per project and "Zoek nu": Claude looks for businesses that fit, he decides per business. */
 export function ProspectPanel({ projectId, projectName, perDay, waiting, off }: { projectId: string; projectName: string; perDay: number; waiting: number; off: boolean }) {
   const [pending, start] = useTransition()
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [searching, setSearching] = useState(false)
-  const [count, setCount] = useState(perDay || 5)
   useWatch(searching)
   if (off) return null
   return (
@@ -58,7 +60,6 @@ export function ProspectPanel({ projectId, projectName, perDay, waiting, off }: 
             style={{ width: 'auto', minHeight: 36 }}
             onChange={(e) => {
               const n = Number(e.target.value)
-              setCount(n || 5)
               start(async () => {
                 const r = await setProspecting(projectId, n)
                 setMessage({ ok: r.ok, text: r.message })
@@ -77,13 +78,13 @@ export function ProspectPanel({ projectId, projectName, perDay, waiting, off }: 
           disabled={pending || searching}
           onClick={() =>
             start(async () => {
-              const r = await prospectNow(projectId, count)
+              const r = await prospectNow(projectId, SEARCH_NOW)
               setMessage({ ok: r.ok, text: r.message })
               if (r.ok) setSearching(true)
             })
           }
         >
-          {searching ? 'Claude zoekt…' : `Zoek nu ${count} bedrijven`}
+          {searching ? 'Claude zoekt…' : `Zoek nu ${SEARCH_NOW} bedrijven`}
         </button>
       </div>
       {waiting ? <p className="tiny muted">{waiting === 1 ? 'Er wacht 1 voorstel op je.' : `Er wachten ${waiting} voorstellen op je.`} Zolang er veel wachten, zoekt Claude niet verder.</p> : null}
@@ -296,5 +297,37 @@ export function WantsInfo({ contactId, hasEmail }: { contactId: string; hasEmail
         </span>
       ) : null}
     </form>
+  )
+}
+
+/** "Schrijf alle mails": every new contact gets a personal mail, written in the background, 100 in one go. */
+export function WriteAllMailsButton({ projectId, count, disabledReason }: { projectId: string; count: number; disabledReason: string | null }) {
+  const [pending, start] = useTransition()
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [writing, setWriting] = useState(false)
+  useWatch(writing)
+  return (
+    <div className="stack-xs">
+      <button
+        type="button"
+        className="button secondary"
+        disabled={pending || writing || Boolean(disabledReason) || !count}
+        onClick={() =>
+          start(async () => {
+            const r = await writeAllMails(projectId)
+            setMessage({ ok: r.ok, text: r.message })
+            if (r.ok) setWriting(true)
+          })
+        }
+      >
+        {writing ? 'Claude schrijft…' : `Schrijf mails voor ${count} nieuw${count === 1 ? ' contact' : 'e contacten'}`}
+      </button>
+      {disabledReason || !count ? <span className="tiny muted">{disabledReason ?? 'Geen nieuwe contacten met een e-mailadres.'}</span> : null}
+      {message ? (
+        <span className="small" role={message.ok ? 'status' : 'alert'} style={message.ok ? undefined : { color: 'var(--bad)' }}>
+          {message.text}
+        </span>
+      ) : null}
+    </div>
   )
 }

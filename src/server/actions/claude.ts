@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { expectedToken } from '@/lib/local'
-import { connectClaudeCode, launchPrompt, mcpUrl, openTerminal, runHeadless } from '../claude'
+import { claudeLoggedIn, connectClaudeCode, launchPrompt, mcpUrl, openTerminal, runHeadless } from '../claude'
 import { isTaskKind, TaskOptions } from '../mcp/tasks'
 import { createTicket } from '../mcp/tickets'
 import { actionOwner } from '../session'
@@ -86,4 +86,25 @@ export async function runInBackground(task: string, projectId: string, options: 
   const ticket = createTicket({ task, projectId: project.id, options: parsed.data })
   const { started } = await runHeadless(launchPrompt(ticket), { web: WEB_TASKS.has(task) })
   return started ? { ok: true, message: 'Claude is ermee bezig. Het verschijnt hier vanzelf.' } : { ok: false, message: 'Claude Code kon niet starten.' }
+}
+
+/**
+ * After he logged in again: forget that today's background work was started (it failed), and start it
+ * again (the weekly focus on Monday, the posts, the search for businesses).
+ */
+export async function retryBackgroundToday(): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  if ((await claudeLoggedIn()) === false) return { ok: false, message: 'Claude Code is nog niet ingelogd. Typ in Terminal claude en dan /login.' }
+  const db = await getDb()
+  const { maybeAutopilot, maybeBuildPosts, maybeProspect } = await import('../autopilot')
+  const projects = await db.select({ id: s.project.id }).from(s.project).where(eq(s.project.ownerId, owner.userId))
+  for (const p of projects) {
+    await setSetting(db, owner.userId, `build_post_${p.id}`, null)
+    await setSetting(db, owner.userId, `prospect_day_${p.id}`, null)
+  }
+  await setSetting(db, owner.userId, 'autopilot_week', null)
+  const [weekly, prospects, posts] = await Promise.all([maybeAutopilot(db, owner.userId), maybeProspect(db, owner.userId), maybeBuildPosts(db, owner.userId)])
+  revalidatePath('/')
+  const started = (weekly === 'started' ? 1 : 0) + prospects.started.length + posts.length
+  return { ok: true, message: started ? `Claude is opnieuw begonnen (${started} ${started === 1 ? 'klus' : 'klussen'}).` : 'Er stond vandaag niets meer klaar om te doen.' }
 }

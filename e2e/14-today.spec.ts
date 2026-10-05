@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { newVisitor, shot } from './helpers'
+import { mcpTool, newVisitor, shot } from './helpers'
 
 // The day route, the lesson, socials and Instagram. Runs after 13-prospects: "Bel Garage Test" is on
 // his quests for today.
@@ -82,5 +82,38 @@ test('Instagram numbers come in by themselves, with a read-only token that never
   await expect(weeks.getByRole('rowheader', { name: 'Volgers' })).toBeVisible()
   await expect(weeks.getByRole('rowheader', { name: 'Bereik op socials' })).toBeVisible()
   expect(await page.content()).not.toContain('IGQWRe2etesttoken')
+  await context.close()
+})
+
+test('"Help iemand": a place where his audience talks, value without a pitch, once a day', async ({ browser, request }) => {
+  const saved = await mcpTool(request, 'save_opportunities', {
+    project: 'Webstability',
+    language: 'nl',
+    opportunities: [
+      { name: 'Vakblad Test', type: 'media', url: 'https://vakblad.example', why: 'Lezers zijn garages.', howToApproach: 'Later een artikel aanbieden.' },
+      { name: 'Forum Test', type: 'forum', url: 'https://forum.example/werkplaats', why: 'Garages vragen hier dagelijks om hulp.', howToApproach: 'Geen reclame. Beantwoord een vraag over afspraken plannen.' },
+    ],
+  })
+  expect(saved.text).toContain('2 kansen')
+
+  const { context, page } = await newVisitor(browser)
+  await page.goto('/dag')
+  for (let i = 0; i < 8; i++) {
+    const title = (await page.getByRole('heading', { level: 1 }).textContent()) ?? ''
+    if (title.includes('Help iemand')) break
+    await page.locator('.lesson-actions').getByRole('button', { name: /^(Later|Nog niet|Niet bereikt)$/ }).first().click()
+    await page.getByRole('button', { name: 'Verder' }).click()
+  }
+  // The forum, not the magazine: a place where people talk.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Help iemand in Forum Test')
+  await expect(page.getByText('Beantwoord een vraag over afspraken plannen.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Open forum.example' })).toHaveAttribute('href', 'https://forum.example/werkplaats')
+  await shot(page, '24-les-help-iemand')
+  await page.getByRole('button', { name: 'Gedaan ✓' }).click()
+  await expect(page.locator('.lesson-foot.good')).toContainText('+15 XP')
+
+  // Done for today: the next lesson does not ask again.
+  await page.goto('/dag')
+  await expect(page.getByRole('heading', { name: 'Help iemand in Forum Test' })).toHaveCount(0)
   await context.close()
 })

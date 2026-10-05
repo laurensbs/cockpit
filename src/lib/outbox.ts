@@ -48,6 +48,15 @@ export function allowance(input: { sentToday: number; cap: number; lastSentAt: D
   return 1
 }
 
+/** A new mailbox warms up: at most 10 a day in its first week, 20 in the second, 35 in the third. */
+const WARMUP = [10, 20, 35] as const
+
+/** The cap for today: his own, but lower while the mailbox is new (counted from its first sent mail). */
+export function warmCap(cap: number, firstSentAt: Date | null, now: Date): number {
+  const week = firstSentAt ? Math.floor((now.getTime() - firstSentAt.getTime()) / (7 * 86_400_000)) : 0
+  return Math.min(cap, WARMUP[week] ?? cap)
+}
+
 /** A sane daily cap from whatever was stored. */
 export function dailyCap(value: string | null | undefined): number {
   const n = Number(value)

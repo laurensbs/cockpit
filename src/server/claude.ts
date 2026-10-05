@@ -1,8 +1,9 @@
 import 'server-only'
 import { exec, spawn } from 'node:child_process'
-import { appendFileSync, existsSync, mkdirSync } from 'node:fs'
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
+import { lastRunProblem, RUN_MARKER } from '@/lib/claude-runs'
 import { cleanPrompt, terminalScript } from '@/lib/terminal'
 import { fixturesAllowed } from './status'
 
@@ -143,9 +144,60 @@ export async function runHeadless(prompt: string, { web = false }: { web?: boole
   }
   if (!(await claudeVersion())) return { started: false, command }
   try {
-    spawn(command, { shell: true, detached: true, stdio: 'ignore', windowsHide: true, cwd: homedir() }).unref()
+    // What the run says goes to logs/claude-runs.log, so a run that failed (logged out) does not fail in silence.
+    const log = runLogFile()
+    let out: number | 'ignore' = 'ignore'
+    if (log) {
+      mkdirSync(dirname(log), { recursive: true })
+      appendFileSync(log, `\n${RUN_MARKER}${new Date().toISOString()} ${web ? 'web' : 'cockpit'}\n`)
+      out = openSync(log, 'a')
+    }
+    spawn(command, { shell: true, detached: true, stdio: ['ignore', out, out], windowsHide: true, cwd: homedir() }).unref()
+    if (typeof out === 'number') closeSync(out)
     return { started: true, command }
   } catch {
     return { started: false, command }
+  }
+}
+
+/**
+ * Whether Claude Code is logged in (`claude auth status`), so the daily round does not start work that
+ * would fail. null when that cannot be told: not installed, an older version, or in tests.
+ */
+export async function claudeLoggedIn(): Promise<boolean | null> {
+  if (fakeTerminal() || !(await claudeVersion())) return null
+  const r = await run('claude auth status', 20_000)
+  const m = r.out.match(/"loggedIn"\s*:\s*(true|false)/)
+  if (!m) return null
+  const loggedIn = m[1] === 'true'
+  const log = runLogFile()
+  // The same trace a run leaves: Vandaag shows the warning while logged out, and drops it once he logged in.
+  if (log && (!loggedIn || headlessProblem() === 'logged-out')) {
+    mkdirSync(dirname(log), { recursive: true })
+    appendFileSync(log, `\n${RUN_MARKER}${new Date().toISOString()} check\n${loggedIn ? 'Logged in.' : 'Not logged in (claude auth status).'}\n`)
+  }
+  return loggedIn
+}
+
+/** The log of the background runs, next to the database; none in development or tests. */
+export function runLogFile(): string | null {
+  const db = process.env.PGLITE_DIR
+  return db && db !== 'memory' ? join(dirname(db), 'logs', 'claude-runs.log') : null
+}
+
+/** Whether the newest background run failed because Claude Code is logged out. */
+export function headlessProblem(): 'logged-out' | null {
+  const file = runLogFile()
+  if (!file || !existsSync(/*turbopackIgnore: true*/ file)) return null
+  try {
+    const size = statSync(file).size
+    const fd = openSync(file, 'r')
+    const length = Math.min(size, 8000)
+    const buffer = Buffer.alloc(length)
+    readSync(fd, buffer, 0, length, size - length)
+    closeSync(fd)
+    return lastRunProblem(buffer.toString('utf8'))
+  } catch {
+    return null
   }
 }

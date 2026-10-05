@@ -50,6 +50,17 @@ test('approved mails go out on their own, within the cap, and an answer stops th
   const batch = await mcpTool(request, 'get_task', { task: 'contact_mails', project: 'Rondje' })
   expect(batch.text).toContain('Opvang Noord')
   expect(batch.text).not.toContain('info@noord.test')
+
+  // One button writes them all in the background; big lists go in parts that never take the same contacts.
+  const launched = () => readFileSync('test-results/claude-launch.txt', 'utf8').trim().split('\n').length
+  const before = launched()
+  await page.getByRole('button', { name: 'Schrijf mails voor 3 nieuwe contacten' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Claude schrijft nu 3 mails' })).toBeVisible()
+  expect(launched()).toBe(before + 1)
+  const part2 = await mcpTool(request, 'get_task', { task: 'contact_mails', project: 'Rondje', count: 2, offset: 1 })
+  expect(part2.text).toContain('Opvang Zuid')
+  expect(part2.text).toContain('Opvang West')
+  expect(part2.text).not.toContain('Opvang Noord')
   const contacts = JSON.parse((await mcpTool(request, 'list_contacts', { project: 'Rondje' })).text) as { id: string; organization: string }[]
   for (const org of ['Opvang Noord', 'Opvang Zuid', 'Opvang West']) {
     const id = contacts.find((c) => c.organization === org)!.id

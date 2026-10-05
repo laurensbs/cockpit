@@ -14,14 +14,15 @@ export type DayStep =
   | (Base & { kind: 'call'; questId: string; phone: string | null; contactId: string | null; hasEmail: boolean })
   | (Base & { kind: 'prospects'; count: number })
   | (Base & { kind: 'reply'; contactId: string })
+  | (Base & { kind: 'give'; itemId: string; url: string; how: string })
   | (Base & { kind: 'post'; itemId: string; platform: string; text: string; hook: string; profile: string | null; color: string; projectName: string })
   | (Base & { kind: 'checkin'; platform: 'instagram' })
   | (Base & { kind: 'build'; platform: string; note: string })
   | (Base & { kind: 'growth'; href: string; task: string | null; options?: Record<string, unknown> })
 
 /** What comes first: what he promised today (calls), then decisions, then answers, then posting and growth. */
-const ORDER: DayStep['kind'][] = ['call', 'prospects', 'reply', 'checkin', 'post', 'build', 'growth']
-const MAX_OF_KIND: Record<DayStep['kind'], number> = { call: 2, prospects: 1, reply: 1, checkin: 1, post: 1, build: 1, growth: 1 }
+const ORDER: DayStep['kind'][] = ['call', 'prospects', 'reply', 'give', 'checkin', 'post', 'build', 'growth']
+const MAX_OF_KIND: Record<DayStep['kind'], number> = { call: 2, prospects: 1, reply: 1, give: 1, checkin: 1, post: 1, build: 1, growth: 1 }
 
 export function pickSteps(candidates: DayStep[], hidden: ReadonlySet<string> = new Set(), max = DAY_GOAL): DayStep[] {
   const out: DayStep[] = []
@@ -49,4 +50,22 @@ export function buildNote(project: string, messages: string[]): string {
 export function recentWork(commits: { date: string; message: string }[], today: string): string[] {
   const since = new Date(`${today}T00:00:00Z`).getTime() - 2 * 86_400_000
   return commits.filter((c) => new Date(c.date).getTime() >= since).map((c) => c.message)
+}
+
+/** Pull requests he worked on in the last two days, as lines for the build-in-public note. */
+export function recentPulls(pulls: { title: string; state: string; updatedAt: string }[], today: string): string[] {
+  const since = new Date(`${today}T00:00:00Z`).getTime() - 2 * 86_400_000
+  return pulls.filter((p) => new Date(p.updatedAt).getTime() >= since).map((p) => `${p.state === 'merged' ? 'Live gezet' : 'Bezig met'}: ${p.title}`)
+}
+
+/** Places where people talk, not shops or press: where an answer or a tip helps someone today. */
+const TALK = /community|forum|subreddit|discord|facebook|group|groep|slack|whatsapp|telegram|other/i
+
+/**
+ * "Help iemand": the place for today's bit of value. Only a place where people talk (a directory or the
+ * press is a one-off, not a daily habit), the best rated first; a place he helped in the last six days rests.
+ */
+export function pickGivePlace<T extends { id: string; type: string; url: string | null; rating: number }>(places: T[], recent: ReadonlySet<string>): T | null {
+  const open = places.filter((p) => p.url && p.rating >= 0 && !recent.has(p.id) && TALK.test(p.type))
+  return [...open].sort((a, b) => b.rating - a.rating)[0] ?? null
 }

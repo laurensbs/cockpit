@@ -9,7 +9,7 @@ import { shareUrl } from '@/lib/share'
 import type { LessonCard } from '@/server/lesson'
 import { runInBackground } from '@/server/actions/claude'
 import { setContactStatus } from '@/server/actions/contacts'
-import { markContentDone } from '@/server/actions/content'
+import { gaveValue, markContentDone } from '@/server/actions/content'
 import { saveFollowers } from '@/server/actions/numbers'
 import { acceptProspect, prospectWantsInfo, skipProspect } from '@/server/actions/prospects'
 import { completeQuest } from '@/server/actions/quests'
@@ -21,6 +21,13 @@ type Phase = 'act' | 'ask-info' | 'reasons'
 
 const PLATFORM: Record<string, string> = { instagram: 'Instagram', linkedin: 'LinkedIn', x: 'X', tiktok: 'TikTok', discord: 'Discord' }
 const REASONS = ['past niet', 'klopt niet wat Claude zag', 'te groot', 'te ver weg', 'anders'] as const
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'de plek'
+  }
+}
 const PLATFORM_HOME: Record<string, string> = { instagram: 'https://www.instagram.com/', tiktok: 'https://www.tiktok.com/upload', linkedin: 'https://www.linkedin.com/feed/', x: 'https://x.com/compose/post' }
 
 /**
@@ -186,6 +193,21 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
   if (card.kind === 'build') return <p>Claude maakt er een post van, over wat je bouwde. Jij kijkt hem daarna na.</p>
   if (card.kind === 'growth') return <p>Claude doet het werk op de achtergrond. Het staat daarna in de cockpit.</p>
   if (card.kind === 'reply') return <p>Een antwoord is goud: daarmee telt het mee in je trechter.</p>
+  if (card.kind === 'give')
+    return (
+      <div className="stack-s">
+        <p>Geef iets weg: beantwoord één vraag of deel één tip. Geen link, geen reclame. Zo leren mensen je kennen.</p>
+        {card.how ? (
+          <div className="notice stack-xs">
+            <strong>Zo help je hier</strong>
+            <span className="small">{card.how}</span>
+          </div>
+        ) : null}
+        <a className="button secondary small" href={card.url} target="_blank" rel="noreferrer noopener nofollow">
+          Open {hostOf(card.url)}
+        </a>
+      </div>
+    )
   return null
 }
 
@@ -408,6 +430,28 @@ function Actions({
           }
         >
           Bewaar
+        </button>
+      </div>
+    )
+
+  if (card.kind === 'give')
+    return (
+      <div className="lesson-actions">
+        <button
+          type="button"
+          className={big}
+          disabled={pending}
+          onClick={() =>
+            run(async () => {
+              const r = await gaveValue(card.itemId)
+              return { tone: 'good', text: 'Mooi: zo bouw je vertrouwen op.', xp: r.xp }
+            })
+          }
+        >
+          Gedaan ✓
+        </button>
+        <button type="button" className={second} onClick={() => later()}>
+          Later
         </button>
       </div>
     )

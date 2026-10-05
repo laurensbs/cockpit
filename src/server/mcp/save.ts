@@ -131,7 +131,8 @@ export async function savePosts(db: Db, ownerId: string, project: { id: string; 
     'social',
     input.platform,
     input.language,
-    normalizePosts(wire).map(({ title, ...body }) => ({ title, body })),
+    // Instagram takes at most five hashtags per post (since December 2025).
+    normalizePosts(wire).map(({ title, ...body }) => ({ title, body: input.platform === 'instagram' ? { ...body, hashtags: body.hashtags.slice(0, 5) } : body })),
   )
   return n ? `Opgeslagen: ${n} post${n === 1 ? '' : 's'} voor ${input.platform} (${project.name}). Hij plant en post ze zelf vanuit de Studio.` : 'Niets opgeslagen: er zaten geen posts in.'
 }

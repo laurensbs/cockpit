@@ -48,7 +48,16 @@ export interface ContextInput {
     siteUrl: string | null
   }
   company: { name: string; kind: string } | null
-  repos: { fullName: string; description: string; homepage: string | null; stack: string[]; readme: string; docs: { path: string; text: string }[]; recentCommits: { date: string; message: string }[] }[]
+  repos: {
+    fullName: string
+    description: string
+    homepage: string | null
+    stack: string[]
+    readme: string
+    docs: { path: string; text: string }[]
+    recentCommits: { date: string; message: string }[]
+    work?: string[]
+  }[]
   metrics: { month: string; key: string; value: number }[]
   others: { name: string; oneLiner: string; stage: string }[]
   liked: string[]
@@ -110,9 +119,11 @@ export function projectContext(c: ContextInput): string {
     if (r.readme) out += `README:\n${neutralize(r.readme)}\n`
     out += '</repo>\n'
     for (const d of r.docs) out += `<docs repo="${neutralize(r.fullName)}" path="${neutralize(d.path)}">\n${neutralize(d.text)}\n</docs>\n`
-    if (r.recentCommits.length) {
+    if (r.work?.length || r.recentCommits.length) {
       out += `<recent_work repo="${neutralize(r.fullName)}">\n`
-      for (const commit of r.recentCommits.slice(0, 15)) out += `${commit.date.slice(0, 10)} ${neutralize(commit.message)}\n`
+      // Pull requests and changed areas say what the work is; commit lines fill in the rest.
+      for (const w of r.work ?? []) out += `${neutralize(w)}\n`
+      for (const commit of r.recentCommits.slice(0, r.work?.length ? 8 : 15)) out += `${commit.date.slice(0, 10)} ${neutralize(commit.message)}\n`
       out += '</recent_work>\n'
     }
   }
@@ -218,9 +229,12 @@ ${DRAFT_RULES}`
  * to businesses needs consent in Spain (LSSI art. 21) and in the Netherlands (Tw 11.7), so the first
  * step is a call; the mail is the information they ask for on the phone.
  */
-export function prospectTask(input: { name: string; count: number; language: string; markets: string[]; known: string[] }): string {
+export function prospectTask(input: { name: string; count: number; language: string; markets: string[]; known: string[]; part?: { n: number; of: number } }): string {
+  const lane = input.part
+    ? `\nSearches run side by side: you are part ${input.part.n} of ${input.part.of}. So you never look at the same businesses as the others, take your own slice: the ${input.part.n}${input.part.n === 1 ? 'st' : input.part.n === 2 ? 'nd' : input.part.n === 3 ? 'rd' : 'th'} kind of business named in the intake's audience (count round again when there are fewer kinds), and towns in the ${['north', 'south', 'east', 'west'][input.part.n - 1]} of the market first. Doubles are dropped by the cockpit anyway.`
+    : ' Mix towns and trades a little; not all of one kind.'
   return `Task: find ${input.count} businesses or organisations that fit ${input.name}, that he can call or visit, and check each one on its own website.
-Who: follow the intake (audience, markets, tone, red lines) and what the project offers.${input.markets.length ? ` Markets: ${input.markets.join(', ')}.` : ''} Mix towns and trades a little; not all of one kind. Small and owner-run beats big chains with a call centre. Never private persons.
+Who: follow the intake (audience, markets, tone, red lines) and what the project offers.${input.markets.length ? ` Markets: ${input.markets.join(', ')}.` : ''}${lane} Small and owner-run beats big chains with a call centre. Never private persons.
 Skip everything in this list (he already has them, or said no to them): ${input.known.length ? input.known.join('; ') : '(none yet)'}.
 For each business, open their own website with web fetch and look at how a customer reaches them now (a form and what it asks, a phone number, WhatsApp, mail). Write one observation he can check himself in ten seconds, and say where ("kijk zelf: hun contactpagina"). Only what you saw yourself; leave out a business whose site you could not open.
 pitch: what he says when he calls, in their language (Spanish with "vosotros", Dutch with "je", Catalan sites in Spanish), two or three sentences: who he is in a few words, the observation, and one yes/no question such as whether he may show them in two minutes. No prices unless they ask.
@@ -241,7 +255,7 @@ export type Platform = keyof typeof PLATFORMS
 
 export function postsTask(platform: Platform, language: string, pastTitles: string[]): string {
   return `Task: five posts for ${PLATFORMS[platform]}, in ${lang(language)}, as JSON.
-- posts: each with a title (for him), format (for example carousel, reel, story, text post, thread), hook (the first line or the first two seconds), caption (ready to paste), hashtags (3–10, fitting the market; none for Discord), visualBrief (what to film or design, concretely) and bestTime (day and time that suits the audience).
+- posts: each with a title (for him), format (for example carousel, reel, story, text post, thread), hook (the first line or the first two seconds), caption (ready to paste), hashtags (at most 5, specific to the topic and market; none for Discord), visualBrief (what to film or design, concretely) and bestTime (day and time that suits the audience).
 - Mix the content pillars and formats; at least one post that is useful or fun without selling anything.
 - Never invent facts, numbers or testimonials; put what he must fill in in [square brackets]. Respect the red lines and the platform's rules.${pastTitles.length ? `\n- Do not repeat these earlier posts: ${pastTitles.map((t) => neutralize(t)).join('; ')}` : ''}`
 }
@@ -264,11 +278,13 @@ ${IDEA_MODES[mode]}${mode === 'persona' && persona ? `\nPersona: ${neutralize(pe
 }
 
 export function opportunitiesTask(language: string, markets: string[]): string {
-  return `Task: find real opportunities for this project on the web: communities, forums, subreddits, Discord servers, directories, toplists, local media, events, partner organisations and associations where its audience is${markets.length ? `, focused on these markets: ${markets.join(', ')}` : ''}.
-Use web search. Only list places you actually found, with their real web address. Never list private persons or personal email addresses: organisations, communities and public pages only.
+  return `Task: find the places where this project's audience already talks about the problem it solves: forums, subreddits, Facebook and WhatsApp groups, Discord servers, associations and trade groups, meetups, newsletters and local media${markets.length ? `, focused on these markets: ${markets.join(', ')}` : ''}. Places to give value, not to advertise: people drop off fast at a pitch.
+Use web search and web fetch. Only list places you actually found and opened, with their real web address and a sign they are alive (a date of this year or last). Never list private persons or personal email addresses: organisations, communities and public pages only.
+For each place, read its own rules on self-promotion and say in one sentence what they allow (quote a few words when you can). Leave out a place whose rules forbid what would help, or that has gone quiet.
+howToApproach: how he gives value there first, concretely for this project: which questions to answer, which tip, checklist or lesson to share, which talk or article to offer. No link and no product name until someone asks; for a place that allows showing your own work (a showcase thread, a feedback board) say which one and how often.
 Answer in ${lang(language)} with JSON only (no other text), in this shape:
-{"opportunities":[{"name":"…","type":"community | directory | media | event | partner | other","url":"https://…","why":"why it fits","howToApproach":"how to start there, within the rules of that place"}]}
-List 5–8 opportunities, best first.`
+{"opportunities":[{"name":"…","type":"forum | subreddit | facebook-group | discord | community | association | event | media | directory | partner | other","url":"https://…","why":"why it fits, with its size and a date you saw","howToApproach":"the rule in one sentence, then how to give value first"}]}
+List 5–8 opportunities, best first: where his audience asks for help often beats where it is big.`
 }
 
 // ---------- portfolio ----------

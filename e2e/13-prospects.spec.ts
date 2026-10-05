@@ -53,6 +53,14 @@ test('Claude saves businesses as proposals; the cockpit finds their phone and ad
   const brief = await mcpTool(request, 'get_task', { task: 'prospect', project: 'Webstability' })
   expect(brief.text).toContain('Garage Test (garage.example)')
   expect(brief.text).toContain('save_prospects')
+
+  // Searches that run side by side each take their own slice.
+  const part = await mcpTool(request, 'get_task', { task: 'prospect', project: 'Webstability', count: 5, part: 2, parts: 4 })
+  expect(part.text).toContain('you are part 2 of 4')
+  expect(part.text).toContain('find 5 businesses')
+  // What works in 2026 goes with it: for finding businesses, the rules on mail.
+  expect(part.text).toContain('<channel_rules>')
+  expect(part.text).toContain('LSSI art. 21')
 })
 
 test('he says yes (a call on his quests) or no (never again), and the mail goes only when they ask for info', async ({ browser, request }) => {

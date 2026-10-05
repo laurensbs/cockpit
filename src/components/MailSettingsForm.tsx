@@ -97,7 +97,7 @@ export function MailSettingsForm({ values }: { values: MailSettingsValues }) {
         <input type="checkbox" name="enabled" value="1" defaultChecked={values.enabled} />
         <span className="stack-xs">
           <strong>Automatisch versturen</strong>
-          <span className="tiny muted">Mails die jij goedkeurt, gaan op werkdagen tussen 9 en 17 uur de deur uit, één tegelijk, met opvolgmails na 4 en 11 dagen. Een antwoord of “geen interesse” stopt de rest.</span>
+          <span className="tiny muted">Mails die jij goedkeurt, gaan op werkdagen tussen 9 en 17 uur de deur uit, één tegelijk, met opvolgmails na 4 en 11 dagen. Een antwoord of “geen interesse” stopt de rest. Een nieuwe mailbox warmt op: de eerste week hooguit 10 per dag, dan 20, dan 35, daarna jouw maximum. Zo belandt je mail niet in spam.</span>
         </span>
       </label>
       <label className="check">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allowance, dailyCap, finalBody, inSendWindow, nextFollowupAt } from './outbox'
+import { allowance, dailyCap, finalBody, inSendWindow, nextFollowupAt, warmCap } from './outbox'
 
 describe('finalBody', () => {
   it('adds an opt-out line in the right language when the text has none', () => {
@@ -60,5 +60,21 @@ describe('dailyCap and nextFollowupAt', () => {
     expect(nextFollowupAt(0, sent)?.toISOString()).toBe('2026-10-09T10:00:00.000Z')
     expect(nextFollowupAt(1, sent)?.toISOString()).toBe('2026-10-12T10:00:00.000Z')
     expect(nextFollowupAt(2, sent)).toBeNull()
+  })
+})
+
+describe('warmCap', () => {
+  const now = new Date('2026-10-20T10:00:00Z')
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000)
+  it('lets a new mailbox start small and grow to his own cap in three weeks', () => {
+    expect(warmCap(50, null, now)).toBe(10)
+    expect(warmCap(50, daysAgo(3), now)).toBe(10)
+    expect(warmCap(50, daysAgo(8), now)).toBe(20)
+    expect(warmCap(50, daysAgo(15), now)).toBe(35)
+    expect(warmCap(50, daysAgo(22), now)).toBe(50)
+  })
+
+  it('never goes above his own cap', () => {
+    expect(warmCap(2, null, now)).toBe(2)
   })
 })

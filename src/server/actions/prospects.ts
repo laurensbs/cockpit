@@ -138,6 +138,9 @@ export async function setProspecting(projectId: string, perDay: number): Promise
 }
 
 /** "Zoek nu": Claude looks for businesses right away, in the background; the proposals appear on the page. */
+const PROSPECTS_PER_PART = 5
+const MAX_PARTS = 4
+
 export async function prospectNow(projectId: string, count: number): Promise<{ ok: boolean; message: string }> {
   const owner = await actionOwner()
   const db = await getDb()
@@ -147,10 +150,45 @@ export async function prospectNow(projectId: string, count: number): Promise<{ o
     .where(and(eq(s.project.id, String(projectId)), eq(s.project.ownerId, owner.userId)))
   if (!project) return { ok: false, message: 'Dat project bestaat niet.' }
   if (/marketing staat uit/i.test(`${project.what} ${project.redLines}`)) return { ok: false, message: `Voor ${project.name} staat marketing uit.` }
-  const n = Math.min(10, Math.max(1, Math.round(Number(count) || 5)))
-  const ticket = createTicket({ task: 'prospect', projectId: project.id, options: { count: n } })
-  const { started } = await runHeadless(launchPrompt(ticket), { web: true })
-  return started
-    ? { ok: true, message: `Claude zoekt nu ${n} bedrijven op de achtergrond. Dat duurt een paar minuten; de voorstellen verschijnen hier vanzelf.` }
-    : { ok: false, message: 'Claude Code kon niet starten. Staat het geïnstalleerd en ben je ingelogd?' }
+  // Big searches go in parts of at most 5 that run side by side, each in its own slice: 20 take as long as 5.
+  const n = Math.min(PROSPECTS_PER_PART * MAX_PARTS, Math.max(1, Math.round(Number(count) || 5)))
+  const parts = Math.min(MAX_PARTS, Math.ceil(n / PROSPECTS_PER_PART))
+  let started = 0
+  for (let i = 1; i <= parts; i++) {
+    const options = parts > 1 ? { count: Math.ceil(n / parts), part: i, parts } : { count: n }
+    if ((await runHeadless(launchPrompt(createTicket({ task: 'prospect', projectId: project.id, options })), { web: true })).started) started++
+  }
+  if (!started) return { ok: false, message: 'Claude Code kon niet starten. Staat het geïnstalleerd en ben je ingelogd?' }
+  return {
+    ok: true,
+    message: `Claude zoekt nu ${n} bedrijven${started > 1 ? ` in ${started} delen tegelijk` : ''}. Dat duurt een paar minuten; de voorstellen verschijnen hier vanzelf.`,
+  }
+}
+
+const MAILS_PER_PART = 25
+
+/**
+ * "Schrijf alle mails": Claude writes a personal mail with two follow-ups for every new contact with an
+ * address, in parts of 25 that run side by side in the background (100 in one go). Nothing is sent: he
+ * approves them, and the cockpit sends within the daily cap.
+ */
+export async function writeAllMails(projectId: string): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  const [project] = await db
+    .select()
+    .from(s.project)
+    .where(and(eq(s.project.id, String(projectId)), eq(s.project.ownerId, owner.userId)))
+  if (!project) return { ok: false, message: 'Dat project bestaat niet.' }
+  const fresh = (await db.select({ email: s.contact.email }).from(s.contact).where(and(eq(s.contact.projectId, project.id), eq(s.contact.status, 'new')))).filter((c) => c.email).length
+  if (!fresh) return { ok: false, message: 'Geen nieuwe contacten met een e-mailadres.' }
+  const parts = Math.min(MAX_PARTS, Math.ceil(fresh / MAILS_PER_PART))
+  let started = 0
+  for (let i = 0; i < parts; i++) {
+    const ticket = createTicket({ task: 'contact_mails', projectId: project.id, options: { count: MAILS_PER_PART, offset: i * MAILS_PER_PART } })
+    if ((await runHeadless(launchPrompt(ticket))).started) started++
+  }
+  if (!started) return { ok: false, message: 'Claude Code kon niet starten.' }
+  const total = Math.min(fresh, parts * MAILS_PER_PART)
+  return { ok: true, message: `Claude schrijft nu ${total} mails${started > 1 ? ` in ${started} delen tegelijk` : ''}. Ze verschijnen hier vanzelf; versturen gaat pas na jouw goedkeuring.` }
 }

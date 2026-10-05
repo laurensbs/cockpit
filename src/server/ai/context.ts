@@ -5,6 +5,7 @@ import * as s from '@/db/schema'
 import { portfolioContext, projectContext, type ContextInput, type PortfolioInput } from '@/lib/ai/prompts'
 import { profileFromJson, type Profile } from '@/lib/ai/schemas'
 import { addMonths, dayOf, monthStart } from '@/lib/dates'
+import { workLines } from '@/lib/github-work'
 import { socialsOf } from '@/lib/socials'
 import { readCompass } from '../compass'
 import { bottleneckLine, growthText, lessonLine, type LessonBody, outcomeStates, paceLine } from '../outcome-state'
@@ -85,7 +86,7 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
         siteUrl: project.siteUrl,
       },
       company: company ? { name: company.name, kind: company.kind } : null,
-      repos: repos.map((r) => ({ fullName: r.fullName, description: r.description, homepage: r.homepage, stack: r.stack, readme: r.readme, docs: r.docs, recentCommits: r.recentCommits })),
+      repos: repos.map((r) => ({ fullName: r.fullName, description: r.description, homepage: r.homepage, stack: r.stack, readme: r.readme, docs: r.docs, recentCommits: r.recentCommits, work: workLines(r.recentPulls, r.recentChanges) })),
       metrics,
       others,
       liked: rated.filter((r) => r.rating > 0).map((r) => r.title),

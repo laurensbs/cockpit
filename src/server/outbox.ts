@@ -8,7 +8,7 @@ import * as s from '@/db/schema'
 import { dayOf } from '@/lib/dates'
 import { EMAIL } from '@/lib/mailto'
 import { STOP_STATUSES } from '@/lib/options'
-import { allowance, dailyCap, finalBody, inSendWindow, nextFollowupAt } from '@/lib/outbox'
+import { allowance, dailyCap, finalBody, inSendWindow, nextFollowupAt, warmCap } from '@/lib/outbox'
 import { getSetting, setSetting } from './settings'
 import { fixturesAllowed } from './status'
 import { award } from './xp'
@@ -216,8 +216,15 @@ export async function runOutbox(db: Db, ownerId: string, now = new Date()): Prom
     .orderBy(desc(s.emailJob.sentAt))
   const today = dayOf(now)
   const sentToday = recent.filter((r) => r.sentAt && dayOf(r.sentAt) === today).length
-  const n = allowance({ sentToday, cap: config.cap, lastSentAt: recent[0]?.sentAt ?? null, now, gapMs: gapMs() })
-  if (n === 0) return { sent: 0, failed: 0, skipped: sentToday >= config.cap ? 'cap' : undefined }
+  const [first] = await db
+    .select({ sentAt: s.emailJob.sentAt })
+    .from(s.emailJob)
+    .where(and(eq(s.emailJob.ownerId, ownerId), eq(s.emailJob.status, 'sent')))
+    .orderBy(asc(s.emailJob.sentAt))
+    .limit(1)
+  const cap = warmCap(config.cap, first?.sentAt ?? null, now)
+  const n = allowance({ sentToday, cap, lastSentAt: recent[0]?.sentAt ?? null, now, gapMs: gapMs() })
+  if (n === 0) return { sent: 0, failed: 0, skipped: sentToday >= cap ? 'cap' : undefined }
   const due = await db
     .select()
     .from(s.emailJob)

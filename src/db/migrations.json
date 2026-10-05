@@ -87,5 +87,12 @@
       "ALTER TABLE \"contact\" ADD COLUMN \"pitch\" text DEFAULT '' NOT NULL;",
       "ALTER TABLE \"project\" ADD COLUMN \"prospect_per_day\" integer DEFAULT 0 NOT NULL;"
     ]
+  },
+  {
+    "tag": "0004_github-work",
+    "statements": [
+      "ALTER TABLE \"repo\" ADD COLUMN \"recent_pulls\" jsonb DEFAULT '[]'::jsonb NOT NULL;",
+      "ALTER TABLE \"repo\" ADD COLUMN \"recent_changes\" jsonb DEFAULT '[]'::jsonb NOT NULL;"
+    ]
   }
 ]

@@ -95,6 +95,9 @@ export const repo = pgTable(
     docs: jsonb('docs').$type<{ path: string; text: string }[]>().notNull().default([]),
     commitDays: jsonb('commit_days').$type<Record<string, number>>().notNull().default({}),
     recentCommits: jsonb('recent_commits').$type<{ date: string; message: string }[]>().notNull().default([]),
+    // The newest pull requests (the work in progress) and what the newest commits changed, by area.
+    recentPulls: jsonb('recent_pulls').$type<{ number: number; title: string; state: string; updatedAt: string; body: string }[]>().notNull().default([]),
+    recentChanges: jsonb('recent_changes').$type<{ sha: string; date: string; message: string; areas: string[]; files: number; additions: number; deletions: number }[]>().notNull().default([]),
     pushedAt: timestamp('pushed_at'),
     syncedAt: timestamp('synced_at'),
     syncError: text('sync_error'),

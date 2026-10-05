@@ -6,11 +6,13 @@ import { Sparkline } from '@/components/Sparkline'
 import { AskClaude } from '@/components/AskClaude'
 import { PaceChip } from '@/components/GrowthCard'
 import { NextSteps, SetupChecklist } from '@/components/NextSteps'
+import { ClaudeLoggedOut } from '@/components/ClaudeLoggedOut'
 import { DayPath } from '@/components/DayPath'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
 import { pickSteps } from '@/lib/today'
+import { headlessProblem } from '@/server/claude'
 import { claudeBlocked } from '@/server/claude-status'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
 import { growthStates } from '@/server/growth-state'
@@ -82,6 +84,7 @@ export default async function TodayPage() {
 
       {setupLeft ? <SetupChecklist steps={setup} /> : null}
 
+      {headlessProblem() === 'logged-out' ? <ClaudeLoggedOut /> : null}
       <DayPath steps={daySteps} done={progress.done} goal={progress.goal} />
 
       {/* Everything else stays quiet behind one button: the day route is the page. */}

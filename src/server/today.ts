@@ -5,7 +5,7 @@ import * as s from '@/db/schema'
 import { addDays, dayOf } from '@/lib/dates'
 import { ACTION_KINDS } from '@/lib/game'
 import { preferredPlatform, socialsOf } from '@/lib/socials'
-import { buildNote, DAY_GOAL, type DayStep, pickSteps, recentWork } from '@/lib/today'
+import { buildNote, DAY_GOAL, type DayStep, pickGivePlace, pickSteps, recentPulls, recentWork } from '@/lib/today'
 import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
 import type { NextStepGroup } from '@/components/NextSteps'
 import { projectPulses } from './game'
@@ -58,6 +58,38 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
     .limit(3)
   for (const q of quiet) steps.push({ kind: 'reply', key: `reply-${q.id}`, title: short(`Antwoordde ${q.organization}?`, 44), sub: byId.get(q.projectId)?.name ?? '', projectId: q.projectId, contactId: q.id })
 
+  // One bit of value in a place where his audience talks (an answer, a tip; no pitch), once a day.
+  const given = await db
+    .select({ refId: s.xpEvent.refId, day: s.xpEvent.day })
+    .from(s.xpEvent)
+    .where(and(eq(s.xpEvent.ownerId, ownerId), eq(s.xpEvent.kind, 'give'), gte(s.xpEvent.day, addDays(today, -6))))
+  if (!given.some((g) => g.day === today)) {
+    const places = (
+      await db
+        .select({ id: s.contentItem.id, title: s.contentItem.title, body: s.contentItem.body, rating: s.contentItem.rating, projectId: s.contentItem.projectId, createdAt: s.contentItem.createdAt })
+        .from(s.contentItem)
+        .where(and(eq(s.contentItem.ownerId, ownerId), eq(s.contentItem.kind, 'opportunity'), eq(s.contentItem.status, 'draft')))
+        .orderBy(s.contentItem.createdAt)
+    )
+      .filter((r) => !r.projectId || (byId.get(r.projectId) && !marketingOff(byId.get(r.projectId)!)))
+      .map((r) => {
+        const b = r.body as { type?: string; url?: string | null; howToApproach?: string }
+        return { ...r, type: b.type ?? '', url: b.url ?? null, how: b.howToApproach ?? '' }
+      })
+    const place = pickGivePlace(places, new Set(given.map((g) => g.refId.split(':')[0])))
+    if (place?.url)
+      steps.push({
+        kind: 'give',
+        key: `give-${place.id}-${today}`,
+        title: short(`Help iemand in ${place.title}`, 48),
+        sub: place.projectId ? (byId.get(place.projectId)?.name ?? '') : '',
+        projectId: place.projectId,
+        itemId: place.id,
+        url: place.url,
+        how: place.how,
+      })
+  }
+
   // A post that is ready: planned for today (or overdue), else the newest draft he did not dislike.
   const posts = await db
     .select()
@@ -89,10 +121,10 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
   }
 
   // What he built in the last two days (his GitHub sessions): one post about it, if none was made since.
-  const repos = await db.select({ projectId: s.repo.projectId, recentCommits: s.repo.recentCommits }).from(s.repo).where(and(eq(s.repo.ownerId, ownerId), eq(s.repo.includeInAi, true)))
+  const repos = await db.select({ projectId: s.repo.projectId, recentCommits: s.repo.recentCommits, recentPulls: s.repo.recentPulls }).from(s.repo).where(and(eq(s.repo.ownerId, ownerId), eq(s.repo.includeInAi, true)))
   const madeSince = new Set(posts.filter((p) => p.createdAt >= new Date(`${addDays(today, -2)}T00:00:00Z`)).map((p) => p.projectId))
   const work = new Map<string, string[]>()
-  for (const r of repos) if (r.projectId) work.set(r.projectId, [...(work.get(r.projectId) ?? []), ...recentWork(r.recentCommits, today)])
+  for (const r of repos) if (r.projectId) work.set(r.projectId, [...(work.get(r.projectId) ?? []), ...recentPulls(r.recentPulls, today), ...recentWork(r.recentCommits, today)])
   const built = [...work.entries()].filter(([id, msgs]) => msgs.length && !madeSince.has(id) && byId.get(id) && !marketingOff(byId.get(id)!)).sort((a, b) => b[1].length - a[1].length)
   for (const [id, msgs] of built) {
     const p = byId.get(id)!
