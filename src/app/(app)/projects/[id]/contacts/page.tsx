@@ -12,7 +12,7 @@ import { ProspectList, ProspectPanel, type ProspectView, WantsInfo, WriteAllMail
 import { ScheduleAllButton } from '@/components/ScheduleButton'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
-import { dayOf } from '@/lib/dates'
+import { dayLabel, dayOf } from '@/lib/dates'
 import { ANSWERED_STATUSES, CONTACT_BASIS_LABELS, isStopped, PROSPECT_STATUSES } from '@/lib/options'
 import { byProspectRank } from '@/lib/prospect'
 import { hostOf } from '@/lib/urls'
@@ -30,17 +30,19 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
   const ctx = await loadJobContext(db, owner.userId, id)
   if (!ctx) notFound()
   const all = await db.select().from(s.contact).where(eq(s.contact.projectId, id)).orderBy(desc(s.contact.createdAt))
+  const today = dayOf(new Date())
   // Proposals from Claude wait for his yes or no on top; the ones he said no to stay out of sight.
-  // The best fit first; of equal fit, the one waiting longest.
+  // The one he can reach today with the best fit first (see prospectRank); of equal rank, the one waiting longest.
   const prospects = all
     .filter((c) => c.status === 'prospect')
     .map((c) => ({ ...c, hasPhone: Boolean(c.phone) }))
     .sort(byProspectRank)
+    // The ones that wait for a later day go to the end.
+    .sort((a, b) => Number(Boolean(a.nextStepOn && a.nextStepOn > today)) - Number(Boolean(b.nextStepOn && b.nextStepOn > today)))
   const skippedCount = all.filter((c) => c.status === 'skipped').length
   const contacts = all.filter((c) => !PROSPECT_STATUSES.includes(c.status))
   const [projectRow] = await db.select({ perDay: s.project.prospectPerDay, what: s.project.what, redLines: s.project.redLines }).from(s.project).where(eq(s.project.id, id))
   const marketingOff = /marketing staat uit/i.test(`${projectRow?.what ?? ''} ${projectRow?.redLines ?? ''}`)
-  const today = dayOf(new Date())
   const drafts = all.length
     ? await db
         .select()
@@ -93,6 +95,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
             hasPhone: Boolean(c.phone),
             hasEmail: Boolean(c.email),
             draft: body ? { subject: body.subject ?? '', body: body.body ?? '', followups: body.followups?.length ?? 0 } : null,
+            waitUntil: c.nextStepOn && c.nextStepOn > today ? { day: c.nextStepOn, label: dayLabel(c.nextStepOn), why: c.nextStep } : null,
           }
         })}
       />

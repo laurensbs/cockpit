@@ -316,6 +316,36 @@ export async function saveIntake(db: Db, ownerId: string, project: { id: string;
   return { ok: true, text: `Intake van ${row.name} bijgewerkt (${Object.keys(changes).join(', ')}).${renamed} Hij leest en past hem aan onder Bewerken.` }
 }
 
+/**
+ * A better opening, a sharper fit, or a day before which a business should not come up (for example
+ * "after the demo with Noah"). Only for a business still waiting for his yes or no.
+ */
+export async function updateProspect(
+  db: Db,
+  ownerId: string,
+  project: { id: string; name: string },
+  input: { contactId: string; pitch?: string; fit?: number; nextStep?: string; notBefore?: string | null },
+): Promise<{ ok: boolean; text: string }> {
+  const [contact] = await db
+    .select()
+    .from(s.contact)
+    .where(and(eq(s.contact.id, input.contactId), eq(s.contact.ownerId, ownerId), eq(s.contact.projectId, project.id)))
+  if (!contact) return { ok: false, text: 'Niets opgeslagen: dat contact hoort niet bij dit project (zie list_contacts).' }
+  if (contact.status !== 'prospect') return { ok: false, text: `Niets opgeslagen: over ${contact.organization} heeft hij al beslist.` }
+  const changes = Object.fromEntries(
+    Object.entries({
+      pitch: input.pitch?.trim(),
+      fit: input.fit,
+      nextStep: input.nextStep?.trim(),
+      nextStepOn: input.notBefore === undefined ? undefined : input.notBefore,
+    }).filter(([, v]) => v !== undefined),
+  )
+  if (!Object.keys(changes).length) return { ok: false, text: 'Niets opgeslagen: er zat geen veld in.' }
+  await db.update(s.contact).set(changes).where(eq(s.contact.id, contact.id))
+  const when = input.notBefore ? ` Hij ziet het voorstel pas vanaf ${input.notBefore}.` : input.notBefore === null ? ' Het voorstel staat weer meteen klaar.' : ''
+  return { ok: true, text: `Voorstel ${contact.organization} bijgewerkt (${Object.keys(changes).join(', ')}).${when}` }
+}
+
 export interface ProspectInput {
   organization: string
   website: string

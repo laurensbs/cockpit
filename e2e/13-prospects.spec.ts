@@ -119,6 +119,32 @@ test('he says yes (a call on his quests) or no (never again), and the mail goes 
   await context.close()
 })
 
+test('Claude can sharpen a proposal and let it wait until a day; until then it stays out of his day', async ({ browser, request }) => {
+  const saved = await mcpTool(request, 'save_prospects', { project: 'Webstability', prospects: [prospect('Bureau Later', 'https://bureau-later.example')] })
+  const bureau = (JSON.parse(saved.text.slice(saved.text.indexOf('['))) as { id: string; organization: string }[]).find((p) => p.organization === 'Bureau Later')!
+  const updated = await mcpTool(request, 'update_prospect', { project: 'Webstability', contactId: bureau.id, pitch: 'Hola, soy Laurens. ¿Os enseño en veinte minutos cómo funciona para vuestros clientes?', nextStep: 'Na de demo met de eerste partner', notBefore: '2099-01-02' })
+  expect(updated.text).toContain('pas vanaf 2099-01-02')
+  const listed = JSON.parse((await mcpTool(request, 'list_contacts', { project: 'Webstability' })).text) as { organization: string; notBefore: string | null; pitch: string }[]
+  expect(listed.find((c) => c.organization === 'Bureau Later')).toMatchObject({ notBefore: '2099-01-02' })
+
+  // A business he already decided on cannot be changed this way.
+  const garage = listed.find((c) => c.organization === 'Garage Test') as unknown as { id: string }
+  expect((await mcpTool(request, 'update_prospect', { project: 'Webstability', contactId: garage.id, fit: 2 })).isError).toBe(true)
+
+  const { context, page } = await newVisitor(browser)
+  await page.goto('/projects')
+  await page.getByRole('link', { name: /Webstability/ }).first().click()
+  await page.getByRole('navigation', { name: 'Onderdelen' }).getByRole('link', { name: 'Contacten' }).click()
+  const card = page.getByRole('listitem', { name: 'Voorstel: Bureau Later' })
+  await expect(card).toContainText('Vanaf')
+  await expect(card).toContainText('Na de demo met de eerste partner')
+  await expect(card).toContainText('¿Os enseño en veinte minutos')
+  // Not in today's lesson.
+  await page.goto('/dag')
+  await expect(page.getByRole('heading', { name: 'Bureau Later' })).toHaveCount(0)
+  await context.close()
+})
+
 test('a project with marketing off gets no prospecting', async ({ browser, request }) => {
   await mcpTool(request, 'save_intake', { project: 'OSRS RSPS', redLines: 'Marketing staat uit. Niets publiek.' })
   const { context, page } = await newVisitor(browser)

@@ -13,7 +13,7 @@ import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context
 import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
 import { resolveProject, type ProjectRef } from './projects'
-import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveIntake, saveLinkedin, saveProspects, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
+import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveIntake, saveLinkedin, saveProspects, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly, updateProspect } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
 
@@ -203,6 +203,28 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     async ({ project, ...intake }) =>
       withProject(project, async (p) => {
         const result = await saveIntake(db, ownerId, p, intake)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
+  )
+
+  server.registerTool(
+    'update_prospect',
+    {
+      title: 'Sharpen a proposal, or let it wait until a day',
+      description:
+        'For a business still waiting for his yes or no (status "prospect", see list_contacts): a better opening for the phone (pitch, in their language), a corrected fit (1–5), and/or a day before which it must not come up in his day (notBefore, YYYY-MM-DD, with nextStep saying why, e.g. "Na de demo met Noah"). notBefore null shows it again right away. Only what you send changes.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        contactId: z.string().trim().min(1).max(64),
+        pitch: z.string().trim().min(1).max(600).optional(),
+        fit: z.number().int().min(1).max(5).optional(),
+        nextStep: z.string().trim().max(200).optional(),
+        notBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      },
+    },
+    async ({ project, ...input }) =>
+      withProject(project, async (p) => {
+        const result = await updateProspect(db, ownerId, p, input)
         return result.ok ? text(result.text) : fail(result.text)
       }),
   )
@@ -430,7 +452,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     async ({ project }) =>
       withProject(project, async (p) => {
         const rows = await db
-          .select({ id: s.contact.id, organization: s.contact.organization, name: s.contact.name, website: s.contact.website, note: s.contact.note, basis: s.contact.basis, status: s.contact.status })
+          .select({ id: s.contact.id, organization: s.contact.organization, name: s.contact.name, website: s.contact.website, note: s.contact.note, basis: s.contact.basis, status: s.contact.status, fit: s.contact.fit, pitch: s.contact.pitch, notBefore: s.contact.nextStepOn })
           .from(s.contact)
           .where(eq(s.contact.projectId, p.id))
           .orderBy(desc(s.contact.createdAt))

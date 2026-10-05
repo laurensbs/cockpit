@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, desc, eq, gte, inArray, lte } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayOf } from '@/lib/dates'
@@ -42,7 +42,7 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
   const waiting = await db
     .select({ projectId: s.contact.projectId, n: count() })
     .from(s.contact)
-    .where(and(eq(s.contact.ownerId, ownerId), eq(s.contact.status, 'prospect')))
+    .where(and(eq(s.contact.ownerId, ownerId), eq(s.contact.status, 'prospect'), or(isNull(s.contact.nextStepOn), lte(s.contact.nextStepOn, today))))
     .groupBy(s.contact.projectId)
   for (const w of waiting) {
     const p = byId.get(w.projectId)

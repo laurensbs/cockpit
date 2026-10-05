@@ -1,6 +1,6 @@
 'use client'
 
-import { Mail, Phone, Star } from 'lucide-react'
+import { CalendarClock, Mail, Phone, Star } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { acceptProspect, prospectNow, prospectWantsInfo, setProspecting, skipProspect, writeAllMails } from '@/server/actions/prospects'
@@ -113,6 +113,8 @@ export interface ProspectView {
   hasPhone: boolean
   hasEmail: boolean
   draft: { subject: string; body: string; followups: number } | null
+  /** Not before this day (YYYY-MM-DD), and why: it waits until then, out of his day. */
+  waitUntil?: { day: string; label: string; why: string } | null
 }
 
 /** One business Claude found: what it saw, what to say, and his yes or no. */
@@ -149,6 +151,12 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
           </span>
         ) : null}
       </div>
+      {p.waitUntil ? (
+        <p className="chip warn" style={{ width: 'fit-content' }}>
+          <CalendarClock size={14} strokeWidth={2.5} aria-hidden="true" /> Vanaf {p.waitUntil.label}
+          {p.waitUntil.why ? ` · ${p.waitUntil.why}` : ''}
+        </p>
+      ) : null}
       {p.note ? <p className="small muted">{p.note}</p> : null}
       <div className="bubble-row">
         <span className="bubble-who" aria-hidden="true">
