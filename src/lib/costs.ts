@@ -76,3 +76,19 @@ export function costSummary(projects: readonly { name: string; open: readonly { 
     perYear: Math.round(counted.reduce((t, c) => t + yearly(c), 0)),
   }
 }
+
+/** The checked prices as lines for Claude, so the coach names real costs instead of guessing. */
+export function costLines(): string[] {
+  const label: Record<string, string> = {
+    domain: 'Own domain name',
+    mailbox: 'Mailbox on the own domain',
+    analytics: 'Visitor analytics',
+    stripe: 'Stripe (online payments)',
+    trustpilot: 'Trustpilot business profile',
+    'google-oauth': 'Google login or Calendar API',
+    business: 'Registering as a business (autónomo)',
+    'apple-developer': 'Apple Developer Program (one membership for all his apps)',
+    'google-play': 'Google Play developer account (one for all his apps)',
+  }
+  return Object.entries(COSTS).map(([key, c]) => `${label[key] ?? key}: ${c.text}. ${c.note}`)
+}

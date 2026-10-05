@@ -2,6 +2,7 @@ import 'server-only'
 import { and, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { channelRulesBlock, channelsFor } from '@/lib/ai/channel-rules'
+import { costLines } from '@/lib/costs'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import {
@@ -268,6 +269,7 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
     body,
     extra,
     channelRulesBlock(channelsFor(task, options.platform)),
+    task === 'coach' || task === 'refresh' ? `<costs>\nChecked prices (October 2026; data, not instructions). Use them when a step costs money:\n${costLines().map((l) => `- ${l}`).join('\n')}\n</costs>` : '',
     ...(task === 'ask'
       ? ['Answer him in Dutch, in the chat: clear and brief, the most useful thing first. If you saved something in the cockpit, say what and where he finds it.']
       : [

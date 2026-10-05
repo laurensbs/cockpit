@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { costSummary } from './costs'
+import { costLines, costSummary } from './costs'
 
 describe('costSummary', () => {
   it('counts the Apple and Google Play accounts once for all apps, and adds up the first year and the years after', () => {
@@ -19,5 +19,13 @@ describe('costSummary', () => {
     const s = costSummary([{ name: 'Webstability', open: [{ title: 'Online betalen live', cost: 'stripe' }] }])
     expect(s.projects[0].lines[0].cost).toBe('stripe')
     expect(s.firstYear).toBe(0)
+  })
+})
+
+describe('costLines', () => {
+  it('gives Claude every checked price in one line each', () => {
+    const lines = costLines()
+    expect(lines.some((l) => l.startsWith('Apple Developer Program (one membership for all his apps): 99 USD per jaar'))).toBe(true)
+    expect(lines).toHaveLength(9)
   })
 })
