@@ -12,5 +12,5 @@
     "sourceMap": false,
     "types": ["node"]
   },
-  "include": ["main.ts", "path.ts"]
+  "include": ["main.ts", "path.ts", "keep-awake.ts"]
 }

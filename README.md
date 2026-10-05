@@ -52,6 +52,7 @@ Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* 
 
 6. **Mails versturen (optioneel):** onder Instellingen → *Mails versturen* kies je je provider (Gmail, Microsoft 365, TransIP, Strato of een eigen server), vul je je adres en een app-wachtwoord in, stel je een daglimiet in (standaard 20, hoogstens 50), en zet je *Automatisch versturen* aan. Met **Stuur een testmail naar mezelf** controleer je of het werkt.
 7. **Autopilot (optioneel):** zet onder Instellingen → Claude Code *Autopilot* aan. Dan maakt Claude Code elke maandagochtend zelf de weekfocus, op de achtergrond. Dat telt mee in je Claude-limieten.
+   **Aan laten staan:** onder Instellingen → *Aan laten staan* (standaard aan) gaat je computer niet slapen zolang de cockpit openstaat en hij aan de stroom zit; het scherm mag wel uit. Zo lopen de dagelijkse ronde, je goedgekeurde mails en de koppeling met Claude Code door terwijl jij weg bent. Op een MacBook: laat de klep open (of gebruik een extern scherm).
 8. **Cijfers koppelen (per project, onder Cijfers → Bronnen):**
    - **Plausible:** een API-sleutel (Account → API keys), de site zoals hij in Plausible heet, en eventueel het doel dat een lead is (bijvoorbeeld *Contact*).
    - **Stripe:** alleen een **beperkte** sleutel (`rk_…`, Developers → API keys → Create restricted key) met Read op Charges, Subscriptions en Customers. Een geheime sleutel (`sk_…`) weigert de cockpit.

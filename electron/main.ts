@@ -4,7 +4,8 @@ import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync }
 import { createServer } from 'node:net'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, Menu, nativeTheme, session, shell, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, dialog, Menu, nativeTheme, powerMonitor, powerSaveBlocker, session, shell, type MenuItemConstructorOptions } from 'electron'
+import { type AwakeStatus, awakeStatus } from './keep-awake'
 import { loginShellPath, mergePath } from './path'
 
 // The desktop app (Mac and Windows): a window around the cockpit's own local server. The server
@@ -207,6 +208,49 @@ async function main() {
   const daily = () => fetch(`${base}/api/daily`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined)
   setTimeout(daily, 15_000)
   setInterval(daily, 12 * 60 * 60 * 1000)
+
+  keepAwake(base, token)
+}
+
+/**
+ * "Aan laten staan": every minute, and whenever the power source changes, the app asks the cockpit
+ * whether he wants the computer awake and tells it what it does. On mains power the computer then does
+ * not go to sleep (the display may); on the battery it sleeps as usual.
+ */
+function keepAwake(base: string, token: string) {
+  let wanted = true
+  let blocker: number | null = null
+  let reported: AwakeStatus | null = null
+  const apply = () => {
+    const status = awakeStatus(wanted, powerMonitor.isOnBatteryPower())
+    if (status === 'awake' && blocker == null) blocker = powerSaveBlocker.start('prevent-app-suspension')
+    if (status !== 'awake' && blocker != null) {
+      powerSaveBlocker.stop(blocker)
+      blocker = null
+    }
+    return status
+  }
+  const check = async () => {
+    try {
+      const res = await fetch(`${base}/api/keep-awake`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: reported ?? awakeStatus(wanted, powerMonitor.isOnBatteryPower()) }),
+      })
+      if (res.ok) wanted = Boolean(((await res.json()) as { on?: unknown }).on)
+    } catch {
+      // The server is restarting; keep the last choice.
+    }
+    const status = apply()
+    if (status !== reported) {
+      reported = status
+      void check()
+    }
+  }
+  void check()
+  setInterval(() => void check(), 60_000)
+  powerMonitor.on('on-ac', () => void check())
+  powerMonitor.on('on-battery', () => void check())
 }
 
 app.on('window-all-closed', () => app.quit())

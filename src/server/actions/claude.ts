@@ -6,6 +6,7 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { expectedToken } from '@/lib/local'
 import { connectClaudeCode, launchPrompt, mcpUrl, openTerminal } from '../claude'
+import { setKeepAwakeSetting } from '../keep-awake'
 import { isTaskKind, TaskOptions } from '../mcp/tasks'
 import { createTicket } from '../mcp/tickets'
 import { actionOwner } from '../session'
@@ -64,3 +65,11 @@ export async function setAutopilot(on: boolean): Promise<void> {
   await setSetting(await getDb(), owner.userId, 'autopilot_weekly', on ? '1' : null)
   revalidatePath('/settings')
 }
+
+/** "Aan laten staan": keep the computer awake on mains power while the cockpit is open. */
+export async function setKeepAwake(on: boolean): Promise<void> {
+  const owner = await actionOwner()
+  await setKeepAwakeSetting(await getDb(), owner.userId, on)
+  revalidatePath('/settings')
+}
+

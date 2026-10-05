@@ -2,6 +2,7 @@ import { AutopilotToggle } from '@/components/AutopilotToggle'
 import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/Icon'
+import { KeepAwakeToggle } from '@/components/KeepAwakeToggle'
 import { MailSettingsForm } from '@/components/MailSettingsForm'
 import { SettingsForm } from '@/components/SettingsForm'
 import { GoogleAccountForm, PullAllButton } from '@/components/SourceSettings'
@@ -16,6 +17,7 @@ import { ago } from '@/lib/time'
 import { claudeVersion, connectCommand, desktopConfig, mcpUrl } from '@/server/claude'
 import { connectorKind } from '@/server/connectors'
 import { googleAccountEmail } from '@/server/connectors/google'
+import { keepAwakeOn, lastAwake } from '@/server/keep-awake'
 import { mailConfig } from '@/server/outbox'
 import { requireOwner } from '@/server/session'
 import { getSetting, githubTokenSource } from '@/server/settings'
@@ -32,7 +34,7 @@ function StatusChip({ status }: { status: ServiceStatus }) {
 export default async function SettingsPage() {
   const owner = await requireOwner('/settings')
   const db = await getDb()
-  const [{ token, from }, stored, version, connectedAt, mail, autopilot, googleEmail, sources] = await Promise.all([
+  const [{ token, from }, stored, version, connectedAt, mail, autopilot, googleEmail, awake, sources] = await Promise.all([
     githubTokenSource(db, owner.userId),
     getSetting(db, owner.userId, 'github_token'),
     claudeVersion(),
@@ -40,6 +42,7 @@ export default async function SettingsPage() {
     mailConfig(db, owner.userId),
     getSetting(db, owner.userId, 'autopilot_weekly'),
     googleAccountEmail(db, owner.userId),
+    keepAwakeOn(db, owner.userId),
     db
       .select({ id: s.connector.id, kind: s.connector.kind, lastOkAt: s.connector.lastOkAt, lastError: s.connector.lastError, projectId: s.project.id, project: s.project.name })
       .from(s.connector)
@@ -49,6 +52,7 @@ export default async function SettingsPage() {
   ])
   const now = new Date()
   const failing = sources.filter((c) => c.lastError).length
+  const awakeNow = lastAwake()
   const github = githubStatus(token)
   const appToken = expectedToken() ?? ''
   const steps = [
@@ -125,6 +129,29 @@ export default async function SettingsPage() {
             </p>
           </div>
         </details>
+      </section>
+
+      <section className="card stack-m" id="awake">
+        <div className="row between">
+          <h2 className="row">
+            <Icon name="bolt" /> Aan laten staan
+          </h2>
+          {awakeNow === 'awake' ? (
+            <span className="chip good">Blijft wakker</span>
+          ) : awakeNow === 'battery' ? (
+            <span className="chip warn">Op de accu</span>
+          ) : awakeNow === 'off' ? (
+            <span className="chip">Uit</span>
+          ) : null}
+        </div>
+        <p className="muted small">
+          De dagelijkse ronde, de mails die je goedkeurde en de koppeling met Claude Code draaien op deze computer. Laat de cockpit open en de computer aan de
+          stroom, dan gaat het door terwijl jij weg bent.
+        </p>
+        <KeepAwakeToggle on={awake} />
+        {process.platform === 'darwin' ? (
+          <p className="tiny muted">Op een MacBook: laat de klep open. Met de klep dicht slaapt hij toch, behalve met een extern scherm, toetsenbord en de stroom erin.</p>
+        ) : null}
       </section>
 
       <section className="card stack-m" id="mail">
