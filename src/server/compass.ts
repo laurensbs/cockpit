@@ -18,8 +18,8 @@ export function compassFile(project: { name: string; localPath: string | null })
     const file = join(dir.replace(/^~(?=$|\/)/, home), 'STAND.md')
     try {
       if (!existsSync(/*turbopackIgnore: true*/ file)) continue
-      const real = realpathSync(file)
-      if (!real.startsWith(`${home}/`) || statSync(real).size > MAX_BYTES) continue
+      const real = realpathSync(/*turbopackIgnore: true*/ file)
+      if (!real.startsWith(`${home}/`) || statSync(/*turbopackIgnore: true*/ real).size > MAX_BYTES) continue
       return real
     } catch {
       continue
@@ -33,7 +33,7 @@ export function readCompass(project: { name: string; localPath: string | null })
   const file = compassFile(project)
   if (!file) return null
   try {
-    const compass = compassFrom(redactSecrets(readFileSync(file, 'utf8')))
+    const compass = compassFrom(redactSecrets(readFileSync(/*turbopackIgnore: true*/ file, 'utf8')))
     return { ...compass, source: file.replace(homedir(), '~') }
   } catch {
     return null
@@ -45,7 +45,7 @@ export function compassStamp(project: { name: string; localPath: string | null }
   if (process.env.COCKPIT_NO_COMPASS === '1') return null
   const file = compassFile(project)
   try {
-    return file ? statSync(file).mtimeMs : null
+    return file ? statSync(/*turbopackIgnore: true*/ file).mtimeMs : null
   } catch {
     return null
   }
