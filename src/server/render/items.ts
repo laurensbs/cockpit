@@ -6,7 +6,7 @@ import type { ContentFormat } from '@/lib/ai/playbooks'
 import { normalizeBrand } from '@/lib/brand'
 import type { WeekBody } from '@/lib/content-week'
 import { clearRenders, saveMedia } from '../media'
-import { renderPng } from './engine'
+import { jpegFrom, renderPng, renderRaster } from './engine'
 import { pdfFromPngs } from './pdf'
 import { POST_SIZE, reelCover, slideSet, TALL_SIZE } from './templates'
 import { renderReelVideo, renderSlideshow } from './video'
@@ -42,9 +42,15 @@ export async function renderItem(db: Db, ownerId: string, itemId: string): Promi
       count = 1
     } else {
       const size = body.contentFormat === 'story' ? TALL_SIZE : POST_SIZE
+      // Instagram takes JPEG only: its slides get a JPEG beside the PNG, for publishing.
+      const jpeg = row.item.channel === 'instagram'
       const pngs: Buffer[] = []
-      for (const el of slideSet(brand, body.slides ?? [], size)) pngs.push(await renderPng(el, size.width, size.height))
-      for (const [position, png] of pngs.entries()) await saveMedia(db, ownerId, { projectId, contentItemId: itemId, origin: 'render', role: 'slide', position, data: png, mime: 'image/png', ...size })
+      for (const [position, el] of slideSet(brand, body.slides ?? [], size).entries()) {
+        const raster = await renderRaster(el, size.width, size.height)
+        pngs.push(raster.png)
+        await saveMedia(db, ownerId, { projectId, contentItemId: itemId, origin: 'render', role: 'slide', position, data: raster.png, mime: 'image/png', ...size })
+        if (jpeg) await saveMedia(db, ownerId, { projectId, contentItemId: itemId, origin: 'render', role: 'jpeg', position, data: jpegFrom(raster), mime: 'image/jpeg', ...size })
+      }
       count = pngs.length
       if (body.contentFormat === 'document') {
         await saveMedia(db, ownerId, { projectId, contentItemId: itemId, origin: 'render', role: 'pdf', data: await pdfFromPngs(pngs, row.item.title), mime: 'application/pdf', ...size })

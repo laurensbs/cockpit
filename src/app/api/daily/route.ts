@@ -4,6 +4,8 @@ import { maybeAutopilot, maybeContentAutopilot } from '@/server/autopilot'
 import { healClaudeConnection } from '@/server/claude-heal'
 import { pullAll } from '@/server/connectors/run'
 import { dailyRound } from '@/server/game'
+import { refreshInstagramTokens } from '@/server/publish/refresh'
+import { scheduleApproved } from '@/server/publish/run'
 import { syncAll } from '@/server/github/sync'
 import { bearerOwner, getOwner } from '@/server/session'
 import { checkSites } from '@/server/uptime'
@@ -23,6 +25,8 @@ export async function POST(request: Request) {
   const github = await syncAll(db, owner.userId, 120_000)
   const sites = await checkSites(db, owner.userId)
   const numbers = await pullAll(db, owner.userId)
+  await refreshInstagramTokens(db, owner.userId)
+  await scheduleApproved(db, owner.userId)
   await dailyRound(db, owner.userId)
   const autopilot = await maybeAutopilot(db, owner.userId)
   const content = await maybeContentAutopilot(db, owner.userId)

@@ -9,7 +9,7 @@ import * as s from '@/db/schema'
 // Pictures, PDFs and videos of the projects live in a folder next to the database: the app's own data
 // folder on his computer. The table says what each file is; the page gets them through /api/media.
 
-export type MediaRole = 'slide' | 'cover' | 'pdf' | 'video' | 'final' | 'photo' | 'clip'
+export type MediaRole = 'slide' | 'jpeg' | 'cover' | 'pdf' | 'video' | 'final' | 'photo' | 'clip'
 export type MediaRow = typeof s.mediaAsset.$inferSelect
 
 export function mediaDir(): string {

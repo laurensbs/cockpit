@@ -1,4 +1,5 @@
 import { AutopilotToggle } from '@/components/AutopilotToggle'
+import { ChannelSettings } from '@/components/ChannelSettings'
 import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
 import { ContentAutopilotToggle } from '@/components/ContentAutopilotToggle'
 import { CopyButton } from '@/components/CopyButton'
@@ -9,15 +10,20 @@ import { SettingsForm } from '@/components/SettingsForm'
 import { GoogleAccountForm, PullAllButton } from '@/components/SourceSettings'
 import { UpdateNowButton } from '@/components/UpdateNowButton'
 import { asc, eq } from 'drizzle-orm'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { dbDir, dbMode, getDb } from '@/db'
 import * as s from '@/db/schema'
 import { expectedToken } from '@/lib/local'
 import { claudeInstallCommand } from '@/lib/terminal'
+import { dayLabel, dayOf } from '@/lib/dates'
 import { ago } from '@/lib/time'
 import { claudeVersion, connectCommand, desktopConfig, mcpUrl } from '@/server/claude'
 import { connectorKind } from '@/server/connectors'
 import { googleAccountEmail } from '@/server/connectors/google'
+import { accounts, connectionStamp } from '@/server/publish/accounts'
+import { redirectUri } from '@/server/publish/oauth'
+import { isPaused } from '@/server/publish/run'
 import { keepAwakeOn, lastAwake } from '@/server/keep-awake'
 import { mailConfig } from '@/server/outbox'
 import { requireOwner } from '@/server/session'
@@ -54,6 +60,25 @@ export default async function SettingsPage() {
   ])
   const now = new Date()
   const failing = sources.filter((c) => c.lastError).length
+  const port = (await headers()).get('host')?.match(/:(\d+)$/)?.[1] ?? process.env.PORT ?? '41414'
+  const projects = await db.select({ id: s.project.id, name: s.project.name }).from(s.project).where(eq(s.project.ownerId, owner.userId)).orderBy(asc(s.project.sortOrder), asc(s.project.name))
+  const [liApp, liAccount, ttApp, blobToken, paused] = await Promise.all([
+    accounts.linkedinApp(db, owner.userId),
+    accounts.linkedin(db, owner.userId),
+    accounts.tiktokApp(db, owner.userId),
+    accounts.blobToken(db, owner.userId),
+    isPaused(db, owner.userId),
+  ])
+  const perProject = await Promise.all(projects.map(async (p) => ({ p, ig: await accounts.instagram(db, owner.userId, p.id), tt: await accounts.tiktok(db, owner.userId, p.id) })))
+  const until = (iso: string) => dayLabel(dayOf(new Date(iso)))
+  const channels = {
+    paused,
+    stamp: await connectionStamp(db, owner.userId, projects.map((p) => p.id)),
+    projects,
+    linkedin: { clientId: liApp?.clientId ?? '', appSet: Boolean(liApp), account: liAccount ? { name: liAccount.name, until: until(liAccount.expiresAt) } : null, redirect: redirectUri('linkedin', port) },
+    instagram: { blobSet: Boolean(blobToken), accounts: perProject.filter((x) => x.ig).map((x) => ({ projectId: x.p.id, project: x.p.name, username: x.ig!.username, until: until(x.ig!.expiresAt) })) },
+    tiktok: { clientKey: ttApp?.clientKey ?? '', appSet: Boolean(ttApp), accounts: perProject.filter((x) => x.tt).map((x) => ({ projectId: x.p.id, project: x.p.name, name: x.tt!.name })), redirect: redirectUri('tiktok', port) },
+  }
   const awakeNow = lastAwake()
   const github = githubStatus(token)
   const appToken = expectedToken() ?? ''
@@ -171,6 +196,19 @@ export default async function SettingsPage() {
         <MailSettingsForm
           values={{ host: mail.host, port: mail.port, secure: mail.secure, user: mail.user, hasPass: Boolean(mail.pass), fromName: mail.fromName, fromEmail: mail.fromEmail, cap: mail.cap, enabled: mail.enabled }}
         />
+      </section>
+
+      <section className="card stack-m" id="channels">
+        <div className="row between">
+          <h2 className="row">
+            <Icon name="send" /> Kanalen
+          </h2>
+          {channels.paused ? <span className="chip warn">Op pauze</span> : null}
+        </div>
+        <p className="muted small">
+          Waar de cockpit plaatst wat jij in de Contentweek goedkeurt: op je eigen accounts, op de dag en tijd van de post, overdag, met een maximum per kanaal per dag. Zonder koppeling plaats je zelf, met de knoppen bij de post.
+        </p>
+        <ChannelSettings view={channels} />
       </section>
 
       <section className="card stack-m" id="sources">

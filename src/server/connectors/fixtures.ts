@@ -1,4 +1,6 @@
 import 'server-only'
+import { appendFileSync, mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { addDays, dayOf } from '@/lib/dates'
 
 // Answers in the shape of Stripe, Mollie, Plausible, Google, Discord and an own app, relative to today,
@@ -11,10 +13,107 @@ const days = (n: number) => {
   return Array.from({ length: n }, (_, i) => ({ day: addDays(today, -i), i }))
 }
 
+/** The publishing calls, written down for the tests (never a token). */
+function log(entry: Record<string, unknown>) {
+  const file = process.env.COCKPIT_FIXTURE_LOG
+  if (!file) return
+  mkdirSync(dirname(file), { recursive: true })
+  appendFileSync(file, `${JSON.stringify(entry)}\n`)
+}
+
+const formOf = (body: unknown) => (body instanceof URLSearchParams ? body : new URLSearchParams(typeof body === 'string' ? body : ''))
+const jsonOf = (body: unknown) => {
+  try {
+    return JSON.parse(typeof body === 'string' ? body : '{}') as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+const sizeOf = (body: unknown) => (body instanceof Uint8Array ? body.length : typeof body === 'string' ? body.length : 0)
+let igContainers = 0
+
 export const fixtureFetch: typeof fetch = async (input, init) => {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
-  const auth = new Headers(init?.headers).get('authorization') ?? ''
+  const headers = new Headers(init?.headers)
+  const auth = headers.get('authorization') ?? ''
+  const method = init?.method ?? 'GET'
   if (auth.includes('bad')) return json({ error: { message: 'Invalid API Key provided: rk_bad_…' } }, 401)
+
+  // LinkedIn: logging in, uploads and posts as a member.
+  if (url.hostname === 'www.linkedin.com' && url.pathname === '/oauth/v2/accessToken') {
+    const form = formOf(init?.body)
+    if (form.get('code') !== 'li-code' || !form.get('client_secret')) return json({ error: 'invalid_request' }, 400)
+    return json({ access_token: 'li-fixture-token', expires_in: 5_184_000 })
+  }
+  if (url.hostname === 'api.linkedin.com' && url.pathname === '/v2/userinfo') {
+    return auth === 'Bearer li-fixture-token' ? json({ sub: 'fixture-sub', name: 'Test Ondernemer' }) : json({ message: 'unauthorized' }, 401)
+  }
+  if (url.hostname === 'api.linkedin.com' && url.pathname.startsWith('/rest/')) {
+    if (auth !== 'Bearer li-fixture-token' || !headers.get('linkedin-version')) return json({ message: 'unauthorized' }, 401)
+    const action = url.searchParams.get('action')
+    if (url.pathname === '/rest/images' && action === 'initializeUpload') return json({ value: { uploadUrl: 'https://www.linkedin.com/dms-uploads/image-1', image: 'urn:li:image:F1' } })
+    if (url.pathname === '/rest/documents' && action === 'initializeUpload') return json({ value: { uploadUrl: 'https://www.linkedin.com/dms-uploads/document-1', document: 'urn:li:document:F1' } })
+    if (url.pathname === '/rest/videos' && action === 'initializeUpload') {
+      const size = Number((jsonOf(init?.body).initializeUploadRequest as { fileSizeBytes?: number })?.fileSizeBytes ?? 0)
+      return json({ value: { video: 'urn:li:video:F1', uploadToken: '', uploadInstructions: [{ uploadUrl: 'https://www.linkedin.com/dms-uploads/video-1', firstByte: 0, lastByte: size - 1 }] } })
+    }
+    if (url.pathname === '/rest/videos' && action === 'finalizeUpload') return json({})
+    if (url.pathname === '/rest/posts' && method === 'POST') {
+      const body = jsonOf(init?.body)
+      // Two words in a test post make LinkedIn fail: once in a way that may pass, once for good.
+      if (String(body.commentary).includes('FAIL-ME')) return json({ message: 'busy' }, 503)
+      if (String(body.commentary).includes('REFUSE-ME')) return json({ message: 'refused' }, 422)
+      log({ platform: 'linkedin', call: 'post', commentary: body.commentary, media: (body.content as { media?: { id?: string } })?.media?.id ?? null })
+      return new Response(null, { status: 201, headers: { 'x-restli-id': 'urn:li:share:7380000000000000001' } })
+    }
+  }
+  if (url.hostname === 'www.linkedin.com' && url.pathname.startsWith('/dms-uploads/')) {
+    log({ platform: 'linkedin', call: 'upload', what: url.pathname.split('/').pop(), bytes: sizeOf(init?.body) })
+    return new Response(null, { status: 201, headers: { etag: '"etag-1"' } })
+  }
+
+  // Instagram (Instagram Login): a container per picture or video, then publishing it.
+  if (url.hostname === 'graph.instagram.com') {
+    const form = method === 'POST' ? formOf(init?.body) : url.searchParams
+    const token = form.get('access_token') ?? url.searchParams.get('access_token') ?? ''
+    if (!token || token.includes('bad')) return json({ error: { message: 'Invalid OAuth access token', code: 190 } }, 400)
+    if (url.pathname === '/v23.0/me') return json({ user_id: '17841400000000001', username: 'webstability' })
+    if (url.pathname === '/refresh_access_token') return json({ access_token: token, token_type: 'bearer', expires_in: 5_184_000 })
+    if (url.pathname.endsWith('/media') && method === 'POST') {
+      for (const key of ['image_url', 'video_url']) if (form.get(key) && !form.get(key)!.startsWith('https://blob.fixture.test/')) return json({ error: { message: 'media url not public' } }, 400)
+      igContainers++
+      log({ platform: 'instagram', call: 'container', media_type: form.get('media_type') ?? 'IMAGE', carousel_item: form.get('is_carousel_item') === 'true', children: form.get('children')?.split(',').length ?? 0, caption: form.get('caption') ?? null })
+      return json({ id: `container-${igContainers}` })
+    }
+    if (url.pathname.endsWith('/media_publish') && method === 'POST') {
+      log({ platform: 'instagram', call: 'publish', creation_id: form.get('creation_id') })
+      return json({ id: '17900000000000001' })
+    }
+    if (url.pathname.startsWith('/v23.0/container-')) return json({ status_code: 'FINISHED', id: url.pathname.split('/').pop() })
+    if (url.pathname === '/v23.0/17900000000000001') return json({ permalink: 'https://www.instagram.com/p/FIXTURE1/', id: '17900000000000001' })
+  }
+
+  // TikTok: logging in (PKCE), and a video into his drafts.
+  if (url.hostname === 'open.tiktokapis.com') {
+    if (url.pathname === '/v2/oauth/token/') {
+      const form = formOf(init?.body)
+      if (form.get('grant_type') === 'authorization_code' && (form.get('code') !== 'tt-code' || !form.get('code_verifier'))) return json({ error: 'invalid_grant' }, 400)
+      return json({ access_token: 'act.fixture', expires_in: 86_400, refresh_token: 'rft.fixture', refresh_expires_in: 31_536_000, open_id: 'open-fixture', scope: 'video.upload', token_type: 'Bearer' })
+    }
+    if (auth !== 'Bearer act.fixture') return json({ error: { code: 'access_token_invalid' } }, 401)
+    if (url.pathname === '/v2/user/info/') return json({ data: { user: { display_name: 'rondje.app' } }, error: { code: 'ok' } })
+    if (url.pathname === '/v2/post/publish/inbox/video/init/') {
+      const info = (jsonOf(init?.body).source_info ?? {}) as Record<string, unknown>
+      log({ platform: 'tiktok', call: 'init', source: info.source, video_size: info.video_size })
+      return json({ data: { publish_id: 'v_inbox_file~v2.1', upload_url: 'https://open-upload.tiktokapis.com/video/?upload_id=1' }, error: { code: 'ok' } })
+    }
+    if (url.pathname === '/v2/post/publish/status/fetch/') return json({ data: { status: 'SEND_TO_USER_INBOX' }, error: { code: 'ok' } })
+  }
+  if (url.hostname === 'open-upload.tiktokapis.com') {
+    if (!headers.get('content-range')) return json({ error: 'no range' }, 400)
+    log({ platform: 'tiktok', call: 'upload', bytes: sizeOf(init?.body), range: headers.get('content-range') })
+    return new Response(null, { status: 201 })
+  }
 
   if (url.hostname === 'api.stripe.com' && url.pathname === '/v1/charges') {
     const charges = days(120)

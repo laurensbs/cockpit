@@ -13,7 +13,7 @@ describe('database migrations', () => {
       "select table_name from information_schema.tables where table_schema = 'public' order by table_name",
     )
     expect(tables.rows.map((r) => r.table_name)).toEqual(
-      expect.arrayContaining(['company', 'project', 'repo', 'brief', 'content_item', 'contact', 'quest', 'xp_event', 'metric', 'setting', 'email_job', 'metric_point', 'connector', 'contact_event', 'media_asset']),
+      expect.arrayContaining(['company', 'project', 'repo', 'brief', 'content_item', 'contact', 'quest', 'xp_event', 'metric', 'setting', 'email_job', 'metric_point', 'connector', 'contact_event', 'media_asset', 'publish_job']),
     )
     await db.close()
   }, 30_000)

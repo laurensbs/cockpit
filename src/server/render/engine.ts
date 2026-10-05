@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { initWasm, Resvg } from '@resvg/resvg-wasm'
+import { encode as encodeJpeg } from 'jpeg-js'
 import satori from 'satori'
 
 // Draws slides without a browser: an element tree → SVG (satori) → PNG (resvg, as WebAssembly, so the
@@ -55,10 +56,27 @@ function ready(): Promise<void> {
   return shared.__cockpitResvg
 }
 
-/** One image, as PNG. */
-export async function renderPng(element: El, width: number, height: number): Promise<Buffer> {
+/** One image, as PNG and as raw pixels (for a JPEG). */
+export async function renderRaster(element: El, width: number, height: number): Promise<{ png: Buffer; rgba: Uint8Array; width: number; height: number }> {
   await ready()
   const svg = await satori(element as unknown as Parameters<typeof satori>[0], { width, height, fonts: loadFonts() })
-  const png = new Resvg(svg, { fitTo: { mode: 'width', value: width } }).render().asPng()
-  return Buffer.from(png)
+  const image = new Resvg(svg, { fitTo: { mode: 'width', value: width } }).render()
+  return { png: Buffer.from(image.asPng()), rgba: image.pixels, width: image.width, height: image.height }
+}
+
+/** One image, as PNG. */
+export async function renderPng(element: El, width: number, height: number): Promise<Buffer> {
+  return (await renderRaster(element, width, height)).png
+}
+
+/** Raw pixels as a JPEG (Instagram takes nothing else), on white where a pixel is see-through. */
+export function jpegFrom(raster: { rgba: Uint8Array; width: number; height: number }, quality = 90): Buffer {
+  const data = Buffer.from(raster.rgba)
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] === 255) continue
+    const a = data[i] / 255
+    for (let c = 1; c <= 3; c++) data[i - c] = Math.round(data[i - c] * a + 255 * (1 - a))
+    data[i] = 255
+  }
+  return Buffer.from(encodeJpeg({ data, width: raster.width, height: raster.height }, quality).data)
 }

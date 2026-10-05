@@ -14,6 +14,7 @@ import { addDays, dayLabel, dayOf } from '@/lib/dates'
 import { ACTIVE_STAGES } from '@/lib/options'
 import { claudeBlocked } from '@/server/claude-status'
 import { rhythms, rhythmTotal } from '@/server/content'
+import { channelReady } from '@/server/publish/accounts'
 import { requireOwner } from '@/server/session'
 import { getSetting } from '@/server/settings'
 
@@ -52,6 +53,19 @@ export default async function ContentPage() {
         .where(and(eq(s.mediaAsset.ownerId, owner.userId), inArray(s.mediaAsset.contentItemId, week.map((r) => r.item.id))))
         .orderBy(asc(s.mediaAsset.position))
     : []
+  const jobs = week.length
+    ? await db
+        .select({ id: s.publishJob.id, itemId: s.publishJob.contentItemId, status: s.publishJob.status, publishAt: s.publishJob.publishAt, permalink: s.publishJob.permalink, error: s.publishJob.error, createdAt: s.publishJob.createdAt })
+        .from(s.publishJob)
+        .where(and(eq(s.publishJob.ownerId, owner.userId), inArray(s.publishJob.contentItemId, week.map((r) => r.item.id))))
+        .orderBy(asc(s.publishJob.createdAt))
+    : []
+  const ready = new Map<string, boolean>()
+  for (const { item } of week) {
+    const key = `${item.channel}:${item.channel === 'linkedin' ? '' : item.projectId}`
+    if (!ready.has(key)) ready.set(key, await channelReady(db, owner.userId, item.channel, item.projectId))
+  }
+  const timeLabel = (d: Date) => `${dayLabel(dayOf(d))} ${new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' }).format(d)}`
   const items: WeekItemView[] = week.map(({ item, project }) => {
     const body = item.body as WeekBody
     const own = media.filter((m) => m.itemId === item.id)
@@ -85,6 +99,11 @@ export default async function ContentPage() {
       })(),
       videoState: body.render?.video ?? null,
       capcut: body.capcut?.dir ?? null,
+      connected: ready.get(`${item.channel}:${item.channel === 'linkedin' ? '' : item.projectId}`) ?? false,
+      publish: (() => {
+        const job = jobs.filter((j) => j.itemId === item.id).at(-1)
+        return job ? { jobId: job.id, status: job.status, at: timeLabel(job.publishAt), permalink: job.permalink, note: job.error } : null
+      })(),
     }
   })
   const uploads: MediaView[] = (
@@ -102,7 +121,7 @@ export default async function ContentPage() {
     portrait: m.width && m.height ? m.height > m.width : null,
   }))
   const days = [...new Set(items.map((i) => i.day))].sort()
-  const ready = items.filter((i) => i.status === 'draft' && i.render === 'done' && !i.forum).length
+  const readyCount = items.filter((i) => i.status === 'draft' && i.render === 'done' && !i.forum).length
   const drawing = items.some((i) => i.render === 'pending')
   const perChannel = CONTENT_CHANNELS.map((c) => ({ c, n: items.filter((i) => i.channel === c && i.status !== 'done').length })).filter((x) => x.n)
 
@@ -131,12 +150,12 @@ export default async function ContentPage() {
           <div style={{ maxWidth: 380 }}>
             <ClaudeButton task="content" projectId={null} label={items.length ? 'Maak de volgende contentweek' : 'Maak de contentweek'} disabledReason={blocked} />
           </div>
-          <ApproveWeekButton count={ready} />
+          <ApproveWeekButton count={readyCount} />
         </div>
         {drawing ? <p className="tiny muted">De cockpit tekent nog beelden; ze verschijnen vanzelf.</p> : null}
         <RefreshWhileDrawing drawing={drawing} />
         <p className="tiny muted">
-          Plaatsen gaat nu nog met de hand: kopieer de tekst, download de beelden en zet ze online; druk daarna op <strong>Geplaatst</strong>.{' '}
+          Wat je goedkeurt, plaatst de cockpit op de dag en tijd van de post, op de kanalen die je koppelde (<Link href="/settings#channels">Instellingen → Kanalen</Link>). De rest plaats je zelf: kopieer de tekst, download de beelden en druk op <strong>Geplaatst</strong>.{' '}
           {autopilot === '1' ? (
             'Claude maakt elke maandagochtend vanzelf de volgende week.'
           ) : (

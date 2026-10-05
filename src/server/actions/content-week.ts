@@ -10,6 +10,7 @@ import { slideText, type WeekBody } from '@/lib/content-week'
 import { clean } from '@/lib/ai/schemas'
 import { addDays, dayOf } from '@/lib/dates'
 import { rhythmSettingKey } from '../content'
+import { cancelPublish, runPublisher, schedulePublish } from '../publish/run'
 import { renderItem, renderPending } from '../render/items'
 import { actionOwner } from '../session'
 import { setSetting } from '../settings'
@@ -40,6 +41,7 @@ export async function approveItem(itemId: string): Promise<void> {
     .update(s.contentItem)
     .set({ status: 'approved', body: { ...own.body, approvedAt: new Date().toISOString() } })
     .where(eq(s.contentItem.id, own.item.id))
+  await schedulePublish(own.db, own.owner.userId, own.item.id)
   refresh()
 }
 
@@ -61,6 +63,7 @@ export async function approveWeek(): Promise<{ approved: number }> {
       .update(s.contentItem)
       .set({ status: 'approved', body: { ...body, approvedAt: new Date().toISOString() } })
       .where(eq(s.contentItem.id, row.id))
+    await schedulePublish(db, owner.userId, row.id)
     approved++
   }
   refresh()
@@ -72,6 +75,7 @@ export async function skipItem(itemId: string): Promise<void> {
   const own = await ownItem(itemId)
   if (!own) return
   await own.db.update(s.contentItem).set({ status: 'archived' }).where(eq(s.contentItem.id, own.item.id))
+  await cancelPublish(own.db, own.owner.userId, own.item.id)
   refresh()
 }
 
@@ -80,6 +84,7 @@ export async function unapproveItem(itemId: string): Promise<void> {
   const own = await ownItem(itemId)
   if (!own || own.item.status !== 'approved') return
   await own.db.update(s.contentItem).set({ status: 'draft' }).where(eq(s.contentItem.id, own.item.id))
+  await cancelPublish(own.db, own.owner.userId, own.item.id)
   refresh()
 }
 
@@ -88,6 +93,7 @@ export async function markPosted(itemId: string): Promise<{ xp: number }> {
   const own = await ownItem(itemId)
   if (!own || own.item.status === 'done') return { xp: 0 }
   await own.db.update(s.contentItem).set({ status: 'done', doneAt: new Date() }).where(eq(s.contentItem.id, own.item.id))
+  await cancelPublish(own.db, own.owner.userId, own.item.id)
   const xp = await award(own.db, own.owner.userId, { kind: 'post', refId: own.item.id, projectId: own.item.projectId })
   refresh()
   return { xp }
@@ -98,6 +104,8 @@ export async function saveItemText(_prev: FormState, form: FormData): Promise<Fo
   const own = await ownItem(String(form.get('itemId') ?? ''))
   if (!own) return { ok: false, error: 'Dit item bestaat niet meer.' }
   if (own.item.status === 'done') return { ok: false, error: 'Dit is al geplaatst.' }
+  // Changed after approving: back to a draft, and nothing goes out until he approves again.
+  await cancelPublish(own.db, own.owner.userId, own.item.id)
   const body = { ...own.body }
   const hook = form.get('hook')
   const caption = form.get('caption')
@@ -211,4 +219,40 @@ export async function removeMedia(mediaId: string): Promise<void> {
   const { deleteMediaRow } = await import('../media')
   await deleteMediaRow(await getDb(), owner.userId, String(mediaId))
   refresh()
+}
+
+/** "Nu plaatsen": the approved post goes out right away (on his own account), not at its planned time. */
+export async function publishNow(itemId: string): Promise<{ ok: boolean; message: string }> {
+  const own = await ownItem(itemId)
+  if (!own || own.item.status !== 'approved') return { ok: false, message: 'Keur hem eerst goed.' }
+  const now = new Date()
+  const scheduled = await schedulePublish(own.db, own.owner.userId, own.item.id, now)
+  if (scheduled === 'manual') return { ok: false, message: 'Dit kanaal is nog niet gekoppeld (Instellingen → Kanalen); plaats hem met de hand.' }
+  const [job] = await own.db
+    .select({ id: s.publishJob.id })
+    .from(s.publishJob)
+    .where(and(eq(s.publishJob.contentItemId, own.item.id), eq(s.publishJob.status, 'queued')))
+  if (!job) return { ok: false, message: 'Hij is al geplaatst of wordt nu geplaatst.' }
+  await own.db.update(s.publishJob).set({ publishAt: now, nextTryAt: null }).where(eq(s.publishJob.id, job.id))
+  const r = await runPublisher(own.db, own.owner.userId, now, { jobId: job.id })
+  refresh()
+  if (r.ran === 'published') return { ok: true, message: 'Geplaatst.' }
+  if (r.ran === 'paused') return { ok: false, message: 'Plaatsen staat op pauze (Instellingen → Kanalen).' }
+  return { ok: false, message: 'error' in r && r.error ? r.error : 'Dat lukte nu niet; de cockpit probeert het zo opnieuw.' }
+}
+
+/** After a failure he fixed (a new login, a token): try that post again now. */
+export async function retryPublish(jobId: string): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  const [job] = await db
+    .select()
+    .from(s.publishJob)
+    .where(and(eq(s.publishJob.id, String(jobId)), eq(s.publishJob.ownerId, owner.userId), eq(s.publishJob.status, 'failed')))
+  if (!job) return { ok: false, message: 'Niets om opnieuw te proberen.' }
+  const now = new Date()
+  await db.update(s.publishJob).set({ status: 'queued', attempts: 0, nextTryAt: null, error: null, publishAt: now }).where(eq(s.publishJob.id, job.id))
+  const r = await runPublisher(db, owner.userId, now, { jobId: job.id })
+  refresh()
+  return r.ran === 'published' ? { ok: true, message: 'Geplaatst.' } : { ok: false, message: 'error' in r && r.error ? r.error : 'Dat lukte nu niet.' }
 }

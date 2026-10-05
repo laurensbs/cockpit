@@ -22,3 +22,15 @@ describe('slides and documents', () => {
     expect(mix('#000000', '#ffffff', 0.5)).toBe('#808080')
   })
 })
+
+describe('JPEG for Instagram', () => {
+  it('turns a drawn slide into a JPEG of the same size', async () => {
+    const { renderRaster, jpegFrom } = await import('./engine')
+    const { coverSlide, POST_SIZE } = await import('./templates')
+    const raster = await renderRaster(coverSlide(normalizeBrand({}), { title: 'Hallo', body: '' }, 1), POST_SIZE.width, POST_SIZE.height)
+    const jpeg = jpegFrom(raster)
+    expect([jpeg[0], jpeg[1]]).toEqual([0xff, 0xd8])
+    const { decode } = await import('jpeg-js')
+    expect(decode(jpeg)).toMatchObject({ width: 1080, height: 1350 })
+  })
+})

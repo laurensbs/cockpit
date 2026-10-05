@@ -367,3 +367,33 @@ export const mediaAsset = pgTable(
   },
   (t) => [index('media_owner_project_idx').on(t.ownerId, t.projectId), index('media_item_idx').on(t.contentItemId)],
 )
+
+/**
+ * A post he approved, waiting for its moment, then published by the cockpit on his own account. Like
+ * an email_job: queued → publishing → published | failed | cancelled, with a few tries after a passing
+ * failure.
+ */
+export const publishJob = pgTable(
+  'publish_job',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    contentItemId: text('content_item_id')
+      .notNull()
+      .references(() => contentItem.id, { onDelete: 'cascade' }),
+    channel: text('channel').notNull(),
+    status: text('status').notNull().default('queued'),
+    publishAt: timestamp('publish_at').notNull(),
+    nextTryAt: timestamp('next_try_at'),
+    attempts: integer('attempts').notNull().default(0),
+    remoteId: text('remote_id'),
+    permalink: text('permalink'),
+    error: text('error'),
+    publishedAt: timestamp('published_at'),
+    stats: jsonb('stats').$type<Record<string, number>>(),
+    statsAt: timestamp('stats_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('publish_owner_status_idx').on(t.ownerId, t.status, t.publishAt), index('publish_item_idx').on(t.contentItemId)],
+)

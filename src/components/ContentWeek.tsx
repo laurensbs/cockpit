@@ -1,11 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import type { ContentChannel, ContentFormat } from '@/lib/ai/playbooks'
 import { BRAND_FONTS, BRAND_STYLES, type Brand } from '@/lib/brand'
 import type { ReelPlan, Slide } from '@/lib/content-week'
 import { useForm } from '@/lib/use-form'
-import { approveItem, approveWeek, importCapcut, makeCapcut, markPosted, redrawItem, saveBrandAndRhythm, saveItemText, skipItem, unapproveItem } from '@/server/actions/content-week'
+import { approveItem, approveWeek, importCapcut, makeCapcut, markPosted, publishNow, redrawItem, retryPublish, saveBrandAndRhythm, saveItemText, skipItem, unapproveItem } from '@/server/actions/content-week'
 import { initialFormState } from '@/server/actions/types'
 import { useCelebrate } from './CelebrationProvider'
 import { LaunchStatus } from './ClaudeButton'
@@ -40,6 +41,9 @@ export interface WeekItemView {
   video: { url: string; own: boolean } | null
   videoState: 'done' | 'missing' | 'failed' | null
   capcut: string | null
+  /** Its channel is connected, so the cockpit can publish it. */
+  connected: boolean
+  publish: { jobId: string; status: string; at: string; permalink: string | null; note: string | null } | null
 }
 
 const STATUS: Record<string, { label: string; tone: string }> = {
@@ -151,7 +155,8 @@ export function WeekItemCard({ item }: { item: WeekItemView }) {
           </button>
         </div>
       ) : null}
-      {item.status === 'approved' || (item.forum && item.status === 'draft') ? (
+      {item.publish && item.publish.status !== 'cancelled' ? <PublishState item={item} /> : null}
+      {(item.status === 'approved' && !(item.publish && ['queued', 'publishing'].includes(item.publish.status))) || (item.forum && item.status === 'draft') ? (
         <div className="row">
           <CopyButton text={publishText(item)} label={item.forum ? 'Kopieer antwoord' : 'Kopieer tekst'} />
           {item.pdf ? (
@@ -172,6 +177,11 @@ export function WeekItemCard({ item }: { item: WeekItemView }) {
           <button type="button" className="button xp small" disabled={pending} onClick={() => posted(() => markPosted(item.id))}>
             Geplaatst
           </button>
+          {item.status === 'approved' && !item.connected && item.channel !== 'forum' ? (
+            <Link className="tiny" href="/settings#channels">
+              Koppel {item.channelLabel} om dit vanzelf te plaatsen
+            </Link>
+          ) : null}
           {item.status === 'approved' ? (
             <button type="button" className="button ghost small" disabled={pending} onClick={() => start(() => unapproveItem(item.id))}>
               Terug naar concept
@@ -185,6 +195,63 @@ export function WeekItemCard({ item }: { item: WeekItemView }) {
       ) : null}
       {item.status !== 'done' ? <ItemTools item={item} /> : null}
     </article>
+  )
+}
+
+/** Where the post stands with publishing: planned, out, or what went wrong. */
+function PublishState({ item }: { item: WeekItemView }) {
+  const [pending, start] = useTransition()
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const p = item.publish!
+  const run = (fn: () => Promise<{ ok: boolean; message: string }>) =>
+    start(async () => {
+      const r = await fn()
+      setMessage({ ok: r.ok, text: r.message })
+    })
+  return (
+    <div className="stack-xs publish-state" data-state={p.status}>
+      {p.status === 'queued' ? (
+        <div className="row">
+          <span className="chip accent">Gepland · {p.at}</span>
+          <button type="button" className="button primary small" disabled={pending} onClick={() => run(() => publishNow(item.id))}>
+            <Icon name="send" size={16} /> Nu plaatsen
+          </button>
+          <button type="button" className="button ghost small" disabled={pending} onClick={() => start(() => unapproveItem(item.id))}>
+            Terug naar concept
+          </button>
+        </div>
+      ) : p.status === 'publishing' ? (
+        <span className="chip accent">Wordt geplaatst…</span>
+      ) : p.status === 'published' ? (
+        <span className="row">
+          <span className="chip good">Geplaatst</span>
+          {p.permalink ? (
+            <a className="small" href={p.permalink} target="_blank" rel="noreferrer">
+              Bekijk op {item.channelLabel}
+            </a>
+          ) : null}
+        </span>
+      ) : p.status === 'failed' ? (
+        <div className="row">
+          <span className="chip bad">Lukte niet</span>
+          <button type="button" className="button secondary small" disabled={pending} onClick={() => run(() => retryPublish(p.jobId))}>
+            Opnieuw proberen
+          </button>
+        </div>
+      ) : null}
+      {p.note && p.status !== 'queued' ? (
+        <p className="tiny" style={{ color: p.status === 'failed' ? 'var(--bad)' : undefined }}>
+          {p.note}
+        </p>
+      ) : p.note && p.status === 'queued' ? (
+        <p className="tiny muted">Vorige poging: {p.note}</p>
+      ) : null}
+      {message ? (
+        <p className="tiny" role="status" style={{ color: message.ok ? 'var(--good)' : 'var(--bad)' }}>
+          {message.text}
+        </p>
+      ) : null}
+    </div>
   )
 }
 

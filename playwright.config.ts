@@ -47,6 +47,11 @@ export default defineConfig({
           COCKPIT_FAKE_CONNECTORS: '1',
           // CapCut packages go into test-results instead of ~/Movies.
           COCKPIT_CAPCUT_DIR: `${process.cwd()}/test-results/capcut`,
+          // Publishing: LinkedIn, Instagram and TikTok answer from fixtures (and write down what was
+          // posted), the "Blob store" is a list, and posts may go out at any hour.
+          COCKPIT_FIXTURE_LOG: `${process.cwd()}/test-results/fixture-requests.jsonl`,
+          COCKPIT_FAKE_BLOB: `${process.cwd()}/test-results/blob.jsonl`,
+          COCKPIT_PUBLISH_ANYTIME: '1',
         },
       },
 })

@@ -84,5 +84,15 @@
       "CREATE INDEX \"media_owner_project_idx\" ON \"media_asset\" USING btree (\"owner_id\",\"project_id\");",
       "CREATE INDEX \"media_item_idx\" ON \"media_asset\" USING btree (\"content_item_id\");"
     ]
+  },
+  {
+    "tag": "0004_publish",
+    "statements": [
+      "CREATE TABLE \"publish_job\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text,\n\t\"content_item_id\" text NOT NULL,\n\t\"channel\" text NOT NULL,\n\t\"status\" text DEFAULT 'queued' NOT NULL,\n\t\"publish_at\" timestamp NOT NULL,\n\t\"next_try_at\" timestamp,\n\t\"attempts\" integer DEFAULT 0 NOT NULL,\n\t\"remote_id\" text,\n\t\"permalink\" text,\n\t\"error\" text,\n\t\"published_at\" timestamp,\n\t\"stats\" jsonb,\n\t\"stats_at\" timestamp,\n\t\"created_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "ALTER TABLE \"publish_job\" ADD CONSTRAINT \"publish_job_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "ALTER TABLE \"publish_job\" ADD CONSTRAINT \"publish_job_content_item_id_content_item_id_fk\" FOREIGN KEY (\"content_item_id\") REFERENCES \"public\".\"content_item\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "CREATE INDEX \"publish_owner_status_idx\" ON \"publish_job\" USING btree (\"owner_id\",\"status\",\"publish_at\");",
+      "CREATE INDEX \"publish_item_idx\" ON \"publish_job\" USING btree (\"content_item_id\");"
+    ]
   }
 ]
