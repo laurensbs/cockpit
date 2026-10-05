@@ -83,5 +83,6 @@ export const SMTP_PRESETS: Record<string, SmtpPreset> = {
   outlook: { label: 'Microsoft 365 (zakelijk)', host: 'smtp.office365.com', port: 587, secure: false, note: 'SMTP-authenticatie moet aan staan voor je mailbox.' },
   transip: { label: 'TransIP', host: 'smtp.transip.email', port: 465, secure: true, note: 'Je volledige e-mailadres als gebruikersnaam.' },
   strato: { label: 'Strato', host: 'smtp.strato.com', port: 465, secure: true, note: 'Je volledige e-mailadres als gebruikersnaam.' },
+  hostinger: { label: 'Hostinger', host: 'smtp.hostinger.com', port: 465, secure: true, note: 'Je volledige e-mailadres als gebruikersnaam, en het wachtwoord van die mailbox.' },
   custom: { label: 'Andere mailserver', host: '', port: 587, secure: false, note: 'De gegevens staan bij je hostingpartij.' },
 }
