@@ -18,7 +18,7 @@ describe('outcomeStep', () => {
     const leads = outcomeStep({ ...base, bottleneck: { kind: 'step', from: 'visitors', to: 'leads', fromLabel: 'Bezoekers', toLabel: 'Leads', actual: 0.01, expected: 0.02 } })
     expect(leads).toMatchObject({ task: 'experiments', options: { focus: 'leads' } })
     expect(leads?.why).toContain('Bezoekers → Leads: 1%, verwacht 2%')
-    expect(leads?.why).toMatch(/MRR: €\s1\.200 van €\s3\.000/)
+    expect(leads?.why).toMatch(/Vaste omzet per maand: €\s1\.200 van €\s3\.000/)
     expect(outcomeStep({ ...base, bottleneck: { kind: 'step', from: 'leads', to: 'meetings', fromLabel: 'Leads', toLabel: 'Gesprekken', actual: 0.1, expected: 0.4 } })).toMatchObject({ task: 'contact_mails', place: 'contacts' })
     expect(outcomeStep({ ...base, bottleneck: { kind: 'step', from: 'meetings', to: 'offers', fromLabel: 'Gesprekken', toLabel: 'Offertes', actual: 0.1, expected: 0.5 } })).toMatchObject({ task: null, place: 'contacts' })
   })

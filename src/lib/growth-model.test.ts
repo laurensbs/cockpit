@@ -21,7 +21,7 @@ describe('normalizeModel', () => {
       northStar: { key: 'mrr', target: 3000, deadline: '2027-03-31', baseline: null, startedOn: null },
       funnel: [
         { key: 'visitors', label: 'Bezoekers', rate: null },
-        { key: 'leads', label: 'Leads', rate: 0.02 },
+        { key: 'leads', label: 'Aanvragen', rate: 0.02 },
         { key: 'meetings', rate: 0.3 },
         { key: 'deals_won', label: 'Klanten', rate: 0.25 },
       ],

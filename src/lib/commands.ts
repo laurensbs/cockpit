@@ -4,7 +4,7 @@
 export type Command =
   | { id: string; group: 'Vraag Claude'; label: string; hint?: string; kind: 'ask'; projectId: string | null; question: string }
   | { id: string; group: 'Ga naar' | 'Projecten'; label: string; hint?: string; kind: 'go'; href: string }
-  | { id: string; group: 'Claude Code'; label: string; hint?: string; kind: 'claude'; task: string; projectId: string | null; options?: Record<string, unknown> }
+  | { id: string; group: 'Laat Claude doen'; label: string; hint?: string; kind: 'claude'; task: string; projectId: string | null; options?: Record<string, unknown> }
 
 export interface CommandProject {
   id: string
@@ -19,7 +19,7 @@ export const PLACES: { label: string; href: string; hint?: string }[] = [
   { label: 'Geld', href: '/geld', hint: 'vaste lasten, prijzen, data om op te letten' },
   { label: 'Bedrijven', href: '/companies', hint: 'omzet, kosten, winst' },
   { label: 'GitHub', href: '/github', hint: 'alles binnenhalen' },
-  { label: 'Instellingen', href: '/settings', hint: 'Claude Code, mailbox, GitHub' },
+  { label: 'Instellingen', href: '/settings', hint: 'Claude, mailbox, GitHub' },
 ]
 
 /** The jobs Claude Code can do for one project, as the buttons elsewhere offer them. */
@@ -68,9 +68,9 @@ export function buildCommands(query: string, projects: CommandProject[], current
   // Jobs for the project he is on first; with a query, jobs of any project that match.
   const scope = q ? [...(current ? [current] : []), ...projects.filter((p) => p.id !== current?.id)] : current ? [current] : []
   const jobs: Command[] = []
-  if (!q || matches(q, 'focus van de week weekfocus alle projecten')) jobs.push({ id: 'weekly', group: 'Claude Code', label: 'Maak de focus van de week', hint: 'alle projecten', kind: 'claude', task: 'weekly', projectId: null })
+  if (!q || matches(q, 'focus van de week weekfocus alle projecten')) jobs.push({ id: 'weekly', group: 'Laat Claude doen', label: 'Maak de focus van de week', hint: 'alle projecten', kind: 'claude', task: 'weekly', projectId: null })
   for (const p of scope)
     for (const job of PROJECT_JOBS)
-      if (!q || matches(q, job.label, p.name)) jobs.push({ id: `${job.task}-${JSON.stringify(job.options ?? {})}-${p.id}`, group: 'Claude Code', label: job.label, hint: p.name, kind: 'claude', task: job.task, projectId: p.id, options: job.options })
+      if (!q || matches(q, job.label, p.name)) jobs.push({ id: `${job.task}-${JSON.stringify(job.options ?? {})}-${p.id}`, group: 'Laat Claude doen', label: job.label, hint: p.name, kind: 'claude', task: job.task, projectId: p.id, options: job.options })
   return [...places.slice(0, limit), ...projectRows.slice(0, limit), ...jobs.slice(0, limit), ...ask]
 }

@@ -22,7 +22,7 @@ describe('buildCommands', () => {
     expect(list.some((c) => c.kind === 'ask')).toBe(false)
     expect(list.filter((c) => c.group === 'Ga naar').map((c) => c.label)).toContain('Vandaag')
     expect(list.filter((c) => c.group === 'Projecten')).toHaveLength(3)
-    expect(list.filter((c) => c.group === 'Claude Code').map((c) => c.label)).toEqual(['Maak de focus van de week'])
+    expect(list.filter((c) => c.group === 'Laat Claude doen').map((c) => c.label)).toEqual(['Maak de focus van de week'])
   })
 
   it('on a project page: the jobs for that project are there right away', () => {

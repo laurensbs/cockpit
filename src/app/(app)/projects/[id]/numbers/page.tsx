@@ -114,7 +114,7 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
       {lessons.length ? (
         <section className="card stack-s" aria-labelledby="lessons-title">
           <h2 id="lessons-title" className="row">
-            <Icon name="idea" size={20} /> Lessen
+            <Icon name="idea" size={20} /> Wat experimenten leerden
           </h2>
           <p className="tiny muted">Wat de experimenten opleverden. Claude leest dit bij elke klus voor {project.name}.</p>
           <ul className="list" style={{ margin: 0 }}>

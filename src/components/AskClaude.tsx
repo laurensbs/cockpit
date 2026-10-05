@@ -69,7 +69,7 @@ export function AskClaude({ projects, project, disabledReason }: { projects: { i
           )}
           <button type="submit" className="button primary ai-button" disabled={pending || !question.trim() || Boolean(disabledReason)}>
             <Icon name="bolt" size={18} />
-            {pending ? 'Claude Code openen…' : 'Vraag het Claude'}
+            {pending ? 'Claude begint…' : 'Vraag het Claude'}
           </button>
         </div>
       </form>

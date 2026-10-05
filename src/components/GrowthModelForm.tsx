@@ -38,7 +38,7 @@ export function GrowthModelForm({ projectId, model, defaultDeadline }: { project
         </label>
       </div>
       <fieldset className="stack-xs funnel-fields">
-        <legend className="label">Trechter, van boven naar het doel</legend>
+        <legend className="label">Stappen naar je doel, van eerste contact tot klant</legend>
         {stages.map((st, i) => (
           <div key={i} className="row nowrap funnel-field">
             <span className="tiny muted num">{i + 1}</span>

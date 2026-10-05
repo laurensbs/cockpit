@@ -84,7 +84,7 @@ export default async function QuestsPage() {
           </section>
         )
       })}
-      {open.length ? null : <p className="empty">Alles gedaan. Zet een nieuwe quest op, of laat het marketingbrein er een paar maken.</p>}
+      {open.length ? null : <p className="empty">Alles gedaan. Zet een nieuwe quest op, of laat Claude er een paar maken.</p>}
 
       <section id="nieuw" className="card stack-m">
         <h2>Nieuwe quest</h2>

@@ -10,7 +10,7 @@ export function FunnelStrip({ stages, funnel }: { stages: { key: string; label: 
   return (
     <section className="card stack-s" aria-labelledby="funnel-title">
       <div className="row between">
-        <h2 id="funnel-title">Trechter</h2>
+        <h2 id="funnel-title">Van contact tot klant</h2>
         <span className="tiny muted">Laatste 8 weken</span>
       </div>
       <ol className="funnel">

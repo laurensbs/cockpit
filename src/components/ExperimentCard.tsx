@@ -57,7 +57,7 @@ export function ExperimentCard({ experiment: e }: { experiment: ExperimentView }
         <span className="row" style={{ gap: '0.35rem' }}>
           <span className="chip accent">{e.channel}</span>
           <span className="chip" title={`Impact ${e.impact} · zekerheid ${e.confidence} · gemak ${e.ease}`}>
-            ICE <span className="num">{e.ice}</span>
+            Kansrijk <span className="num">{String(e.ice).replace('.', ',')}</span> van 10
           </span>
           {e.cost ? <span className="chip">{e.cost}</span> : null}
         </span>

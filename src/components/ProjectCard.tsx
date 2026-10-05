@@ -27,7 +27,7 @@ export function ProjectCard({ project, today }: { project: ProjectSummary; today
         </div>
         <span className="chip accent">{isStage(project.stage) ? STAGE_LABELS[project.stage] : project.stage}</span>
       </div>
-      <p className={`small ${project.oneLiner ? '' : 'faint'}`}>{project.oneLiner || 'Nog geen one-liner'}</p>
+      <p className={`small ${project.oneLiner ? '' : 'faint'}`}>{project.oneLiner || 'Nog geen korte omschrijving'}</p>
       {project.repos.length ? <Sparkline values={spark} label={`${activeDays(project.commitDays, today, 30)} actieve dagen in 30 dagen`} /> : null}
       <div className="row between tiny muted">
         <span>{quietLabel(quiet, project.repos.length > 0)}</span>

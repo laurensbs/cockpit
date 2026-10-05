@@ -52,7 +52,7 @@ export default async function SettingsPage() {
     <div className="stack-l">
       <header className="stack-s">
         <h1>Instellingen</h1>
-        <p className="lede">Alles staat op deze computer. Claude Code werkt met je eigen account; de cockpit stuurt zelf nergens iets heen.</p>
+        <p className="lede">Alles staat op deze computer. Cockpit verstuurt alleen mails die jij goedkeurde, vanaf je eigen mailbox.</p>
       </header>
 
       {todo.length ? (
@@ -76,11 +76,7 @@ export default async function SettingsPage() {
           </h2>
           {version ? <span className="chip good">Gevonden · {version}</span> : <span className="chip warn">Niet gevonden</span>}
         </div>
-        <p className="muted small">
-          Claude Code is het brein van de cockpit. Elke knop (profiel, plan, mails, posts, ideeën, kansen, weekfocus) opent Claude Code met de
-          taak; Claude leest het project via de cockpit en zet het resultaat hier terug. Dat loopt op je eigen Claude-abonnement, zonder
-          API-kosten.
-        </p>
+        <p className="muted small">Claude doet het denkwerk, op je eigen Claude-abonnement. Zonder koppeling werkt geen enkele Claude-knop.</p>
         {version ? (
           <p className="tiny muted">
             De app koppelt Claude Code vanzelf zodra hij het vindt, en opnieuw als het adres van de cockpit verandert. De knop hieronder doet hetzelfde met de hand.

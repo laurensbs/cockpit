@@ -36,7 +36,7 @@ test('a measured experiment: start, the numbers move, a suggested verdict, and a
   await expect(card.getByText('Gemeten met leads, doel 10.')).toBeVisible()
   await card.getByRole('button', { name: 'Start dit experiment' }).click()
   await expect(card.getByText('nog 14 dagen')).toBeVisible()
-  await expect(card.getByText(/^Leads: /)).toBeVisible()
+  await expect(card.getByText(/^Aanvragen: /)).toBeVisible()
 
   // Claude records today's leads, as he was told: the experiment sees them.
   const told = await mcpTool(request, 'save_metrics', { project: 'Webstability', points: [{ key: 'leads', value: 12, day: dayOf(new Date()), note: 'hij vertelde het' }] })
@@ -45,15 +45,15 @@ test('a measured experiment: start, the numbers move, a suggested verdict, and a
   await expect(card.locator('.measured')).toContainText('→ 12')
   await card.getByRole('button', { name: 'Afronden' }).click()
   await expect(card.getByText('De cijfers zeggen:')).toContainText('het werkte')
-  await expect(card.getByLabel('Wat heb je geleerd?')).toHaveValue(/Leads: .+ → 12 \(doel 10\)\. /)
-  await card.getByLabel('Wat heb je geleerd?').fill('Leads: 3 → 12 (doel 10). Ondernemers willen eerst bewijs zien.')
+  await expect(card.getByLabel('Wat heb je geleerd?')).toHaveValue(/Aanvragen: .+ → 12 \(doel 10\)\. /)
+  await card.getByLabel('Wat heb je geleerd?').fill('Aanvragen: 3 → 12 (doel 10). Ondernemers willen eerst bewijs zien.')
   await card.getByRole('button', { name: 'Het werkte', exact: true }).click()
   await expect(card.getByText('Werkte', { exact: true })).toBeVisible()
   await shot(page, '24-experiment')
 
   // The lesson is on the numbers page, and in the next brief Claude gets for Webstability.
   await page.goto(`/projects/${id}/numbers`)
-  const lessons = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Lessen' }) })
+  const lessons = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Wat experimenten leerden' }) })
   await expect(lessons.getByText('Gratis website-check als lokkertje')).toBeVisible()
   await expect(lessons.getByText('Ondernemers willen eerst bewijs zien.')).toBeVisible()
   const brief = await mcpTool(request, 'get_task', { task: 'posts', project: 'Webstability' })

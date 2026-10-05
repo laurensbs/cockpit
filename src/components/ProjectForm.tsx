@@ -116,7 +116,7 @@ export function ProjectForm({ values, companies }: { values: ProjectFormValues; 
         <p className="eyebrow">Details</p>
         <div className="grid-2">
           <label className="field">
-            <span>Belangrijkste cijfer (north star)</span>
+            <span>Het ene cijfer dat telt</span>
             <input className="input" name="northStar" defaultValue={values.northStar} maxLength={200} placeholder="Bijv. vaste koppels per week" />
           </label>
           <label className="field">
@@ -135,7 +135,7 @@ export function ProjectForm({ values, companies }: { values: ProjectFormValues; 
         <label className="field">
           <span>Map met de code op deze computer (optioneel)</span>
           <input className="input" name="localPath" defaultValue={values.localPath ?? ''} maxLength={400} spellCheck={false} placeholder="~/code/project" />
-          <span className="hint">Claude Code start dan in die map en kan de code zelf lezen.</span>
+          <span className="hint">Claude start dan in die map en kan de code zelf lezen.</span>
         </label>
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
           <legend className="label">Talen voor content</legend>

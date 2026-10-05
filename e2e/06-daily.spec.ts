@@ -18,7 +18,7 @@ test('the weekly focus from Claude Code looks at the whole portfolio and suggest
   await openMore(page)
   await expect(page.getByRole('heading', { name: 'Focus van de week' })).toBeVisible()
   await page.getByRole('button', { name: /Maak de weekfocus/ }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Claude Code is geopend' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Claude werkt eraan' })).toBeVisible()
 
   const portfolio = await mcpTool(request, 'get_portfolio')
   expect(portfolio.text).toContain('This is his whole portfolio')

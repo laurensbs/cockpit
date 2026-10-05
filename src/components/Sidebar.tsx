@@ -45,7 +45,7 @@ const isActive = (pathname: string, href: string) => (href === '/' ? pathname ==
 /** The places, every active project, and whether Claude Code is ready: the source list of the app. */
 export function Sidebar({ projects, claude, version }: { projects: SidebarProject[]; claude: SidebarClaude; version: string | null }) {
   const pathname = usePathname()
-  const status = claude.connected ? { tone: 'good', text: 'Claude Code gekoppeld' } : claude.installed ? { tone: 'warn', text: 'Koppel Claude Code' } : { tone: 'warn', text: 'Installeer Claude Code' }
+  const status = claude.connected ? { tone: 'good', text: 'Claude staat klaar' } : claude.installed ? { tone: 'warn', text: 'Claude koppelen' } : { tone: 'warn', text: 'Claude installeren' }
   return (
     <nav className="sidebar" aria-label="Hoofdmenu">
       <div className="sidebar-group">

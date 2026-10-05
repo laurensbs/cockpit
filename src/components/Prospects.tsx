@@ -47,11 +47,7 @@ export function ProspectPanel({ projectId, projectName, perDay, waiting, off }: 
   return (
     <section className="card stack-s" aria-labelledby="prospect-title">
       <h2 id="prospect-title">Claude zoekt bedrijven voor je</h2>
-      <p className="small muted">
-        Claude zoekt bedrijven die passen bij {projectName} en kijkt op hun eigen site hoe klanten nu contact opnemen. Per bedrijf schrijft hij één
-        ding op dat je zelf kunt nakijken, en wat je zegt als je belt. Jij zegt per bedrijf ja of nee. Eerst bellen of langsgaan (dat mag); vragen ze om
-        informatie, dan gaat de mail die Claude al klaarzette.
-      </p>
+      <p className="small muted">Claude zoekt elke werkdag bedrijven die bij {projectName} passen. Jij zegt per bedrijf ja (dan bel je) of nee (dan leert hij).</p>
       <div className="row wrap">
         <label className="row nowrap small">
           Elke werkdag

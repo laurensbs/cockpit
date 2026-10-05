@@ -53,7 +53,7 @@ export function NextSteps({ groups, disabledReason, project }: { groups: NextSte
                       type="button"
                       className="project-chip claude"
                       disabled={pending}
-                      title={`Laat Claude Code dit doen voor ${p.projectName}`}
+                      title={`Laat Claude dit doen voor ${p.projectName}`}
                       onClick={() => void open(p.task!, p.projectId, p.options ?? {})}
                     >
                       {project ? null : <span className="dot" style={{ background: p.color ?? 'var(--accent)' }} aria-hidden="true" />}
@@ -73,13 +73,8 @@ export function NextSteps({ groups, disabledReason, project }: { groups: NextSte
           ))}
         </ol>
       ) : (
-        <p className="small">Alles loopt: posts staan gepland, experimenten draaien en je outreach is bij. Tijd om te meten.</p>
+        <p className="small">Niets open. Kijk bij Cijfers wat je posts en mails deze week deden.</p>
       )}
-      {groups.some((g) => g.projects.some((p) => p.task)) && !disabledReason ? (
-        <p className="tiny faint">
-          <Icon name="bolt" size={12} /> opent Claude Code met die klus; het resultaat komt hier terug.
-        </p>
-      ) : null}
       <LaunchStatus launch={launch} done={done} />
     </section>
   )

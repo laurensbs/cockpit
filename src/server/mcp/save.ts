@@ -77,7 +77,7 @@ export async function saveProfile(db: Db, ownerId: string, project: { id: string
   const id = crypto.randomUUID()
   await db.insert(s.brief).values({ id, ownerId, projectId: project.id, kind: 'profile', content: profile, runId: SOURCE })
   await award(db, ownerId, { kind: 'generate', refId: `profile:${id}`, projectId: project.id })
-  return `Opgeslagen: het marketingprofiel van ${project.name} (${profile.audiences.length} doelgroepen, ${profile.channels.length} kanalen, ${profile.quickWins.length} quick wins). Hij ziet het onder Marketingbrein.`
+  return `Opgeslagen: het marketingprofiel van ${project.name} (${profile.audiences.length} doelgroepen, ${profile.channels.length} kanalen, ${profile.quickWins.length} quick wins). Hij ziet het onder Plan.`
 }
 
 export async function savePlan(db: Db, ownerId: string, project: { id: string; name: string }, wire: z.infer<typeof PlanWire>): Promise<string> {
@@ -247,7 +247,7 @@ export async function saveExperiments(db: Db, ownerId: string, project: { id: st
 export async function saveLinkedin(db: Db, ownerId: string, project: { id: string; name: string }, wire: z.infer<typeof LinkedinWire>): Promise<string> {
   const plan = normalizeLinkedin(wire)
   await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: project.id, kind: 'linkedin', content: plan, runId: SOURCE })
-  return `Opgeslagen: LinkedIn voor ${project.name}: een kop, een about-tekst, ${plan.connect.length} soorten connecties en ${plan.posts.length} posts. Hij ziet het onder Marketingbrein en post zelf, met één klik.`
+  return `Opgeslagen: LinkedIn voor ${project.name}: een kop, een about-tekst, ${plan.connect.length} soorten connecties en ${plan.posts.length} posts. Hij ziet het onder Plan en post zelf, met één klik.`
 }
 
 /** A growth model from Claude: kept as a proposal; it only counts once he accepts it under Cijfers. */

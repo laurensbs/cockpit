@@ -72,7 +72,7 @@ export function ruleQuests(projects: readonly RuleProject[], today: string, aiAv
       out.push({
         sourceKey: `plan:${p.id}`,
         projectId: p.id,
-        title: `Laat het marketingbrein een plan maken voor ${p.name}`,
+        title: `Laat Claude een marketingplan maken voor ${p.name}`,
         detail: 'Profiel en een plan voor 30, 60 en 90 dagen; de acties worden quests.',
         xp: 25,
         dueOn: null,

@@ -286,7 +286,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
               ))}
             </ol>
           ) : (
-            <p className="small">Alles loopt: posts staan gepland, een experiment draait en je outreach is bij. Tijd om te meten.</p>
+            <p className="small">Niets open. Kijk bij Cijfers wat je posts en mails deze week deden.</p>
           )}
         </section>
         {running.length ? (
@@ -317,7 +317,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     <div className="stack-l">
       <header className="stack-s">
         <h1>Marketing</h1>
-        <p className="lede">Alles voor de groei van {current.name}, met Claude Code als partner. Jij keurt goed; niets gaat zonder jou de deur uit.</p>
+        <p className="lede">Alles voor de groei van {current.name}, met Claude als partner. Jij keurt goed; niets gaat zonder jou de deur uit.</p>
       </header>
       <nav className="row" aria-label="Project">
         {projects.map((p) => (

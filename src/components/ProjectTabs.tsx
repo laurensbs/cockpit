@@ -5,8 +5,8 @@ export type ProjectTab = 'overview' | 'numbers' | 'brain' | 'studio' | 'contacts
 const TABS: { key: ProjectTab; label: string; path: string }[] = [
   { key: 'overview', label: 'Overzicht', path: '' },
   { key: 'numbers', label: 'Cijfers', path: '/numbers' },
-  { key: 'brain', label: 'Marketingbrein', path: '/brain' },
-  { key: 'studio', label: 'Studio', path: 'studio' },
+  { key: 'brain', label: 'Plan', path: '/brain' },
+  { key: 'studio', label: 'Marketing', path: 'studio' },
   { key: 'contacts', label: 'Contacten', path: '/contacts' },
   { key: 'quests', label: 'Quests', path: '/quests' },
 ]

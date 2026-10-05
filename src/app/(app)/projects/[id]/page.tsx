@@ -173,7 +173,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           <Fact label="Wat het doet" value={project.what} empty="Nog niet ingevuld" />
           <Fact label="Voor wie" value={project.audience} empty="Nog niet ingevuld" />
           <Fact label="Doel over 90 dagen" value={project.goal} empty="Nog niet ingevuld" />
-          <Fact label="North star" value={project.northStar} empty="Nog niet gekozen" />
+          <Fact label="Het ene cijfer dat telt" value={project.northStar} empty="Nog niet gekozen" />
           <Fact label="Rode lijnen" value={project.redLines} empty="Geen bijzondere" />
           <Fact
             label="Talen en markten"

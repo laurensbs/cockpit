@@ -37,7 +37,7 @@ export function SoundToggle() {
         }}
       />
       <span className="stack-xs">
-        <strong>Geluid in de les</strong>
+        <strong>Geluid tijdens je dag</strong>
         <span className="tiny muted">Een zachte toon bij “goed zo” en aan het eind.</span>
       </span>
     </label>

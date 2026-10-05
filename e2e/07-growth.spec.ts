@@ -56,7 +56,7 @@ test('organic growth: articles, a growth experiment and LinkedIn, from Claude Co
   // LinkedIn on the brain: posts open LinkedIn with the text filled in.
   await page.goto('/projects')
   await page.getByRole('link', { name: /Rondje/ }).first().click()
-  await page.getByRole('link', { name: 'Marketingbrein' }).click()
+  await page.getByRole('link', { name: 'Plan', exact: true }).click()
   await expect(page.getByText('Bouwer van Rondje: jongeren en asielhonden samen op pad')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Post op LinkedIn' }).first()).toHaveAttribute('href', /^https:\/\/www\.linkedin\.com\/feed\/\?shareActive=true&text=Elke%20hond/)
   await context.close()

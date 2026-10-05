@@ -28,7 +28,7 @@ export function LaunchStatus({ launch, done }: { launch: LaunchResult | null; do
     </p>
   ) : (
     <p className="tiny muted" role="status">
-      Claude Code is geopend in een eigen venster. Zodra hij klaar is, verschijnt het hier.
+      Claude werkt eraan in een eigen venster. Het resultaat verschijnt hier vanzelf.
     </p>
   )
 }
@@ -57,8 +57,7 @@ export function ClaudeButton({
     <div className="stack-s">
       <button type="button" className={`button ${variant} ai-button`} disabled={pending || Boolean(disabledReason)} onClick={() => void open(task, projectId, options ?? {})}>
         <Icon name="bolt" size={18} />
-        {pending ? 'Claude Code openen…' : label}
-        <span className="num tiny ai-cost">Claude Code</span>
+        {pending ? 'Claude begint…' : label}
       </button>
       {disabledReason ? <p className="tiny muted">{disabledReason}</p> : null}
       <LaunchStatus launch={launch} done={done} />

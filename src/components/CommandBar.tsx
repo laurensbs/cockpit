@@ -105,7 +105,7 @@ export function CommandBar({ projects }: { projects: CommandProject[] }) {
               <kbd>esc</kbd>
             </div>
             {result || pending ? (
-              <div className="command-status">{pending ? <p className="tiny muted">Claude Code openen…</p> : <LaunchStatus launch={result} done={done} />}</div>
+              <div className="command-status">{pending ? <p className="tiny muted">Claude begint…</p> : <LaunchStatus launch={result} done={done} />}</div>
             ) : null}
             <ul className="command-list" id="command-list" role="listbox" ref={list}>
               {commands.map((c, i) => {
@@ -133,7 +133,7 @@ export function CommandBar({ projects }: { projects: CommandProject[] }) {
               {!commands.length ? <li className="command-empty tiny muted">Niets gevonden.</li> : null}
             </ul>
             <p className="command-foot tiny muted">
-              <kbd>↑</kbd> <kbd>↓</kbd> kiezen · <kbd>↵</kbd> doen · Claude-klussen openen Claude Code in een eigen venster
+              <kbd>↑</kbd> <kbd>↓</kbd> kiezen · <kbd>↵</kbd> doen
             </p>
           </div>
         </div>

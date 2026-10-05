@@ -24,7 +24,7 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
 
   // A generator button opens Claude Code with the choices made here.
   await page.getByRole('button', { name: /Schrijf mails/ }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Claude Code is geopend' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Claude werkt eraan' })).toBeVisible()
 
   // Mails: drafts with a mailto link; "Verstuurd" (sent from his own mail app) gives XP.
   const mail = page.locator('article').filter({ hasText: 'Meer wandelingen voor jullie honden, gratis' })
@@ -75,7 +75,7 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
   const card = page.locator('li.card').filter({ hasText: 'Stichting Testopvang' })
   await expect(card).toBeVisible()
   await card.getByRole('button', { name: /Schrijf een persoonlijke mail/ }).click()
-  await expect(card.getByRole('status').filter({ hasText: 'Claude Code is geopend' })).toBeVisible()
+  await expect(card.getByRole('status').filter({ hasText: 'Claude werkt eraan' })).toBeVisible()
 
   const listed = await mcpTool(request, 'list_contacts', { project: 'Rondje' })
   expect(listed.text).not.toContain('info@testopvang.nl')

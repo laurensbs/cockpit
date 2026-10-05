@@ -16,7 +16,7 @@ import { claudeBlocked } from '@/server/claude-status'
 import { isIntakeDone } from '@/server/game'
 import { requireOwner } from '@/server/session'
 
-export const metadata = { title: 'Marketingbrein' }
+export const metadata = { title: 'Marketingplan' }
 
 export default async function BrainPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -49,15 +49,12 @@ export default async function BrainPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="stack-l">
       <ProjectHeader project={ctx.project} active="brain" />
-      <p className="tiny muted">
-        Een knop opent Claude Code op je eigen account. Claude leest dit project via de cockpit, denkt na, en zet het resultaat hier terug. Je kunt
-        in dat venster meepraten.
-      </p>
+      <p className="tiny muted">Hoe je {ctx.project.name} in de markt zet: voor wie, via welke kanalen, en wat je per week doet.</p>
       {!isIntakeDone(ctx.project) ? (
         <p className="notice warn row between">
-          <span>De intake is nog niet af. Hoe meer Claude weet, hoe beter het wordt.</span>
+          <span>Beantwoord de vijf vragen over {ctx.project.name}: daar haalt Claude alles uit.</span>
           <Link href={`/projects/${id}/edit`} className="button secondary small">
-            Intake invullen
+            Vijf vragen invullen
           </Link>
         </p>
       ) : null}

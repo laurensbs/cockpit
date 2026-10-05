@@ -39,7 +39,7 @@ test('Claude Code gets the brief through MCP and hands the profile and the plan 
   const { context, page } = await newVisitor(browser)
   await page.goto('/projects')
   await page.getByRole('link', { name: /Rondje/ }).first().click()
-  await page.getByRole('link', { name: 'Marketingbrein' }).click()
+  await page.getByRole('link', { name: 'Plan', exact: true }).click()
   await expect(page.getByText('Rondje: het rondje dat je week beter maakt.')).toBeVisible()
   await expect(page.getByText(/Eerste stap:/).first()).toBeVisible()
   const win = page.locator('li').filter({ hasText: 'Mail drie opvangen' })
@@ -48,7 +48,7 @@ test('Claude Code gets the brief through MCP and hands the profile and the plan 
 
   // "Opnieuw" opens Claude Code with a ticket (the test terminal records the command instead).
   await page.getByRole('button', { name: /Opnieuw/ }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Claude Code is geopend' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Claude werkt eraan' })).toBeVisible()
   const launches = readFileSync('test-results/claude-launch.txt', 'utf8').trim().split('\n')
   const last = JSON.parse(launches[launches.length - 1]) as { command: string }
   expect(last.command).toMatch(/^claude --allowedTools mcp__cockpit "Haal met de cockpit-tool get_task de taak met ticket [a-f0-9]{8} op en voer die uit\."$/)

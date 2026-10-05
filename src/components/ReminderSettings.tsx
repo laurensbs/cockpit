@@ -29,7 +29,7 @@ export function ReminderSettings({ time, sound }: { time: string; sound: boolean
         />
         <span className="stack-xs">
           <strong>Dagelijkse herinnering</strong>
-          <span className="tiny muted">Op werkdagen één seintje van je Mac als je dagdoel nog open staat. Een klik opent je les. Werkt zolang Cockpit draait (ook met het venster dicht).</span>
+          <span className="tiny muted">Op werkdagen één seintje van je Mac als je dagdoel nog open staat. Een klik opent je dag. Werkt zolang Cockpit draait (ook met het venster dicht).</span>
         </span>
       </label>
       {on ? (

@@ -120,7 +120,7 @@ export function StudioGenerator({ kind, projectId, languages, disabledReason }: 
       ) : null}
       {kind === 'opportunities' ? <p className="tiny muted">Claude zoekt op het web naar communities, gidsen, media en partners. Nooit privépersonen.</p> : null}
       {kind === 'seo' ? <p className="tiny muted">Claude kijkt op het web waar je doelgroep op zoekt en wat er nu bovenaan staat, en schrijft het beste artikel helemaal uit.</p> : null}
-      {kind === 'experiments' ? <p className="tiny muted">Kleine proeven van twee weken, gesorteerd op ICE (impact, zekerheid, gemak). Claude leert van wat je eerder afrondde.</p> : null}
+      {kind === 'experiments' ? <p className="tiny muted">Kleine proeven van twee weken, de kansrijkste eerst. Claude leert van wat je eerder afrondde.</p> : null}
       <ClaudeButton task={kind} projectId={projectId} label={label} disabledReason={disabledReason} options={options} />
     </div>
   )

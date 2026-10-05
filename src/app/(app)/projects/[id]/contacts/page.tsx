@@ -72,10 +72,13 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
   return (
     <div className="stack-l">
       <ProjectHeader project={ctx.project} active="contacts" />
-      <p className="notice small">
-        Alleen organisaties, zakelijke adressen of mensen met wie je al contact hebt. Elke mail krijgt een afmeldregel, en wie nee zegt, zet je op
-        “Geen interesse”. Geen gekochte lijsten. Claude ziet de naam en je notities, nooit het e-mailadres.
-      </p>
+      <details className="notice small">
+        <summary>Je mailt alleen organisaties en mensen die je al kent.</summary>
+        <p className="small" style={{ marginTop: '0.4rem' }}>
+          Alleen organisaties, zakelijke adressen of mensen met wie je al contact hebt. Elke mail krijgt een afmeldregel, en wie nee zegt, zet je op
+          “Geen interesse”. Geen gekochte lijsten. Claude ziet de naam en je notities, nooit het e-mailadres.
+        </p>
+      </details>
       <MailBanner status={status} />
       <ProspectPanel projectId={id} projectName={ctx.project.name} perDay={projectRow?.perDay ?? 0} waiting={prospects.length} off={marketingOff} />
       <ProspectList
@@ -101,11 +104,8 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
       />
       {contacts.length ? (
         <section className="card stack-s">
-          <h2>Outreach in één keer</h2>
-          <p className="small muted">
-            Laat Claude voor elk nieuw contact een persoonlijke mail met twee opvolgmails schrijven, lees ze, en keur ze in één keer goed. Daarna gaan
-            ze vanzelf de deur uit, binnen je daglimiet.
-          </p>
+          <h2>Mails aan je contacten</h2>
+          <p className="small muted">Claude schrijft per contact één mail en twee korte opvolgers. Jij leest ze en keurt ze in één keer goed.</p>
           <div className="row">
             <WriteAllMailsButton projectId={id} count={newWithEmail} disabledReason={blocked} />
             <ScheduleAllButton projectId={id} count={readyCount} />
