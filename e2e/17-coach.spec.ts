@@ -54,7 +54,7 @@ test('Claude fills in the checklist and gives the best next step; he ticks it of
     project: 'Webstability',
     platform: 'instagram',
     language: 'nl',
-    posts: [{ title: 'Week 1', format: 'carousel', hook: 'Zo komt een aanvraag binnen', caption: 'Drie stappen.', hashtags: ['#werkbon'], visualBrief: 'Schermen', bestTime: 'di 19:00', plannedFor: tomorrow }],
+    posts: [{ title: 'Week 1', format: 'carousel', hook: 'Zo komt een aanvraag binnen', caption: 'Een klant vult op zijn telefoon het formulier in. Op de laptop staat de werkbon klaar, met wat er nog ontbreekt.', hashtags: ['#werkbon'], visualBrief: 'Schermen', bestTime: 'di 19:00', plannedFor: tomorrow }],
   })
   expect(posts.text).toContain('1 ingepland in de kalender')
 

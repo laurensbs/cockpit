@@ -79,6 +79,23 @@ export const weeklyFixture = () => ({
   boss: { title: 'Organiseer de eerste groepswandeling', project: 'Rondje', why: 'Dat is het verhaal voor alle kanalen.' },
 })
 
+// A written-out article long enough for the quality gate (800–1200 words, at least three H2s).
+const SECTION = (h: string, focus: string) =>
+  `## ${h}\n\n${[
+    `Veel opvangen in de buurt hebben te weinig handen, vooral doordeweeks en in de vakanties. ${focus}`,
+    'Je hoeft geen ervaring te hebben: de vrijwilligers van de opvang leggen uit hoe je een hond aanlijnt, welke route rustig is en wat je doet als de hond schrikt van een fiets of een andere hond.',
+    'Plan je eerste wandeling op een vast moment in de week, zodat de hond en de verzorgers op je kunnen rekenen. Een korte vaste ronde werkt beter dan een lange wandeling die je maar af en toe maakt.',
+    'Neem water mee, een paar zakjes en je telefoon, en laat de hond in het begin vooral snuffelen: zo leert hij jou kennen en jij hem. Vertel na afloop kort hoe het ging, dan weet de opvang wat de hond nodig heeft.',
+  ].join(' ')}`
+const ARTICLE_BODY = [
+  '# Vrijwilligerswerk met honden',
+  SECTION('Waarom opvangen hulp zoeken', 'Een hond die elke dag naar buiten gaat, is rustiger in het asiel en vindt sneller een nieuw huis.'),
+  SECTION('Stap 1: kies een opvang', 'Begin dichtbij huis, zodat je er makkelijk heen fietst of loopt en het ook in de winter volhoudt.'),
+  SECTION('Stap 2: kennismaken', 'De eerste keer loop je mee met een vaste vrijwilliger, die je de honden en de regels laat zien.'),
+  SECTION('Stap 3: je eerste rondje alleen', 'Na een paar keer meelopen mag je alleen met een rustige hond op pad, op een route die je al kent.'),
+  SECTION('Veelgestelde vragen', 'Mag je een eigen hond meenemen? Meestal niet tijdens de wandeling, want honden die elkaar niet kennen kunnen schrikken.'),
+].join('\n\n')
+
 export const articlesFixture = () => ({
   keywords: [
     { keyword: 'vrijwilligerswerk met honden', intent: 'informatief', difficulty: 'laag', why: 'Studenten zoeken dit vlak voor de zomer.' },
@@ -91,7 +108,7 @@ export const articlesFixture = () => ({
       metaDescription: 'Zin om honden uit te laten? Zo vind je een opvang, wat je nodig hebt en hoe je eerste rondje gaat.',
       keywords: ['vrijwilligerswerk met honden', 'hond uitlaten asiel'],
       outline: ['Waarom opvangen hulp zoeken', 'Stap 1: kies een opvang', 'Stap 2: kennismaken'],
-      body: '# Vrijwilligerswerk met honden\n\n## Waarom opvangen hulp zoeken\n\nVeel opvangen hebben te weinig handen.\n\n## Stap 1: kies een opvang\n\nBegin dichtbij huis.',
+      body: ARTICLE_BODY,
     },
     { title: 'Wat je moet weten voor je eerste rondje', slug: '', metaDescription: 'Riem, route en regels.', keywords: ['eerste keer hond uitlaten'], outline: ['De riem', 'De route'], body: '' },
   ],
