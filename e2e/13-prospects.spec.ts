@@ -55,7 +55,7 @@ test('Claude saves businesses as proposals; the cockpit finds their phone and ad
   expect(brief.text).toContain('save_prospects')
 })
 
-test('he says yes (a call on his quests) or no (never again), and the mail goes only when they ask for info', async ({ browser }) => {
+test('he says yes (a call on his quests) or no (never again), and the mail goes only when they ask for info', async ({ browser, request }) => {
   const { context, page } = await newVisitor(browser)
   // Vandaag names them in the day route; the full list is under the project's contacts.
   await page.goto('/')
@@ -102,6 +102,12 @@ test('he says yes (a call on his quests) or no (never again), and the mail goes 
   await page.getByRole('link', { name: 'Contacten' }).click()
   await page.getByLabel('Bedrijven per werkdag').selectOption('5')
   await expect(page.getByRole('status').filter({ hasText: 'Claude zoekt elke werkdag 5 bedrijven voor Webstability' })).toBeVisible()
+
+  // What he chose goes into the next search: his "no" reason, and that the business he called asked for info.
+  const brief = await mcpTool(request, 'get_task', { task: 'prospect', project: 'Webstability' })
+  expect(brief.text).toContain('<learning>')
+  expect(brief.text).toContain('1× "te groot"')
+  expect(brief.text).toContain('asked for information after his call')
   await context.close()
 })
 

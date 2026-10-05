@@ -3,6 +3,7 @@ import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/Icon'
 import { MailSettingsForm } from '@/components/MailSettingsForm'
+import { SoundToggle } from '@/components/SoundToggle'
 import { SettingsForm } from '@/components/SettingsForm'
 import { UpdateNowButton } from '@/components/UpdateNowButton'
 import { dbDir, dbMode, getDb } from '@/db'
@@ -82,6 +83,7 @@ export default async function SettingsPage() {
           </p>
         ) : null}
         {version ? <AutopilotToggle on={autopilot !== '0'} /> : null}
+        <SoundToggle />
         {version ? (
           <ConnectClaudeButton connectedAt={connectedAt} />
         ) : (

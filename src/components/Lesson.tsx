@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { chime } from '@/lib/chime'
+import { lessonLearned } from '@/lib/learning'
 import { shareUrl } from '@/lib/share'
 import type { LessonCard } from '@/server/lesson'
 import { runInBackground } from '@/server/actions/claude'
@@ -35,11 +37,15 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [xp, setXp] = useState(0)
   const [actions, setActions] = useState(0)
+  // What he decided on businesses in this lesson, for the one sentence at the end.
+  const [yes, setYes] = useState(0)
+  const [reasons, setReasons] = useState<string[]>([])
   const [pending, start] = useTransition()
   const card = cards[index]
   const progress = cards.length ? Math.round(((index + (feedback ? 1 : 0)) / cards.length) * 100) : 100
 
   const answer = (f: Feedback, counts = f.tone === 'good') => {
+    if (f.tone === 'good') chime('good')
     setFeedback(f)
     setXp((x) => x + f.xp)
     if (counts) setActions((a) => a + 1)
@@ -56,6 +62,7 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
   const next = () => {
     setFeedback(null)
     setPhase('act')
+    if (index + 1 >= cards.length && cards.length) chime('done')
     setIndex((i) => i + 1)
   }
   const later = (text = 'Komt een andere keer terug.') => answer({ tone: 'neutral', text, xp: 0 }, false)
@@ -64,12 +71,15 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
     const reached = done + actions >= goal
     return (
       <div className="lesson">
+        {reached ? <Confetti /> : null}
         <main className="lesson-end stack-m">
           <div className="lesson-flame" aria-hidden="true">
             {reached ? '🔥' : '✨'}
           </div>
+          {reached && streak ? <span className="chip flame lesson-streak">🔥 {streak} {streak === 1 ? 'dag' : 'dagen'} op rij</span> : null}
           <h1>{reached ? 'Dagdoel gehaald!' : cards.length ? 'Lekker bezig!' : 'Niets te doen nu'}</h1>
           <p className="muted">{cards.length ? `+${xp} XP in deze les${streak ? ` · ${streak} ${streak === 1 ? 'dag' : 'dagen'} op rij` : ''}` : 'Claude zoekt verder. Kom straks terug.'}</p>
+          {lessonLearned(yes, reasons) ? <p className="small">{lessonLearned(yes, reasons)}</p> : null}
           <button
             type="button"
             className="button primary big"
@@ -99,7 +109,7 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
         </span>
       </header>
 
-      <main className="lesson-card stack-m" aria-live="polite">
+      <main key={index} className="lesson-card stack-m" aria-live="polite">
         <div className="lesson-icon" aria-hidden="true">
           {card.kind === 'prospect' ? STEP_ICON.prospects : STEP_ICON[card.kind]}
         </div>
@@ -132,6 +142,7 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
               setXp((x) => x + n)
               setActions((a) => a + 1)
             }}
+            decided={(reason) => (reason ? setReasons((r) => [...r, reason]) : setYes((n) => n + 1))}
           />
         )}
       </footer>
@@ -226,6 +237,7 @@ function Actions({
   run,
   later,
   credit,
+  decided,
 }: {
   card: LessonCard
   phase: Phase
@@ -234,6 +246,7 @@ function Actions({
   run: (fn: () => Promise<Feedback | null>) => void
   later: (text?: string) => void
   credit: (xp: number) => void
+  decided: (reason?: string) => void
 }) {
   const [followers, setFollowers] = useState('')
   const [email, setEmail] = useState('')
@@ -318,6 +331,7 @@ function Actions({
                 onClick={() =>
                   run(async () => {
                     const res = await skipProspect(card.p.id, r)
+                    if (res.ok) decided(r)
                     return { tone: 'good', text: 'Duidelijk, die komt niet terug.', xp: res.xp ?? 0 }
                   })
                 }
@@ -337,6 +351,7 @@ function Actions({
           onClick={() =>
             run(async () => {
               const res = await acceptProspect(card.p.id)
+              if (res.ok) decided()
               return { tone: res.ok ? 'good' : 'bad', text: res.ok ? 'Staat bij je belkaarten.' : res.message, xp: res.xp ?? 0 }
             })
           }
@@ -441,6 +456,28 @@ function Actions({
       <button type="button" className={second} onClick={() => later()}>
         Later
       </button>
+    </div>
+  )
+}
+
+const CONFETTI = ['#b5f23d', '#8f80ff', '#ffd23f', '#ff7a59', '#34d399']
+
+/** A short shower of confetti, drawn with CSS; nothing for someone who prefers less motion. */
+function Confetti() {
+  return (
+    <div className="confetti" aria-hidden="true">
+      {Array.from({ length: 28 }, (_, i) => (
+        <span
+          key={i}
+          style={{
+            left: `${(i * 37) % 100}%`,
+            background: CONFETTI[i % CONFETTI.length],
+            animationDelay: `${(i % 7) * 0.08}s`,
+            animationDuration: `${1.4 + (i % 5) * 0.2}s`,
+            transform: `rotate(${(i * 47) % 360}deg)`,
+          }}
+        />
+      ))}
     </div>
   )
 }

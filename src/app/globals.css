@@ -2011,3 +2011,68 @@ html[data-shell='mac'] .lesson {
 .sidebar-more[open] > summary::after {
   content: ' ▴';
 }
+
+/* Lesson polish: a card that slides in, a feedback bar that rises, confetti at the end. */
+.lesson-card {
+  animation: lesson-in 0.28s ease-out;
+}
+@keyframes lesson-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lesson-feedback {
+  animation: lesson-rise 0.22s ease-out;
+}
+@keyframes lesson-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lesson-streak {
+  font-size: 1rem;
+  padding: 0.4rem 0.9rem;
+  animation: pop 0.5s ease-out 0.2s both;
+}
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.confetti span {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confetti-fall 1.6s ease-in forwards;
+}
+@keyframes confetti-fall {
+  to {
+    top: 105%;
+    opacity: 0.2;
+    transform: rotate(540deg) translateX(30px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-card,
+  .lesson-feedback,
+  .lesson-streak {
+    animation: none;
+  }
+  .confetti {
+    display: none;
+  }
+}

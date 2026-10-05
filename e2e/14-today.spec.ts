@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { newVisitor } from './helpers'
+import { newVisitor, shot } from './helpers'
 
 // The day route, the lesson, socials and Instagram. Runs after 13-prospects: "Bel Garage Test" is on
 // his quests for today.
@@ -26,6 +26,7 @@ test('Vandaag is calm; the lesson takes him through the day one card at a time',
   await expect(day.getByText('Bel Garage Test')).toBeVisible()
   // The rest of Vandaag waits behind one button.
   await expect(page.locator('details.more')).not.toHaveAttribute('open', '')
+  await shot(page, '20-vandaag')
   await day.getByRole('link', { name: /Start je dag|Nog een rondje/ }).click()
   await expect(page).toHaveURL(/\/dag$/)
   await expect(page.getByRole('progressbar', { name: 'Voortgang van je dag' })).toBeVisible()
@@ -33,10 +34,12 @@ test('Vandaag is calm; the lesson takes him through the day one card at a time',
   // The call first: the number, "Gebeld", and then the one question that matters.
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bel Garage Test')
   await expect(page.getByRole('link', { name: '📞 +34972000000' })).toHaveAttribute('href', 'tel:+34972000000')
+  await shot(page, '21-les-bellen')
   await page.getByRole('button', { name: 'Gebeld ✓' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Wilden ze informatie?')
   await page.getByRole('button', { name: 'Weet ik nog niet' }).click()
   await expect(page.locator('.lesson-foot')).toContainText('Prima')
+  await shot(page, '22-les-feedback')
   await page.getByRole('button', { name: 'Verder' }).click()
 
   // The other cards: answer the follower question, put the rest off, until the end.
@@ -53,6 +56,7 @@ test('Vandaag is calm; the lesson takes him through the day one card at a time',
     await page.getByRole('button', { name: 'Verder' }).click()
   }
   await expect(page.getByRole('heading', { name: /Dagdoel gehaald!|Lekker bezig!/ })).toBeVisible()
+  await shot(page, '23-les-klaar')
   await page.getByRole('button', { name: 'Klaar' }).click()
   await expect(page).toHaveURL(/\/$/)
   await context.close()
