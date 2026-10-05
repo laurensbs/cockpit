@@ -113,7 +113,7 @@ test('Webstability: sources, a growth model from Claude, the pipeline, and the l
     await page.waitForLoadState('networkidle')
   }
   await expect.poll(xpOf).toBe(startXp + 40 + 75)
-  await card.getByText('Deal').click()
+  await card.getByText('Deal', { exact: true }).click()
   await card.getByLabel('Waarde (€)').fill('149')
   await card.getByLabel('Volgende stap').fill('Onboarding plannen')
   await card.getByRole('button', { name: 'Deal bijwerken' }).click()

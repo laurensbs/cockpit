@@ -134,7 +134,6 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
 
   const emails = rows.filter((r) => r.kind === 'email')
   const posts = rows.filter((r) => r.kind === 'social')
-  const plannedSoon = posts.filter((r) => r.plannedFor && r.plannedFor >= today && r.plannedFor <= addDays(today, 13))
   const ideas = rows.filter((r) => r.kind === 'idea')
   const opportunities = rows.filter((r) => r.kind === 'opportunity')
   const articles = rows.filter((r) => r.kind === 'article')
@@ -156,6 +155,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const now = new Date()
   const today = dayOf(now)
   const week = weekStart(today)
+  const plannedSoon = posts.filter((r) => r.plannedFor && r.plannedFor >= today && r.plannedFor <= addDays(today, 13))
 
   const stopped = isStopped
   const emailCard = (r: Row) => {

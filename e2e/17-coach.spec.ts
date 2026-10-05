@@ -43,10 +43,10 @@ test('Claude fills in the checklist and gives the best next step; he ticks it of
   await setup.getByText(/^Alle \d+ punten/).click()
   await expect(setup.getByRole('listitem', { name: 'Google Bedrijfsprofiel' }).getByLabel('Geregeld')).toBeVisible()
   await expect(setup.getByRole('listitem', { name: 'Trustpilot-profiel' })).toHaveCount(0)
-  // He marks a step himself.
-  const domain = setup.getByRole('listitem', { name: 'Eigen domeinnaam' })
-  await domain.getByRole('button', { name: 'Gedaan' }).click()
-  await expect(domain.getByLabel('Geregeld')).toBeVisible()
+  // He marks the next step himself.
+  const reviews = setup.getByRole('listitem', { name: 'De eerste 5 Google-recensies' })
+  await reviews.getByRole('button', { name: 'Gedaan' }).click()
+  await expect(setup.getByRole('listitem', { name: 'De eerste 5 Google-recensies' }).getByLabel('Geregeld')).toBeVisible()
 
   // Posts come with a day: planned in the calendar, on that day in his lesson.
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)

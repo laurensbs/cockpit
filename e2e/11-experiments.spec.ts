@@ -33,7 +33,7 @@ test('a measured experiment: start, the numbers move, a suggested verdict, and a
   const id = href!.split('/projects/')[1]
   await page.goto(`/studio?tab=experiments&project=${id}`)
   const card = page.locator('article').filter({ hasText: 'Gratis website-check als lokkertje' })
-  await expect(card.getByText('Gemeten met leads, doel 10.')).toBeVisible()
+  await expect(card.getByText('Gemeten met aanvragen, doel 10.')).toBeVisible()
   await card.getByRole('button', { name: 'Start dit experiment' }).click()
   await expect(card.getByText('nog 14 dagen')).toBeVisible()
   await expect(card.getByText(/^Aanvragen: /)).toBeVisible()
