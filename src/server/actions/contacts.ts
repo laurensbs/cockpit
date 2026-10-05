@@ -9,8 +9,9 @@ import { EMAIL } from '@/lib/mailto'
 import { ANSWERED_STATUSES, CONTACT_STATUSES, isStopped } from '@/lib/options'
 import { normalizeUrl } from '@/lib/urls'
 import { cancelForContact } from '../outbox'
-import { recordStage } from '../pipeline'
+import { recordStage, recountDeals, wonAsRevenueKey } from '../pipeline'
 import { actionOwner } from '../session'
+import { setSetting } from '../settings'
 import { award, revoke } from '../xp'
 import type { FormState } from './types'
 
@@ -85,6 +86,7 @@ export async function setContactStatus(contactId: string, status: string): Promi
   if (next === 'won') xp += await award(db, owner.userId, { kind: 'deal', refId: row.id, projectId: row.projectId })
   else await revoke(db, owner.userId, 'deal', row.id)
   await recordStage(db, owner.userId, row, next)
+  await recountDeals(db, owner.userId, row.projectId)
   revalidatePath(`/projects/${row.projectId}/contacts`)
   revalidatePath(`/projects/${row.projectId}`)
   revalidatePath('/')
@@ -121,6 +123,7 @@ export async function saveDeal(_prev: FormState, form: FormData): Promise<FormSt
     .where(and(eq(s.contact.id, d.contactId), eq(s.contact.ownerId, owner.userId)))
     .returning({ projectId: s.contact.projectId })
   if (!row) return { ok: false, error: 'Dit contact bestaat niet.' }
+  await recountDeals(db, owner.userId, row.projectId)
   revalidatePath(`/projects/${row.projectId}/contacts`)
   return { ok: true, message: 'Bewaard.' }
 }
@@ -133,4 +136,20 @@ export async function deleteContact(contactId: string): Promise<void> {
     .where(and(eq(s.contact.id, String(contactId)), eq(s.contact.ownerId, owner.userId)))
     .returning({ projectId: s.contact.projectId })
   if (row) revalidatePath(`/projects/${row.projectId}/contacts`)
+}
+
+/** "Gewonnen telt als omzet": won deals become MRR, revenue and customers (never over Stripe or Mollie). */
+export async function setWonAsRevenue(projectId: string, on: boolean): Promise<void> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  const [project] = await db
+    .select({ id: s.project.id })
+    .from(s.project)
+    .where(and(eq(s.project.id, String(projectId)), eq(s.project.ownerId, owner.userId)))
+  if (!project) return
+  await setSetting(db, owner.userId, wonAsRevenueKey(project.id), on ? '1' : null)
+  await recountDeals(db, owner.userId, project.id)
+  revalidatePath(`/projects/${project.id}/contacts`)
+  revalidatePath(`/projects/${project.id}/numbers`)
+  revalidatePath(`/projects/${project.id}`)
 }

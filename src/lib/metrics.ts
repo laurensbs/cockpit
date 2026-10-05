@@ -93,8 +93,10 @@ export function resolveDaily(points: Point[], def: MetricDef): Map<string, numbe
   for (const day of [...byDay.keys()].sort()) {
     const list = byDay.get(day)!.slice().sort((a, b) => rank(a.source) - rank(b.source))
     const override = list.find((p) => p.source === 'manual') ?? list.find((p) => p.source === 'claude')
+    // Won deals from the pipeline only count where no payment source says anything that day.
+    const real = list.filter((p) => p.source !== 'pipeline')
     if (override) out.set(day, override.value)
-    else if (def.combine === 'sum') out.set(day, list.reduce((sum, p) => sum + p.value, 0))
+    else if (def.combine === 'sum') out.set(day, (real.length ? real : list).reduce((sum, p) => sum + p.value, 0))
     else out.set(day, list[0].value)
   }
   return out

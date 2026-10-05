@@ -1731,6 +1731,50 @@ a.chip:hover {
   font-weight: 600;
 }
 
+/* ---------- the pipeline board ---------- */
+.row.tight {
+  gap: 0.35rem;
+}
+.board {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: start;
+}
+.board-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.6rem;
+  border-radius: var(--radius-m);
+  background: var(--sunken);
+}
+.board-col[data-stage='won'] {
+  background: var(--good-soft);
+}
+.board-head p {
+  margin: 0.15rem 0 0;
+}
+.deal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.deal-card[data-due='late'] {
+  border-color: color-mix(in srgb, var(--bad) 55%, var(--line));
+}
+.deal-card[data-due='today'] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
 /* ---------- the content week ---------- */
 .week-grid {
   display: grid;

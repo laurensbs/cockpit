@@ -6,6 +6,7 @@ import * as s from '@/db/schema'
 import { dayOf } from '@/lib/dates'
 import { normalizeModel } from '@/lib/growth-model'
 import { normalizePoints } from '@/lib/metrics'
+import { isStopped } from '@/lib/options'
 import {
   type ArticlesWire,
   type EmailsWire,
@@ -109,6 +110,7 @@ export async function saveEmails(
       { title: `Mail aan ${contact.organization}`, body: { subject: draft.subject, body: draft.body, ps: draft.ps, followups }, contactId: contact.id },
     ])
     if (contact.status === 'new') await db.update(s.contact).set({ status: 'drafted' }).where(eq(s.contact.id, contact.id))
+    if (isStopped(contact.status)) return `Opgeslagen: een mail aan ${contact.organization}. Ze zijn al in gesprek met hem, dus hij stuurt hem zelf (Contacten → kopiëren).`
     return `Opgeslagen: een persoonlijke mail aan ${contact.organization}${followups.length ? ` met ${followups.length} opvolgmail${followups.length === 1 ? '' : 's'}` : ''}. Hij keurt hem goed in Contacten; daarna gaat hij vanzelf de deur uit.`
   }
   const n = await insertDrafts(

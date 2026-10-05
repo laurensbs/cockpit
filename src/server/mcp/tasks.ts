@@ -23,12 +23,14 @@ import {
   askTask,
   modelTask,
   contentTask,
+  dealMailTask,
 } from '@/lib/ai/prompts'
 import { CHANNEL_LABELS, CONTENT_CHANNELS, PLAYBOOKS } from '@/lib/ai/playbooks'
 import { CONTENT_WINDOW_DAYS, type WeekBody } from '@/lib/content-week'
 import { addDays, dayOf } from '@/lib/dates'
 import { METRIC_DEFS, METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES } from '@/lib/options'
+import { OPEN_STAGES } from '@/lib/pipeline-board'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { contentProjects } from '../content'
 import { dataSummary } from '../outcome-state'
@@ -145,6 +147,12 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
         .from(s.contact)
         .where(and(eq(s.contact.id, options.contactId), eq(s.contact.projectId, project.id)))
       if (!contact) return { error: `No contact with id ${options.contactId} on ${name}. Use list_contacts.` }
+      if ((OPEN_STAGES as readonly string[]).includes(contact.status)) {
+        // Already in conversation: one mail for the next step of the deal, not a cold sequence.
+        body = dealMailTask(contactBrief(contact), { stage: contact.status, value: contact.dealValue, period: contact.dealPeriod, nextStep: contact.nextStep, nextStepOn: contact.nextStepOn }, language)
+        handBack = `\`save_emails\` with { "project": ${quoted}, "purpose": "contact", "contactId": "${contact.id}", "language": "${language}", "drafts": [ { "title", "subject", "body", "ps" } ] }`
+        break
+      }
       body = contactEmailTask(contactBrief(contact), language)
       handBack = `\`save_emails\` with { "project": ${quoted}, "purpose": "contact", "contactId": "${contact.id}", "language": "${language}", "drafts": [ first, followUp1, followUp2 ] } (each { "title", "subject", "body", "ps" })`
       break

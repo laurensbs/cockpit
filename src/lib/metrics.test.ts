@@ -24,6 +24,18 @@ describe('resolveDaily', () => {
     expect(daily.get('2026-09-01')).toBe(30)
     expect(daily.get('2026-09-02')).toBe(5)
   })
+  it('counts won deals as MRR only where no payment source speaks that day', () => {
+    const daily = resolveDaily(
+      [
+        { day: '2026-09-01', value: 300, source: 'pipeline' },
+        { day: '2026-09-01', value: 280, source: 'stripe' },
+        { day: '2026-09-02', value: 300, source: 'pipeline' },
+      ],
+      METRIC_DEFS.mrr,
+    )
+    expect(daily.get('2026-09-01')).toBe(280)
+    expect(daily.get('2026-09-02')).toBe(300)
+  })
   it('lets what he typed (or Claude recorded) replace the day', () => {
     const points = [
       { day: '2026-09-01', value: 100, source: 'stripe' },

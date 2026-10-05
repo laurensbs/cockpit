@@ -192,6 +192,32 @@ ${SEQUENCE_RULES}
 ${DRAFT_RULES}`
 }
 
+export interface DealBrief {
+  stage: string
+  value: number | null
+  period: string | null
+  nextStep: string
+  nextStepOn: string | null
+}
+
+const STAGE_WORDS: Record<string, string> = { replied: 'they answered his first mail', meeting: 'a meeting is planned or just happened', offer: 'he sent them an offer' }
+
+/** One mail for a deal that is already in conversation: the next step, nothing else. */
+export function dealMailTask(contact: ContactBrief, deal: DealBrief, language: string): string {
+  const worth = deal.value != null ? `€${deal.value}${deal.period === 'month' ? ' per month' : ' once'}` : 'not set'
+  return `Task: one short email that moves this deal to its next step, in ${lang(language)}, as JSON.
+${contactBlock(contact)}
+<deal>
+Where it stands: ${STAGE_WORDS[deal.stage] ?? deal.stage}
+Worth: ${worth}
+His next step: ${neutralize(deal.nextStep || 'not set: propose the logical one')}${deal.nextStepOn ? ` (planned for ${deal.nextStepOn})` : ''}
+</deal>
+- drafts: exactly one, with title, subject, body and ps (empty when not needed). They already know him: no introduction, no pitch.
+- One clear, small ask that fits the next step (a time for the call, feedback on the offer, a yes to start). Under 120 words.
+- He sends it himself, from his own mailbox, as a reply in their thread: keep the subject short or empty.
+${DRAFT_RULES}`
+}
+
 /** Personal mails for several contacts at once; each is saved on its own. */
 export function contactBatchTask(contacts: (ContactBrief & { id: string })[], language: string): string {
   return `Task: for each contact below, a personal email with two follow-ups, in ${lang(language)}. Save each contact's three drafts with its own save call before you start the next.

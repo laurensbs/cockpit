@@ -6,17 +6,21 @@ import { ContactStatus } from '@/components/ContactStatus'
 import { DealFields } from '@/components/DealFields'
 import { EmailDraftCard } from '@/components/EmailDraftCard'
 import { MailBanner } from '@/components/Outbox'
+import { type BoardDeal, PipelineBoard, WonAsRevenueToggle } from '@/components/PipelineBoard'
 import { ProjectHeader } from '@/components/ProjectHeader'
 import { ScheduleAllButton } from '@/components/ScheduleButton'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { dayOf } from '@/lib/dates'
 import { ANSWERED_STATUSES, CONTACT_BASIS_LABELS, isStopped } from '@/lib/options'
+import { boardColumns, dueOf, isBoardStage, OPEN_STAGES, worthOf, worthText } from '@/lib/pipeline-board'
 import { hostOf } from '@/lib/urls'
 import { loadJobContext } from '@/server/ai/context'
 import { claudeBlocked } from '@/server/claude-status'
 import { mailStatus, outboxRows, queueByItem } from '@/server/outbox-views'
+import { hasPaymentSource, wonAsRevenueKey } from '@/server/pipeline'
 import { requireOwner } from '@/server/session'
+import { getSetting } from '@/server/settings'
 
 export const metadata = { title: 'Contacten' }
 
@@ -43,7 +47,18 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
         )
         .orderBy(desc(s.contentItem.createdAt))
     : []
-  const [blocked, status, rows] = await Promise.all([claudeBlocked(), mailStatus(db, owner.userId), outboxRows(db, owner.userId, id)])
+  const [blocked, status, rows, wonAsRevenue, payments] = await Promise.all([
+    claudeBlocked(),
+    mailStatus(db, owner.userId),
+    outboxRows(db, owner.userId, id),
+    getSetting(db, owner.userId, wonAsRevenueKey(id)),
+    hasPaymentSource(db, owner.userId, id),
+  ])
+  const deals: BoardDeal[] = contacts
+    .filter((c) => isBoardStage(c.status))
+    .map((c) => ({ id: c.id, organization: c.organization, status: c.status, value: c.dealValue, period: c.dealPeriod, nextStep: c.nextStep, nextStepOn: c.nextStepOn, due: dueOf({ status: c.status, nextStepOn: c.nextStepOn }, today) }))
+  const openDeals = deals.filter((d) => (OPEN_STAGES as readonly string[]).includes(d.status))
+  const late = openDeals.filter((d) => d.due === 'late' || d.due === 'today').length
   const queue = queueByItem(rows)
   const language = ctx.project.languages[0] ?? 'nl'
   const stopped = isStopped
@@ -62,6 +77,19 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
         “Geen interesse”. Geen gekochte lijsten. Claude ziet de naam en je notities, nooit het e-mailadres.
       </p>
       <MailBanner status={status} />
+      {deals.length ? (
+        <section className="card stack-m" id="board" aria-labelledby="board-title">
+          <div className="row between">
+            <h2 id="board-title">Pijplijn</h2>
+            {late ? <span className="chip bad">{late} volgende {late === 1 ? 'stap' : 'stappen'} vandaag of te laat</span> : null}
+          </div>
+          <p className="small muted">
+            Open: {openDeals.length} {openDeals.length === 1 ? 'deal' : 'deals'}, {worthText(worthOf(openDeals))}. Zet een deal een stap verder met de knop; waarde en volgende stap pas je aan bij het contact hieronder. Een volgende stap die vandaag of eerder moet, wordt een quest.
+          </p>
+          <PipelineBoard projectId={id} columns={boardColumns(deals)} language={language} blocked={blocked} />
+          <WonAsRevenueToggle projectId={id} on={wonAsRevenue === '1'} payments={payments} />
+        </section>
+      ) : null}
       {contacts.length ? (
         <section className="card stack-s">
           <h2>Outreach in één keer</h2>
@@ -80,7 +108,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
           {contacts.map((c) => {
             const mine = drafts.filter((d) => d.contactId === c.id)
             return (
-              <li key={c.id} className="card stack-s">
+              <li key={c.id} id={`contact-${c.id}`} className="card stack-s">
                 <div className="row between">
                   <div className="stack-xs">
                     <strong>{c.organization}</strong>
@@ -89,7 +117,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
                     </span>
                     <span className="tiny faint">{CONTACT_BASIS_LABELS[c.basis] ?? c.basis}</span>
                   </div>
-                  <ContactStatus contactId={c.id} status={c.status} />
+                  <ContactStatus key={c.status} contactId={c.id} status={c.status} />
                 </div>
                 {c.note ? <p className="small muted">{c.note}</p> : null}
                 {ANSWERED_STATUSES.includes(c.status) ? <DealFields contactId={c.id} value={c.dealValue} period={c.dealPeriod} nextStep={c.nextStep} nextStepOn={c.nextStepOn} today={today} /> : null}

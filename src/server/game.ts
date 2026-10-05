@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, eq, gt, inArray } from 'drizzle-orm'
+import { and, count, eq, gt, inArray, lte } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { daysSinceLast, mergeCommitDays, momentum, series, type Trend } from '@/lib/activity'
@@ -19,6 +19,7 @@ import {
 } from '@/lib/game'
 import { ACTIVE_STAGES, isStage } from '@/lib/options'
 import type { PaceStatus } from '@/lib/pace'
+import { dealQuests, OPEN_STAGES } from '@/lib/pipeline-board'
 import { experimentQuests, ruleQuests, type RuleProject } from '@/lib/quests'
 import { type OutcomeState, paceTip } from './outcome-state'
 import { award } from './xp'
@@ -120,8 +121,13 @@ export async function dailyRound(db: Db, ownerId: string, now = new Date()): Pro
     .select({ id: s.contentItem.id, projectId: s.contentItem.projectId, title: s.contentItem.title, body: s.contentItem.body })
     .from(s.contentItem)
     .where(and(eq(s.contentItem.ownerId, ownerId), eq(s.contentItem.kind, 'experiment'), eq(s.contentItem.status, 'planned')))
+  const deals = await db
+    .select({ id: s.contact.id, projectId: s.contact.projectId, organization: s.contact.organization, status: s.contact.status, value: s.contact.dealValue, period: s.contact.dealPeriod, nextStep: s.contact.nextStep, nextStepOn: s.contact.nextStepOn })
+    .from(s.contact)
+    .where(and(eq(s.contact.ownerId, ownerId), inArray(s.contact.status, [...OPEN_STAGES]), lte(s.contact.nextStepOn, today)))
   const candidates = [
     ...ruleQuests(ruleProjects, today, true),
+    ...dealQuests(deals, today),
     ...experimentQuests(
       running.map((e) => ({ id: e.id, projectId: e.projectId, title: e.title, endsOn: typeof (e.body as { endsOn?: unknown }).endsOn === 'string' ? ((e.body as { endsOn: string }).endsOn) : null })),
       today,

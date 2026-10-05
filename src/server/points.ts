@@ -2,7 +2,7 @@ import 'server-only'
 import { and, eq, gte, inArray, sql } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { addDays, dayOf } from '@/lib/dates'
+import { addDays, addMonths, dayOf, monthStart } from '@/lib/dates'
 import { isMetricKey, METRIC_DEFS, monthRollup, type Point, resolveDaily } from '@/lib/metrics'
 
 export interface PointRow extends Point {
@@ -73,4 +73,18 @@ export async function rollupMonths(db: Db, ownerId: string, projectId: string, k
         })
     }
   }
+}
+
+/**
+ * After points were taken away (a source switched off): the derived months of these keys are made
+ * again from the points that are left. What he typed for a month stays.
+ */
+export async function rebuildMonths(db: Db, ownerId: string, projectId: string, keys: string[], now = new Date()): Promise<void> {
+  const known = [...new Set(keys)].filter(isMetricKey)
+  if (!known.length) return
+  const from = addMonths(monthStart(addDays(dayOf(now), -400)), 1)
+  await db
+    .delete(s.metric)
+    .where(and(eq(s.metric.ownerId, ownerId), eq(s.metric.projectId, projectId), inArray(s.metric.key, known), eq(s.metric.source, 'auto'), gte(s.metric.month, from)))
+  await rollupMonths(db, ownerId, projectId, known, now)
 }

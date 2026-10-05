@@ -9,6 +9,7 @@ import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES } from '@/lib/options'
+import { BOARD_LABELS, BOARD_STAGES, dueOf, OPEN_STAGES, worthOf } from '@/lib/pipeline-board'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { performanceFor, publishedPosts } from '../content-results'
 import { isIntakeDone, playerStats } from '../game'
@@ -448,6 +449,39 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
           .where(eq(s.contact.projectId, p.id))
           .orderBy(desc(s.contact.createdAt))
         return text(rows.length ? JSON.stringify(rows, null, 2) : `No contacts for ${p.name} yet. He adds them under Contacten, or from the opportunities you find.`)
+      }),
+  )
+
+  server.registerTool(
+    'list_pipeline',
+    {
+      title: 'The deals of a project',
+      description:
+        'Every contact that answered, by stage (lead, meeting, offer, won, lost): what the deal is worth, his next step and when, whether it is late, and since when it is in this stage. Email addresses stay in the cockpit. Use it to advise which deal needs him now; a mail for a next step is the contact_mail task with that contactId.',
+      inputSchema: { project: PROJECT_ARG },
+    },
+    async ({ project }) =>
+      withProject(project, async (p) => {
+        const today = dayOf(new Date())
+        const rows = await db
+          .select({ id: s.contact.id, organization: s.contact.organization, name: s.contact.name, status: s.contact.status, value: s.contact.dealValue, period: s.contact.dealPeriod, nextStep: s.contact.nextStep, nextStepOn: s.contact.nextStepOn, note: s.contact.note })
+          .from(s.contact)
+          .where(and(eq(s.contact.projectId, p.id), inArray(s.contact.status, [...BOARD_STAGES])))
+        if (!rows.length) return text(`No deals for ${p.name} yet: a contact enters the pipeline when they answer.`)
+        const since = await db
+          .select({ contactId: s.contactEvent.contactId, status: s.contactEvent.status, day: s.contactEvent.day })
+          .from(s.contactEvent)
+          .where(inArray(s.contactEvent.contactId, rows.map((r) => r.id)))
+          .orderBy(desc(s.contactEvent.day))
+        const deals = rows.map((r) => ({
+          ...r,
+          stage: BOARD_LABELS[r.status as keyof typeof BOARD_LABELS],
+          due: dueOf(r, today),
+          inStageSince: since.find((e) => e.contactId === r.id && e.status === r.status)?.day ?? null,
+        }))
+        const open = deals.filter((d) => (OPEN_STAGES as readonly string[]).includes(d.status))
+        const w = worthOf(open)
+        return text(`Open deals: ${open.length}, worth €${w.monthly} per month and €${w.once} once.\n${JSON.stringify(deals, null, 1)}`)
       }),
   )
 
