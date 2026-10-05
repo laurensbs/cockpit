@@ -1,4 +1,4 @@
 {
-  "version": "0.6.1",
-  "notes": "Video in de contentweek: zet je eigen clips en foto's onder Je media, en de Cockpit maakt er reels en TikToks van (1080×1920, met een tekstkaart per beat). Een carrousel wordt voor TikTok een slideshow. Voor video's waarin je zelf praat of filmt maakt hij een CapCut-pakket met script, ondertitels, tekstkaarten en je clips. Plus een fix voor het tekenen van beelden."
+  "version": "0.7.0",
+  "notes": "De Cockpit plaatst nu zelf wat je goedkeurt: LinkedIn (tekst, beeld, PDF-carrousel, video), Instagram (foto, carrousel, reel) en TikTok (als concept in je inbox, jij zet hem af met een geluid). Alleen tussen 7 en 22 uur, met een maximum per dag per kanaal en een pauzeknop. Koppelen doe je in Instellingen → Kanalen; het stappenplan staat in docs/kanalen.md."
 }
