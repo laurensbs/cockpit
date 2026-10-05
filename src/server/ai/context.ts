@@ -107,7 +107,7 @@ export async function loadPortfolioContext(db: Db, ownerId: string): Promise<Job
   const { playerStats, projectPulses } = await import('../game')
   const today = dayOf(new Date())
   const outcomes = await outcomeStates(db, ownerId)
-  const [stats, pulses, quests, metrics, done] = await Promise.all([
+  const [stats, pulses, quests, metrics, done, intakes] = await Promise.all([
     playerStats(db, ownerId),
     projectPulses(db, ownerId, new Date(), outcomes),
     db.select({ projectId: s.quest.projectId, title: s.quest.title, status: s.quest.status, dueOn: s.quest.dueOn, doneAt: s.quest.doneAt }).from(s.quest).where(eq(s.quest.ownerId, ownerId)),
@@ -119,6 +119,7 @@ export async function loadPortfolioContext(db: Db, ownerId: string): Promise<Job
       .select({ title: s.contentItem.title, doneAt: s.contentItem.doneAt })
       .from(s.contentItem)
       .where(and(eq(s.contentItem.ownerId, ownerId), eq(s.contentItem.status, 'done'))),
+    db.select({ id: s.project.id, oneLiner: s.project.oneLiner, what: s.project.what }).from(s.project).where(eq(s.project.ownerId, ownerId)),
   ])
   const weekAgo = new Date(Date.now() - 7 * 86_400_000)
   const twoWeeksAgo = new Date(Date.now() - 14 * 86_400_000)
@@ -134,7 +135,11 @@ export async function loadPortfolioContext(db: Db, ownerId: string): Promise<Job
       projects: pulses.map((p) => ({
         name: p.name,
         stage: p.stage,
-        oneLiner: '',
+        // What it is, in one line (the start of "what" when there is no one-liner), so the coach knows each project.
+        oneLiner: (() => {
+          const i = intakes.find((x) => x.id === p.id)
+          return (i?.oneLiner || i?.what || '').replace(/\s+/g, ' ').trim().slice(0, 160)
+        })(),
         health: p.health.score,
         tips: p.health.tips,
         trend: p.trend,
