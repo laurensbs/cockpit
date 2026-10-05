@@ -27,6 +27,11 @@ describe('pickGivePlace', () => {
     expect(pickGivePlace(places, new Set(['group', 'forum']))).toBeNull()
   })
 
+  it('takes a meetup or app ("other") only when there is no forum or group', () => {
+    expect(pickGivePlace([place('meetup', 'other', 1), place('forum', 'forum')], new Set())?.id).toBe('forum')
+    expect(pickGivePlace([place('meetup', 'other'), place('press', 'media')], new Set())?.id).toBe('meetup')
+  })
+
   it('skips a place without a link or with a thumbs down', () => {
     expect(pickGivePlace([place('a', 'subreddit', -1), place('b', 'discord', 0, null)], new Set())).toBeNull()
   })

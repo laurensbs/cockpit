@@ -58,14 +58,15 @@ export function recentPulls(pulls: { title: string; state: string; updatedAt: st
   return pulls.filter((p) => new Date(p.updatedAt).getTime() >= since).map((p) => `${p.state === 'merged' ? 'Live gezet' : 'Bezig met'}: ${p.title}`)
 }
 
-/** Places where people talk, not shops or press: where an answer or a tip helps someone today. */
-const TALK = /community|forum|subreddit|discord|facebook|group|groep|slack|whatsapp|telegram|other/i
+/** Places where people talk every day; "other" (a meetup, an app) only when there is none of those. */
+const TALK = /community|forum|subreddit|discord|facebook|group|groep|slack|whatsapp|telegram/i
+const talkRank = (type: string) => (TALK.test(type) ? 0 : /^other$/i.test(type.trim()) ? 1 : null)
 
 /**
  * "Help iemand": the place for today's bit of value. Only a place where people talk (a directory or the
  * press is a one-off, not a daily habit), the best rated first; a place he helped in the last six days rests.
  */
 export function pickGivePlace<T extends { id: string; type: string; url: string | null; rating: number }>(places: T[], recent: ReadonlySet<string>): T | null {
-  const open = places.filter((p) => p.url && p.rating >= 0 && !recent.has(p.id) && TALK.test(p.type))
-  return [...open].sort((a, b) => b.rating - a.rating)[0] ?? null
+  const open = places.filter((p) => p.url && p.rating >= 0 && !recent.has(p.id) && talkRank(p.type) !== null)
+  return [...open].sort((a, b) => talkRank(a.type)! - talkRank(b.type)! || b.rating - a.rating)[0] ?? null
 }
