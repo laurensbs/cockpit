@@ -161,7 +161,9 @@ export interface WeekBody {
   forum: ContentPiece['forum']
   goal: MetricKey | null
   why: string
-  render?: { status: 'pending' | 'done' | 'failed'; at?: string; count?: number; error?: string }
+  render?: { status: 'pending' | 'done' | 'failed'; at?: string; count?: number; error?: string; video?: 'done' | 'missing' | 'failed' }
+  /** The CapCut package: the folder on his computer, and when it was made. */
+  capcut?: { dir: string; at: string }
   approvedAt?: string
 }
 

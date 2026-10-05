@@ -45,6 +45,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: ffmpeg for videos
+        shell: bash
+        run: bash scripts/fetch-ffmpeg.sh win32-x64
       - name: Build the app and the installer
         run: npm run electron:build
         env:

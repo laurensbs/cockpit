@@ -16,9 +16,10 @@ OUT=release/mac
 
 npm run electron:server
 npm run electron:compile
+bash scripts/fetch-ffmpeg.sh darwin-arm64
 rm -rf "$OUT"
 npx --yes @electron/packager@20.3.0 . Cockpit --platform=darwin --arch=arm64 --out="$OUT" --overwrite \
-  --icon=resources/icon.icns --extra-resource=release/server --app-bundle-id=app.cockpit.desktop \
+  --icon=resources/icon.icns --extra-resource=release/server --extra-resource=release/ffmpeg --app-bundle-id=app.cockpit.desktop \
   --app-version="$VERSION" --build-version="$VERSION" --electron-version="$ELECTRON" \
   ${ELECTRON_ZIP_DIR:+--electron-zip-dir="$ELECTRON_ZIP_DIR"} \
   --app-category-type=public.app-category.productivity --extend-info=resources/extend-info.plist --asar \

@@ -45,6 +45,8 @@ export default defineConfig({
           COCKPIT_NO_GH: '1',
           // Stripe, Mollie and Plausible answer from fixtures, relative to today.
           COCKPIT_FAKE_CONNECTORS: '1',
+          // CapCut packages go into test-results instead of ~/Movies.
+          COCKPIT_CAPCUT_DIR: `${process.cwd()}/test-results/capcut`,
         },
       },
 })

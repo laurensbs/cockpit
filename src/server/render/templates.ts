@@ -122,3 +122,41 @@ export function reelCover(brand: Brand, text: string): El {
     brand.handle ? h({ fontFamily: p.body, fontSize: 36, fontWeight: 600, color: bold ? mix(p.onAccent, p.accent, 0.3) : p.muted }, brand.handle) : null,
   )
 }
+
+/** A text card for one beat of a video: on a transparent screen, in the safe middle, in the house style. */
+export function reelCaption(brand: Brand, text: string): El {
+  const p = palette(brand)
+  const bold = brand.style === 'bold'
+  return h(
+    { width: '100%', height: '100%', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '0 70px 380px' },
+    h(
+      {
+        background: bold ? p.accent : p.bg,
+        color: bold ? p.onAccent : p.fg,
+        borderRadius: 32,
+        padding: '34px 46px',
+        maxWidth: 940,
+        fontFamily: p.display,
+        fontWeight: p.displayWeight,
+        fontSize: fit(text, [86, 74, 64, 56]),
+        lineHeight: 1.12,
+        letterSpacing: -1,
+        textAlign: 'center',
+        boxShadow: '0 18px 50px rgba(0,0,0,0.28)',
+      },
+      text,
+    ),
+  )
+}
+
+/** The screen behind a video without clips: the house style, with a quiet accent. */
+export function reelBackground(brand: Brand): El {
+  const p = palette(brand)
+  const bold = brand.style === 'bold'
+  return h(
+    { width: '100%', height: '100%', background: bold ? p.accent : p.bg, position: 'relative' },
+    h({ position: 'absolute', right: -260, top: 220, width: 760, height: 760, borderRadius: 760, background: bold ? mix(p.accent, p.onAccent, 0.12) : mix(p.bg, p.accent, 0.12) }),
+    h({ position: 'absolute', left: -200, bottom: 160, width: 520, height: 520, borderRadius: 520, background: bold ? mix(p.accent, p.fg, 0.1) : mix(p.bg, p.accent, 0.07) }),
+    brand.handle ? h({ position: 'absolute', left: 90, top: 200, fontFamily: p.body, fontSize: 36, fontWeight: 600, color: bold ? p.onAccent : p.muted }, brand.handle) : null,
+  )
+}

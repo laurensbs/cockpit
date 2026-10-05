@@ -32,6 +32,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything but Next's own static files and the icons.
-  matcher: ['/((?!_next/|favicon|icon-|icon\\.svg|apple-touch-icon).*)'],
+  // Everything but Next's own static files and the icons, and the upload of his clips: the proxy would
+  // buffer (and cut off) a big body, so that route checks the host and the token itself.
+  matcher: ['/((?!_next/|favicon|icon-|icon\\.svg|apple-touch-icon|api/media$).*)'],
 }

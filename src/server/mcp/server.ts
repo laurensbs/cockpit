@@ -1,6 +1,6 @@
 import 'server-only'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { and, asc, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
@@ -281,6 +281,31 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         const report = await numbersReport(db, ownerId, p, { key, weeks: weeks ?? 8 })
         if (!report.metrics.length) return text(`No numbers for ${p.name}${key ? ` (${key})` : ''} yet. He connects sources under Cijfers, or types numbers in.`)
         return text(JSON.stringify(report, null, 1))
+      }),
+  )
+
+  server.registerTool(
+    'list_media',
+    {
+      title: 'His own clips and photos',
+      description: 'The clips and photos he added for a project (id, kind, what it shows, length, portrait or landscape). Use their ids in a reel\u2019s mediaIds when one fits the beat.',
+      inputSchema: { project: PROJECT_ARG },
+    },
+    async ({ project }) =>
+      withProject(project, async (p) => {
+        const rows = await db
+          .select({ id: s.mediaAsset.id, role: s.mediaAsset.role, description: s.mediaAsset.description, durationMs: s.mediaAsset.durationMs, width: s.mediaAsset.width, height: s.mediaAsset.height })
+          .from(s.mediaAsset)
+          .where(and(eq(s.mediaAsset.ownerId, ownerId), eq(s.mediaAsset.projectId, p.id), eq(s.mediaAsset.origin, 'upload'), inArray(s.mediaAsset.role, ['clip', 'photo'])))
+          .orderBy(desc(s.mediaAsset.createdAt))
+        if (!rows.length) return text(`No media for ${p.name} yet. He adds clips and photos under Contentweek → Je media.`)
+        return text(
+          JSON.stringify(
+            rows.map((r) => ({ id: r.id, kind: r.role, shows: r.description, seconds: r.durationMs ? Math.round(r.durationMs / 100) / 10 : null, orientation: r.width && r.height ? (r.height > r.width ? 'portrait' : r.height === r.width ? 'square' : 'landscape') : null })),
+            null,
+            1,
+          ),
+        )
       }),
   )
 

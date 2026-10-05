@@ -9,7 +9,7 @@ import * as s from '@/db/schema'
 // Pictures, PDFs and videos of the projects live in a folder next to the database: the app's own data
 // folder on his computer. The table says what each file is; the page gets them through /api/media.
 
-export type MediaRole = 'slide' | 'cover' | 'pdf' | 'video' | 'photo' | 'clip'
+export type MediaRole = 'slide' | 'cover' | 'pdf' | 'video' | 'final' | 'photo' | 'clip'
 export type MediaRow = typeof s.mediaAsset.$inferSelect
 
 export function mediaDir(): string {
@@ -28,16 +28,27 @@ export function mediaPath(file: string): string | null {
 
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'application/pdf': 'pdf', 'video/mp4': 'mp4', 'video/quicktime': 'mov' }
 
+/** A new place in the media folder for a file of this type (the folder exists afterwards). */
+export function newMediaFile(projectId: string | null, mime: string): { id: string; file: string; full: string } {
+  const id = crypto.randomUUID()
+  const file = `${projectId ?? 'general'}/${id}.${EXT[mime] ?? 'bin'}`
+  const full = join(mediaDir(), file)
+  mkdirSync(dirname(full), { recursive: true })
+  return { id, file, full }
+}
+
+export const UPLOAD_TYPES: Record<string, 'clip' | 'photo'> = { 'video/mp4': 'clip', 'video/quicktime': 'clip', 'image/jpeg': 'photo', 'image/png': 'photo', 'image/webp': 'photo' }
+
+/** Where a video's small preview picture sits, next to the video. */
+export const thumbFile = (file: string) => `${file}.thumb.jpg`
+
 /** Writes a file and records it. */
 export async function saveMedia(
   db: Db,
   ownerId: string,
   input: { projectId: string | null; contentItemId?: string | null; origin: 'upload' | 'render'; role: MediaRole; position?: number; data: Buffer; mime: string; width?: number; height?: number; durationMs?: number; description?: string },
 ): Promise<MediaRow> {
-  const id = crypto.randomUUID()
-  const file = `${input.projectId ?? 'general'}/${id}.${EXT[input.mime] ?? 'bin'}`
-  const full = join(mediaDir(), file)
-  mkdirSync(dirname(full), { recursive: true })
+  const { id, file, full } = newMediaFile(input.projectId, input.mime)
   writeFileSync(full, input.data)
   const [row] = await db
     .insert(s.mediaAsset)
@@ -72,4 +83,19 @@ export async function clearRenders(db: Db, ownerId: string, contentItemId: strin
     if (full) rmSync(full, { force: true })
     await db.delete(s.mediaAsset).where(eq(s.mediaAsset.id, r.id))
   }
+}
+
+/** Removes one file of his and its preview. */
+export async function deleteMediaRow(db: Db, ownerId: string, id: string): Promise<boolean> {
+  const [row] = await db
+    .select({ file: s.mediaAsset.file })
+    .from(s.mediaAsset)
+    .where(and(eq(s.mediaAsset.id, id), eq(s.mediaAsset.ownerId, ownerId)))
+  if (!row) return false
+  for (const f of [row.file, thumbFile(row.file)]) {
+    const full = mediaPath(f)
+    if (full) rmSync(full, { force: true })
+  }
+  await db.delete(s.mediaAsset).where(eq(s.mediaAsset.id, id))
+  return true
 }

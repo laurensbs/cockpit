@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ClaudeButton } from '@/components/ClaudeButton'
 import { ApproveWeekButton, BrandRhythmForm, WeekItemCard, type WeekItemView } from '@/components/ContentWeek'
 import { Icon } from '@/components/Icon'
+import { MediaLibrary, type MediaView } from '@/components/MediaLibrary'
 import { RefreshWhileDrawing } from '@/components/RefreshWhileDrawing'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
@@ -46,7 +47,7 @@ export default async function ContentPage() {
   const week = rows.filter((r) => (r.item.body as WeekBody).week && (r.item.plannedFor ?? '') <= addDays(today, DAYS - 1))
   const media = week.length
     ? await db
-        .select({ id: s.mediaAsset.id, itemId: s.mediaAsset.contentItemId, role: s.mediaAsset.role, position: s.mediaAsset.position })
+        .select({ id: s.mediaAsset.id, itemId: s.mediaAsset.contentItemId, role: s.mediaAsset.role, position: s.mediaAsset.position, createdAt: s.mediaAsset.createdAt })
         .from(s.mediaAsset)
         .where(and(eq(s.mediaAsset.ownerId, owner.userId), inArray(s.mediaAsset.contentItemId, week.map((r) => r.item.id))))
         .orderBy(asc(s.mediaAsset.position))
@@ -78,8 +79,28 @@ export default async function ContentPage() {
       renderError: body.render?.error ?? null,
       images: own.filter((m) => m.role === 'slide' || m.role === 'cover').map((m) => ({ id: m.id, url: `/api/media/${m.id}` })),
       pdf: own.find((m) => m.role === 'pdf') ? `/api/media/${own.find((m) => m.role === 'pdf')!.id}` : null,
+      video: (() => {
+        const v = own.find((m) => m.role === 'final') ?? own.find((m) => m.role === 'video')
+        return v ? { url: `/api/media/${v.id}`, own: v.role === 'final' } : null
+      })(),
+      videoState: body.render?.video ?? null,
+      capcut: body.capcut?.dir ?? null,
     }
   })
+  const uploads: MediaView[] = (
+    await db
+      .select({ id: s.mediaAsset.id, projectId: s.mediaAsset.projectId, role: s.mediaAsset.role, description: s.mediaAsset.description, durationMs: s.mediaAsset.durationMs, width: s.mediaAsset.width, height: s.mediaAsset.height })
+      .from(s.mediaAsset)
+      .where(and(eq(s.mediaAsset.ownerId, owner.userId), eq(s.mediaAsset.origin, 'upload'), inArray(s.mediaAsset.role, ['clip', 'photo'])))
+      .orderBy(asc(s.mediaAsset.createdAt))
+  ).map((m) => ({
+    id: m.id,
+    projectId: m.projectId ?? '',
+    kind: m.role === 'clip' ? 'clip' : 'photo',
+    description: m.description,
+    seconds: m.durationMs ? Math.round(m.durationMs / 100) / 10 : null,
+    portrait: m.width && m.height ? m.height > m.width : null,
+  }))
   const days = [...new Set(items.map((i) => i.day))].sort()
   const ready = items.filter((i) => i.status === 'draft' && i.render === 'done' && !i.forum).length
   const drawing = items.some((i) => i.render === 'pending')
@@ -115,8 +136,14 @@ export default async function ContentPage() {
         {drawing ? <p className="tiny muted">De cockpit tekent nog beelden; ze verschijnen vanzelf.</p> : null}
         <RefreshWhileDrawing drawing={drawing} />
         <p className="tiny muted">
-          Plaatsen gaat nu nog met de hand: kopieer de tekst, download de beelden en zet ze online; druk daarna op <strong>Geplaatst</strong>. Automatisch elke maandag?{' '}
-          <Link href="/settings#claude">Zet het aan in Instellingen</Link>.
+          Plaatsen gaat nu nog met de hand: kopieer de tekst, download de beelden en zet ze online; druk daarna op <strong>Geplaatst</strong>.{' '}
+          {autopilot === '1' ? (
+            'Claude maakt elke maandagochtend vanzelf de volgende week.'
+          ) : (
+            <>
+              Automatisch elke maandag? <Link href="/settings#claude">Zet het aan in Instellingen</Link>.
+            </>
+          )}
         </p>
       </section>
 
@@ -135,6 +162,16 @@ export default async function ContentPage() {
           </div>
         </section>
       ))}
+
+      <section className="card stack-m" aria-labelledby="media-title">
+        <h2 id="media-title" className="row">
+          <Icon name="studio" size={20} /> Je media
+        </h2>
+        <p className="small muted">
+          Clips en foto’s van je projecten: jij met de hond in het park, je schermopname, de echte plek. Zeg in een paar woorden wat er te zien is; Claude kiest ze voor reels en de cockpit maakt er de video van.
+        </p>
+        <MediaLibrary projects={projects.map((p) => ({ id: p.id, name: p.name }))} media={uploads} />
+      </section>
 
       <section className="card stack-m" aria-labelledby="brand-title">
         <h2 id="brand-title" className="row">

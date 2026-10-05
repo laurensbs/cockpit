@@ -65,8 +65,16 @@ async function pickPort(config: Config): Promise<{ port: number; reuse: boolean 
   throw new Error('Geen vrije poort gevonden')
 }
 
+/** The ffmpeg that ships with the app (for videos), if this build has one. */
+function bundledFfmpeg(): string | null {
+  const dir = app.isPackaged ? join(process.resourcesPath, 'ffmpeg') : join(app.getAppPath(), 'release', 'ffmpeg')
+  const exe = join(dir, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg')
+  return existsSync(exe) ? exe : null
+}
+
 function startServer(port: number, config: Config, dataDir: string): ChildProcess {
   const serverDir = app.isPackaged ? join(process.resourcesPath, 'server') : join(app.getAppPath(), 'release', 'server')
+  const ffmpeg = bundledFfmpeg()
   const script = join(serverDir, 'server.js')
   if (!existsSync(script)) throw new Error(`De server ontbreekt: ${script}`)
   const logDir = join(dataDir, 'logs')
@@ -87,6 +95,7 @@ function startServer(port: number, config: Config, dataDir: string): ChildProces
       PGLITE_DIR: join(dataDir, 'db'),
       COCKPIT_PACKAGED: app.isPackaged ? '1' : '0',
       COCKPIT_VERSION: app.getVersion(),
+      ...(ffmpeg ? { COCKPIT_FFMPEG: ffmpeg } : {}),
     },
   })
   child.stdout?.pipe(log)

@@ -15,6 +15,8 @@ extraResources:
     to: .
     filter:
       - "server/**/*"
+      # ffmpeg for videos, when scripts/fetch-ffmpeg.sh put one there for this platform.
+      - "ffmpeg/**/*"
 asar: true
 npmRebuild: false
 win:

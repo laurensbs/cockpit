@@ -171,3 +171,44 @@ export async function drawPending(): Promise<void> {
   await renderPending(await getDb(), owner.userId)
 }
 
+
+/** The CapCut folder for a video: made (or made again) and opened. */
+export async function makeCapcut(itemId: string): Promise<{ ok: boolean; message: string }> {
+  const own = await ownItem(itemId)
+  if (!own) return { ok: false, message: 'Dit item bestaat niet meer.' }
+  const { buildCapcutPackage, openFolder } = await import('../capcut')
+  const made = await buildCapcutPackage(own.db, own.owner.userId, own.item.id)
+  if (!made.ok || !made.dir) return { ok: false, message: made.error ?? 'Dat lukte niet.' }
+  openFolder(made.dir)
+  refresh()
+  return { ok: true, message: `Klaar: ${made.dir}. Open het in CapCut; LEESMIJ.md zegt hoe.` }
+}
+
+/** His export from CapCut becomes the video of the post. */
+export async function importCapcut(itemId: string): Promise<{ ok: boolean; message: string }> {
+  const own = await ownItem(itemId)
+  if (!own) return { ok: false, message: 'Dit item bestaat niet meer.' }
+  const { importExport } = await import('../capcut')
+  const result = await importExport(own.db, own.owner.userId, own.item.id)
+  refresh()
+  return result.ok ? { ok: true, message: 'Je eigen versie staat erbij.' } : { ok: false, message: result.error ?? 'Dat lukte niet.' }
+}
+
+/** What a clip or photo shows, so Claude can pick the right one. */
+export async function describeMedia(mediaId: string, description: string): Promise<void> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  await db
+    .update(s.mediaAsset)
+    .set({ description: clean(description, 300) })
+    .where(and(eq(s.mediaAsset.id, String(mediaId)), eq(s.mediaAsset.ownerId, owner.userId), eq(s.mediaAsset.origin, 'upload')))
+  refresh()
+}
+
+/** Removes one of his clips or photos (posts that used it keep their finished video). */
+export async function removeMedia(mediaId: string): Promise<void> {
+  const owner = await actionOwner()
+  const { deleteMediaRow } = await import('../media')
+  await deleteMediaRow(await getDb(), owner.userId, String(mediaId))
+  refresh()
+}

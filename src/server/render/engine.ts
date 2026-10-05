@@ -31,7 +31,9 @@ const FONT_FILES = [
 
 type Font = { name: string; data: Buffer; weight: 400 | 600 | 700 | 800; style: 'normal' }
 let fonts: Font[] | null = null
-let wasm: Promise<void> | null = null
+// resvg is loaded once per process (it is an external package), but this module may be bundled more
+// than once (routes, actions); keep its start on globalThis so it happens exactly once.
+const shared = globalThis as unknown as { __cockpitResvg?: Promise<void> }
 
 /** The folder with the fonts: next to the server (the app), or in the project (development and tests). */
 const fontDir = () => process.env.COCKPIT_FONTS_DIR ?? join(process.cwd(), 'assets', 'fonts')
@@ -42,11 +44,15 @@ function loadFonts(): Font[] {
 }
 
 function ready(): Promise<void> {
-  wasm ??= (async () => {
+  shared.__cockpitResvg ??= (async () => {
     const require = createRequire(join(process.cwd(), 'package.json'))
-    await initWasm(readFileSync(require.resolve('@resvg/resvg-wasm/index_bg.wasm')))
+    try {
+      await initWasm(readFileSync(require.resolve('@resvg/resvg-wasm/index_bg.wasm')))
+    } catch (error) {
+      if (!(error instanceof Error && /already initialized/i.test(error.message))) throw error
+    }
   })()
-  return wasm
+  return shared.__cockpitResvg
 }
 
 /** One image, as PNG. */

@@ -5,7 +5,7 @@ import type { ContentChannel, ContentFormat } from '@/lib/ai/playbooks'
 import { BRAND_FONTS, BRAND_STYLES, type Brand } from '@/lib/brand'
 import type { ReelPlan, Slide } from '@/lib/content-week'
 import { useForm } from '@/lib/use-form'
-import { approveItem, approveWeek, markPosted, redrawItem, saveBrandAndRhythm, saveItemText, skipItem, unapproveItem } from '@/server/actions/content-week'
+import { approveItem, approveWeek, importCapcut, makeCapcut, markPosted, redrawItem, saveBrandAndRhythm, saveItemText, skipItem, unapproveItem } from '@/server/actions/content-week'
 import { initialFormState } from '@/server/actions/types'
 import { useCelebrate } from './CelebrationProvider'
 import { LaunchStatus } from './ClaudeButton'
@@ -36,6 +36,10 @@ export interface WeekItemView {
   renderError: string | null
   images: { id: string; url: string }[]
   pdf: string | null
+  /** The video: his own version from CapCut when there is one, else the one the cockpit made. */
+  video: { url: string; own: boolean } | null
+  videoState: 'done' | 'missing' | 'failed' | null
+  capcut: string | null
 }
 
 const STATUS: Record<string, { label: string; tone: string }> = {
@@ -71,7 +75,13 @@ export function WeekItemCard({ item }: { item: WeekItemView }) {
         </span>
       </div>
 
-      {item.images.length ? (
+      {item.video ? (
+        <div className="stack-xs">
+          {/* The text is burnt into the video as cards, so there is no separate caption track. */}
+          <video className="week-video" controls playsInline preload="metadata" poster={item.images[0]?.url} src={item.video.url} aria-label={`Video: ${item.title}`} />
+          {item.video.own ? <span className="tiny muted">Jouw versie uit CapCut</span> : null}
+        </div>
+      ) : item.images.length ? (
         <div className="slides-strip" role="list" aria-label={`Beelden van ${item.title}`}>
           {item.images.map((img, i) => (
             // Local media from the cockpit's own folder; next/image would try to optimize it with sharp.
@@ -124,6 +134,12 @@ export function WeekItemCard({ item }: { item: WeekItemView }) {
         </details>
       ) : null}
       {item.why ? <p className="tiny muted">{item.why}</p> : null}
+      {item.format === 'reel' && !item.video && item.render === 'done' ? (
+        <p className="tiny muted">
+          {item.videoState === 'missing' ? 'De video maakt de cockpit zodra ffmpeg er is; maak hem nu in CapCut.' : item.videoState === 'failed' ? 'De video maken lukte niet; maak hem in CapCut of teken opnieuw.' : 'De video wordt gemaakt…'}
+        </p>
+      ) : null}
+      {item.reel && item.status !== 'done' ? <CapcutTools item={item} /> : null}
 
       {item.status === 'draft' && !item.forum ? (
         <div className="row">
@@ -143,7 +159,12 @@ export function WeekItemCard({ item }: { item: WeekItemView }) {
               PDF
             </a>
           ) : null}
-          {item.images.length && !item.pdf ? (
+          {item.video ? (
+            <a className="button secondary small" href={`${item.video.url}?download=1&name=${encodeURIComponent(`${item.title}.mp4`)}`}>
+              Video
+            </a>
+          ) : null}
+          {item.images.length && !item.pdf && !item.video ? (
             <a className="button secondary small" href={`${item.images[0].url}?download=1&name=${encodeURIComponent(`${item.title} 1.png`)}`}>
               Beeld{item.images.length > 1 ? ` 1 van ${item.images.length}` : ''}
             </a>
@@ -164,6 +185,36 @@ export function WeekItemCard({ item }: { item: WeekItemView }) {
       ) : null}
       {item.status !== 'done' ? <ItemTools item={item} /> : null}
     </article>
+  )
+}
+
+/** For a video he makes himself: the CapCut folder, and taking his export back in. */
+function CapcutTools({ item }: { item: WeekItemView }) {
+  const [pending, start] = useTransition()
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const run = (fn: () => Promise<{ ok: boolean; message: string }>) =>
+    start(async () => {
+      const r = await fn()
+      setMessage({ ok: r.ok, text: r.message })
+    })
+  return (
+    <div className="stack-xs">
+      <div className="row">
+        <button type="button" className="button secondary small" disabled={pending} onClick={() => run(() => makeCapcut(item.id))}>
+          <Icon name="external" size={16} /> {item.capcut ? 'Open CapCut-pakket' : 'Maak CapCut-pakket'}
+        </button>
+        {item.capcut ? (
+          <button type="button" className="button ghost small" disabled={pending} onClick={() => run(() => importCapcut(item.id))}>
+            Ik heb hem geëxporteerd
+          </button>
+        ) : null}
+      </div>
+      {message ? (
+        <p className="tiny pre" role="status" style={{ color: message.ok ? 'var(--good)' : 'var(--bad)' }}>
+          {message.text}
+        </p>
+      ) : null}
+    </div>
   )
 }
 

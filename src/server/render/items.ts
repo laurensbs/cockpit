@@ -9,6 +9,7 @@ import { clearRenders, saveMedia } from '../media'
 import { renderPng } from './engine'
 import { pdfFromPngs } from './pdf'
 import { POST_SIZE, reelCover, slideSet, TALL_SIZE } from './templates'
+import { renderReelVideo, renderSlideshow } from './video'
 
 // Draws the pictures for the posts of the content week: slides for carousels and images, a PDF for a
 // LinkedIn document, a cover for reels and stories. In the background, one item at a time.
@@ -50,7 +51,16 @@ export async function renderItem(db: Db, ownerId: string, itemId: string): Promi
         count++
       }
     }
-    await setRender({ status: 'done', at: new Date().toISOString(), count })
+    // The video: a reel from the script, or a TikTok carousel as a slideshow. Without ffmpeg the
+    // pictures still count; the card says the video is missing.
+    let video: NonNullable<WeekBody['render']>['video']
+    if (body.contentFormat === 'reel' || (row.item.channel === 'tiktok' && body.contentFormat === 'carousel')) {
+      const made = body.contentFormat === 'reel' ? await renderReelVideo(db, ownerId, row.item, body, brand) : await renderSlideshow(db, ownerId, row.item, brand)
+      video = made.ok ? 'done' : made.error === 'ffmpeg ontbreekt' ? 'missing' : 'failed'
+      if (made.ok) count++
+      else if (video === 'failed') console.error('video', made.error)
+    }
+    await setRender({ status: 'done', at: new Date().toISOString(), count, ...(video ? { video } : {}) })
     return { ok: true, count }
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 200) : 'Tekenen lukte niet.'

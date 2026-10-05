@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
 
 // The app starts the server with a token of its own, puts the cookie on its window and opens the
@@ -29,7 +29,10 @@ test('the app starts its own server and opens the cockpit', async () => {
   expect(health).toMatchObject({ ok: true, database: 'pglite', github: packaged ? 'off' : 'fixtures' })
   expect(await window.evaluate(() => location.origin)).toBe(`http://127.0.0.1:${config.port}`)
   // It can draw slides: the fonts and the WebAssembly made it into the app.
-  expect(await window.evaluate(() => fetch('/api/render/check').then((r) => r.json()))).toMatchObject({ ok: true })
+  const render = (await window.evaluate(() => fetch('/api/render/check').then((r) => r.json()))) as { ok: boolean; video: boolean }
+  expect(render.ok).toBe(true)
+  // A build that brings its own ffmpeg can make videos with it.
+  if (packaged && existsSync(join(dirname(packaged), 'resources', 'ffmpeg'))) expect(render.video).toBe(true)
 
   // The window can move through the app.
   await window.getByRole('link', { name: 'Projecten' }).first().click()

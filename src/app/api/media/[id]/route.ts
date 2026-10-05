@@ -3,7 +3,7 @@ import { Readable } from 'node:stream'
 import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
-import { mediaPath } from '@/server/media'
+import { mediaPath, thumbFile } from '@/server/media'
 import { bearerOwner, getOwner } from '@/server/session'
 
 export const dynamic = 'force-dynamic'
@@ -21,8 +21,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .select({ file: s.mediaAsset.file, mime: s.mediaAsset.mime })
     .from(s.mediaAsset)
     .where(and(eq(s.mediaAsset.id, id), eq(s.mediaAsset.ownerId, owner.userId)))
-  const full = row ? mediaPath(row.file) : null
+  const wantThumb = new URL(request.url).searchParams.get('thumb') === '1'
+  const full = row ? mediaPath(wantThumb ? thumbFile(row.file) : row.file) : null
   if (!row || !full) return new Response('Not found', { status: 404 })
+  if (wantThumb) row.mime = 'image/jpeg'
   let size: number
   try {
     size = statSync(full).size
