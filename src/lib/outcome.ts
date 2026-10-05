@@ -69,8 +69,8 @@ function volumePlay(top: string): Pick<OutcomeStep, 'title' | 'place' | 'task' |
 export function outcomeStep(input: OutcomeInput): OutcomeStep | null {
   if (!input.hasModel) {
     return input.hasProposal
-      ? { key: 'model-accept', title: 'Neem het groeimodel over', why: 'Claude stelde een doel en een trechter voor; kijk ze na en neem ze over.', place: 'numbers', task: null }
-      : { key: 'model', title: 'Maak het groeimodel', why: 'Eén doelcijfer met een deadline en de trechter ernaartoe: daarna weet de cockpit waar het lekt.', place: 'numbers', task: 'model' }
+      ? { key: 'model-accept', title: 'Neem je doel over', why: 'Claude stelde een doel voor, met de stappen ernaartoe; kijk het na en neem het over.', place: 'numbers', task: null }
+      : { key: 'model', title: 'Kies je doel', why: 'Eén cijfer met een datum, en de stappen ernaartoe: daarna ziet Cockpit waar het vastloopt.', place: 'numbers', task: 'model' }
   }
   const { pace, bottleneck } = input
   if (pace?.status === 'no_data' || bottleneck?.kind === 'no_data') {
@@ -87,7 +87,7 @@ export function outcomeStep(input: OutcomeInput): OutcomeStep | null {
     return {
       key: `step-${bottleneck.to}`,
       ...play,
-      why: `${bottleneck.fromLabel} → ${bottleneck.toLabel}: ${pct(bottleneck.actual)}, verwacht ${pct(bottleneck.expected)}. Daar lekt de trechter het meest.${paceWhy}`,
+      why: `${bottleneck.fromLabel} → ${bottleneck.toLabel}: ${pct(bottleneck.actual)}, verwacht ${pct(bottleneck.expected)}. Daar lekt het meest.${paceWhy}`,
     }
   }
   if (bottleneck?.kind === 'volume' && (behind || bottleneck.lowData)) {

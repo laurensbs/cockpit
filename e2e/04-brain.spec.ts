@@ -40,7 +40,8 @@ test('Claude Code gets the brief through MCP and hands the profile and the plan 
   await page.goto('/projects')
   await page.getByRole('link', { name: /Rondje/ }).first().click()
   await page.getByRole('link', { name: 'Plan', exact: true }).click()
-  await expect(page).toHaveURL(/\/brain$/)
+  // In dev the page compiles on the first visit; under load that can take a while.
+  await expect(page).toHaveURL(/\/brain$/, { timeout: 60_000 })
   await expect(page.getByText('Rondje: het rondje dat je week beter maakt.')).toBeVisible()
   await expect(page.getByText(/Eerste stap:/).first()).toBeVisible()
   const win = page.locator('li').filter({ hasText: 'Mail drie opvangen' })

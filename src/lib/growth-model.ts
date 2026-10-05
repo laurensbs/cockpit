@@ -62,7 +62,7 @@ export function normalizeModel(input: unknown, today: string): { model: GrowthMo
   if (!/^\d{4}-\d{2}-\d{2}$/.test(northStar.deadline)) return { error: 'De deadline moet een dag zijn als 2026-12-31.' }
   if (northStar.deadline < addDays(today, 14) || northStar.deadline > addDays(today, 365))
     return { error: 'De deadline ligt tussen twee weken en een jaar vanaf vandaag.' }
-  if (funnel.length < 2 || funnel.length > 5) return { error: 'De trechter heeft 2 tot 5 trappen.' }
+  if (funnel.length < 2 || funnel.length > 5) return { error: 'Je doel heeft 2 tot 5 stappen ernaartoe.' }
   const seen = new Set<string>()
   const stages: FunnelStage[] = []
   for (const [i, stage] of funnel.entries()) {

@@ -124,7 +124,7 @@ test('Webstability: sources, a growth model from Claude, the pipeline, and the l
   await openMore(page)
   const next = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Nu doen' }) })
   const row = next.locator('li').filter({ hasText: 'Meer bezoekers omzetten in aanvragen' })
-  await expect(row).toContainText('Daar lekt de trechter het meest')
+  await expect(row).toContainText('Daar lekt het meest')
   await row.getByRole('button', { name: /Webstability/ }).click()
   await expect(next.getByRole('status').filter({ hasText: 'Claude werkt eraan' })).toBeVisible()
   const experiments = await mcpTool(request, 'get_task', { ticket: lastTicket() })

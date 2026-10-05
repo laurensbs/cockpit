@@ -77,7 +77,7 @@ export function GrowthModelForm({ projectId, model, defaultDeadline }: { project
       </label>
       <div className="row">
         <button type="submit" className="button primary small" disabled={pending}>
-          Groeimodel bewaren
+          Doel opslaan
         </button>
         {state.message ? (
           <span className="tiny muted" role="status">

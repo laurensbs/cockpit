@@ -63,12 +63,12 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
         </>
       ) : !state?.proposal ? (
         <section className="card stack-s">
-          <h2>Groeimodel</h2>
+          <h2>Je doel</h2>
           <p className="small muted">
-            Eén doelcijfer met een deadline, en de trechter ernaartoe. Daarna ziet de cockpit of {project.name} op schema ligt en waar het lekt, en kiest hij de stap die het meeste oplevert.
+            Eén cijfer met een datum, en de stappen ernaartoe. Daarna ziet Cockpit of {project.name} op schema ligt, waar het vastloopt, en welke stap het meeste oplevert.
           </p>
           <div style={{ maxWidth: 360 }}>
-            <ClaudeButton task="model" projectId={id} label="Laat Claude een groeimodel voorstellen" disabledReason={blocked} />
+            <ClaudeButton task="model" projectId={id} label="Laat Claude een doel voorstellen" disabledReason={blocked} />
           </div>
         </section>
       ) : null}
@@ -76,7 +76,7 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
       <section className="card stack-m" aria-labelledby="model-form-title">
         <details>
           <summary className="label" id="model-form-title">
-            {state?.model ? 'Groeimodel aanpassen' : 'Zelf een groeimodel invullen'}
+            {state?.model ? 'Doel aanpassen' : 'Zelf een doel invullen'}
           </summary>
           <div style={{ marginTop: '0.8rem' }}>
             <GrowthModelForm projectId={id} model={state?.model ?? null} defaultDeadline={addDays(today, 90)} />

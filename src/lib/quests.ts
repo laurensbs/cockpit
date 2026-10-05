@@ -93,7 +93,7 @@ export function ruleQuests(projects: readonly RuleProject[], today: string, aiAv
         sourceKey: `model:${p.id}`,
         projectId: p.id,
         title: `Zet een groeidoel voor ${p.name}`,
-        detail: 'Eén doelcijfer met een deadline en de trechter ernaartoe. Claude stelt het voor onder Cijfers; jij neemt het over.',
+        detail: 'Eén cijfer met een datum, en de stappen ernaartoe. Claude stelt het voor onder Cijfers; jij neemt het over.',
         xp: 25,
         dueOn: addDays(today, 3),
       })
