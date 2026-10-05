@@ -94,6 +94,7 @@ export function detectSetup(raw: Raw): SetupRow[] {
       const set = stripe.filter((k) => prod.has(k))
       out.push(set.length ? row('stripe', 'unknown', 'Sleutel staat in productie; kijk in Stripe of het de live-sleutel is') : row('stripe', 'todo', `${stripe[0]} ontbreekt in productie`))
     }
+    if ([...prod].some((k) => /SENTRY_DSN$/.test(k))) out.push(row('alerts', 'done', 'Sentry staat in productie'))
     const google = raw.example.filter((k) => /GOOGLE.*(CLIENT_ID|ID)$|AUTH_GOOGLE_ID/.test(k))
     if (google.length) out.push(google.some((k) => prod.has(k)) ? row('google-oauth', 'unknown', 'Sleutel staat in productie; is het toestemmingsscherm geverifieerd?') : row('google-oauth', 'todo', `${google[0]} ontbreekt in productie`))
   }

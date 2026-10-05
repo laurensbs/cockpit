@@ -7,7 +7,7 @@ import { costOf } from './costs'
 
 export type SetupStatus = 'done' | 'todo' | 'na' | 'unknown'
 export type SetupSource = 'jij' | 'auto' | 'claude'
-export type SetupGroup = 'basis' | 'vertrouwen' | 'geld' | 'apps'
+export type SetupGroup = 'basis' | 'vertrouwen' | 'geld' | 'draaien' | 'apps'
 
 /** What the project is, as far as this list cares: it decides which steps apply. */
 export interface SetupProject {
@@ -44,6 +44,7 @@ export const SETUP_GROUPS: Record<SetupGroup, string> = {
   basis: 'De basis',
   vertrouwen: 'Gevonden worden en vertrouwen',
   geld: 'Betalen en koppelingen',
+  draaien: 'Betrouwbaar draaien',
   apps: 'In de app stores',
 }
 
@@ -195,6 +196,47 @@ export const SETUP_ITEMS: SetupItem[] = [
     applies: (p) => p.paid,
   },
   {
+    key: 'hosting-plan',
+    group: 'draaien',
+    title: 'Hosting die commercieel mag',
+    why: 'Het gratis Hobby-plan van Vercel is alleen voor niet-commercieel gebruik. Verdient je site geld, dan hoort hij op een betaald plan, anders kan Vercel hem stilzetten.',
+    steps: ['Kijk in Vercel bij Settings → Billing welk plan je team heeft', 'Kies Pro zodra je site geld verdient', 'Zet meteen een uitgavenlimiet'],
+    who: 'jij',
+    cost: 'vercel-pro',
+    applies: (p) => p.web && p.paid,
+  },
+  {
+    key: 'backups',
+    group: 'draaien',
+    title: 'Back-ups van je database',
+    why: 'Gaat er iets mis (een fout, een verkeerde wijziging), dan zet je de gegevens van je klanten terug in plaats van ze kwijt te zijn.',
+    steps: ['Claude zoekt uit waar je database draait en hoe ver die zelf terug kan', 'Een automatische export naar een eigen plek, elke week', 'Eén keer oefenen: zet een kopie terug'],
+    who: 'claude',
+    cost: null,
+    applies: (p) => p.web && p.paid,
+  },
+  {
+    key: 'alerts',
+    group: 'draaien',
+    title: 'Seintje bij fouten en storingen',
+    why: 'Je wilt een storing van je eigen telefoon horen, niet van een klant.',
+    steps: ['Cockpit kijkt elke dag of je site in de lucht is', 'Claude zet foutmeldingen aan (bijvoorbeeld Sentry, gratis basis) met een mail naar jou', 'Test het één keer met een expres gemaakte fout'],
+    who: 'claude',
+    cost: null,
+    applies: (p) => p.web,
+  },
+  {
+    key: 'dpa',
+    group: 'draaien',
+    title: 'Verwerkersovereenkomst voor zakelijke klanten',
+    why: 'Verwerk je gegevens van de klanten van je klant (aanvragen, namen, telefoonnummers), dan vraagt de AVG een verwerkersovereenkomst. Zakelijke klanten vragen erom.',
+    steps: ['Claude maakt een concept op basis van je echte opzet: waar de data staat en welke diensten meekijken', 'Laat het één keer nakijken', 'Stuur het mee met elke nieuwe klant'],
+    who: 'samen',
+    cost: null,
+    legal: true,
+    applies: (p) => p.web && p.paid,
+  },
+  {
     key: 'apple-dev',
     group: 'apps',
     title: 'Apple Developer-account',
@@ -286,7 +328,7 @@ export function setupProgress(view: readonly SetupView[]): { done: number; total
  * the basis before the rest, his own steps before what Claude does anyway.
  */
 export function nextSetupStep(view: readonly SetupView[]): SetupView | null {
-  const groupOrder: SetupGroup[] = ['basis', 'vertrouwen', 'geld', 'apps']
+  const groupOrder: SetupGroup[] = ['basis', 'vertrouwen', 'geld', 'draaien', 'apps']
   const done = new Set(view.filter((v) => v.status === 'done').map((v) => v.item.key))
   const ready = (v: SetupView) => (v.item.needs ?? []).every((k) => done.has(k) || !view.some((x) => x.item.key === k))
   const open = view.filter((v) => (v.status === 'todo' || v.status === 'unknown') && ready(v))

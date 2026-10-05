@@ -26,6 +26,6 @@ describe('costLines', () => {
   it('gives Claude every checked price in one line each', () => {
     const lines = costLines()
     expect(lines.some((l) => l.startsWith('Apple Developer Program (one membership for all his apps): 99 USD per jaar'))).toBe(true)
-    expect(lines).toHaveLength(9)
+    expect(lines).toHaveLength(10)
   })
 })

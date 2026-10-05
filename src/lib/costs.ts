@@ -22,6 +22,7 @@ export const COSTS: Record<string, Cost> = {
   trustpilot: { text: 'gratis', amount: 0, period: 'month', note: 'Het gratis plan geeft 50 uitnodigingen per maand; betaald begint bij $99 per maand en heb je in het begin niet nodig.', source: 'https://business.trustpilot.com/plans' },
   'google-oauth': { text: 'gratis', amount: 0, period: 'once', note: 'De Google-API\'s zelf zijn gratis binnen de limieten; verificatie kost tijd, geen geld (behalve bij beperkte rechten).', source: 'https://support.google.com/cloud/answer/13463073' },
   business: { text: 'vraag je gestor', amount: 0, period: 'month', note: 'Als autónomo betaal je een maandelijkse bijdrage; starters krijgen de eerste periode een verlaagd tarief.', source: 'https://www.seg-social.es' },
+  'vercel-pro': { text: '± $20 per maand', amount: 18, period: 'month', note: 'Per gebruiker; het gratis Hobby-plan is alleen voor niet-commercieel gebruik. Zet meteen een uitgavenlimiet.', source: 'https://vercel.com/pricing' },
   'apple-developer': { text: '99 USD per jaar', amount: 92, period: 'year', note: 'Eén lidmaatschap voor al je apps (Rondje Mee, Teampje, Short Stack); je betaalt in euro, rond €99. Als organisatie heb je een D-U-N-S-nummer nodig (gratis); als persoon staat je eigen naam als verkoper. Op verkopen houdt Apple 15% in (kleine-bedrijvenprogramma).', source: 'https://developer.apple.com/programs/enroll/' },
   'google-play': { text: '$25 eenmalig', amount: 23, period: 'once', note: 'Eén keer betalen voor al je apps. Een nieuw persoonlijk account moet een app eerst 14 dagen met 12 testers testen voordat hij live mag.', source: 'https://support.google.com/googleplay/android-developer/answer/6112435' },
 }
@@ -87,6 +88,7 @@ export function costLines(): string[] {
     trustpilot: 'Trustpilot business profile',
     'google-oauth': 'Google login or Calendar API',
     business: 'Registering as a business (autónomo)',
+    'vercel-pro': 'Vercel Pro hosting (needed once a site earns money: Hobby is non-commercial only)',
     'apple-developer': 'Apple Developer Program (one membership for all his apps)',
     'google-play': 'Google Play developer account (one for all his apps)',
   }
