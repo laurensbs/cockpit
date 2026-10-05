@@ -1,4 +1,4 @@
 {
-  "version": "0.7.0",
-  "notes": "De Cockpit plaatst nu zelf wat je goedkeurt: LinkedIn (tekst, beeld, PDF-carrousel, video), Instagram (foto, carrousel, reel) en TikTok (als concept in je inbox, jij zet hem af met een geluid). Alleen tussen 7 en 22 uur, met een maximum per dag per kanaal en een pauzeknop. Koppelen doe je in Instellingen → Kanalen; het stappenplan staat in docs/kanalen.md."
+  "version": "0.7.1",
+  "notes": "Leren wat werkt: onder Contentweek → Wat werkt zie je per kanaal en per vorm wat je posts deden. De cockpit haalt elke dag de cijfers van Instagram en TikTok op (en je volgers); die van LinkedIn vul je zelf in. Claude krijgt het bij elke nieuwe contentweek mee en maakt meer van wat werkt, met af en toe een experiment."
 }

@@ -6,8 +6,8 @@
 # Apps. Je gegevens (~/Library/Application Support/Cockpit) blijven staan.
 set -euo pipefail
 
-VERSION="0.7.0"
-SHA256="25087e57dd35233f4cbcfdbd4be92f524697d3cc25cb3e458a28904dedbed7c7"
+VERSION="0.7.1"
+SHA256="a92c7fe485c0abda8261fdbb53a609bf87c3042916dcee64cbf80f86afc4a59f"
 BASE="https://raw.githubusercontent.com/laurensbs/cockpit/downloads"
 PARTS=("Cockpit-mac-arm64.tar.gz.1" "Cockpit-mac-arm64.tar.gz.2" "Cockpit-mac-arm64.tar.gz.3")
 

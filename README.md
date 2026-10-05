@@ -1,4 +1,4 @@
-# Cockpit voor de Mac (Apple-chip), 0.7.0
+# Cockpit voor de Mac (Apple-chip), 0.7.1
 
 Deze branch bevat alleen de kant-en-klare Mac-app (in delen, want GitHub neemt geen bestanden boven 100 MB) en het script dat hem installeert. De broncode staat op `main`.
 
