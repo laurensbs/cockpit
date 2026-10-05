@@ -9,6 +9,7 @@ test('he links a social profile with one paste; a link of another site is refuse
   await page.goto('/projects')
   await page.getByRole('link', { name: /Webstability/ }).first().click()
   const socials = page.getByLabel('Socials')
+  await socials.getByRole('button', { name: '+ Social koppelen' }).click()
   await socials.getByRole('button', { name: '+ Instagram' }).click()
   await socials.getByLabel('Link naar je Instagram').fill('https://evil.example/instagram.com/x')
   await socials.getByRole('button', { name: 'Koppel' }).click()

@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation'
 import { Icon } from './Icon'
 import { MORE, PLACES } from './Sidebar'
 
-// A narrow window has no sidebar: the places he uses daily, plus Geld and Instellingen (Taken sits under the streak, top right).
-const TABS = [...PLACES, ...MORE.filter((m) => m.href === '/geld'), { href: '/settings', label: 'Instellingen', icon: 'settings' as const, tone: 'gray' as const }]
+// A narrow window has no sidebar: the places he uses daily, Geld, and "Meer" for the settings (Taken sits under the streak, top right).
+const TABS = [...PLACES, ...MORE.filter((m) => m.href === '/geld'), { href: '/settings', label: 'Meer', icon: 'settings' as const, tone: 'gray' as const }]
 
 function isActive(pathname: string, href: string): boolean {
   return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
