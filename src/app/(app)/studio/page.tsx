@@ -7,6 +7,7 @@ import { ExperimentCard, type ExperimentView } from '@/components/ExperimentCard
 import { Icon } from '@/components/Icon'
 import { IdeaCard, OpportunityCard } from '@/components/IdeaCard'
 import { IdeaMatrix } from '@/components/IdeaMatrix'
+import { NextSteps } from '@/components/NextSteps'
 import { MailBanner, OutboxList } from '@/components/Outbox'
 import { PostCard } from '@/components/PostCard'
 import { SeoPlan, type SeoPlanView } from '@/components/SeoPlan'
@@ -16,7 +17,7 @@ import * as s from '@/db/schema'
 import { addDays, dayLabel, dayOf, weekStart } from '@/lib/dates'
 import { daysLeft, experimentActual, experimentVerdict } from '@/lib/experiments'
 import { isMetricKey, METRIC_DEFS } from '@/lib/metrics'
-import { actionHref, nextActions, type HubTab } from '@/lib/growth'
+import { ACTION_TASKS, actionHref, nextActions, type HubTab } from '@/lib/growth'
 import { ACTIVE_STAGES, ANSWERED_STATUSES, isStage, isStopped } from '@/lib/options'
 import { claudeBlocked } from '@/server/claude-status'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
@@ -269,26 +270,11 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
             <span className="tiny muted">{experiments.filter((e) => e.status === 'done' && str(b(e).result) === 'won').length} gewonnen</span>
           </Link>
         </section>
-        <section className="card stack-s">
-          <h2>Organische groei: wat nu?</h2>
-          {actions.length ? (
-            <ol className="list next-steps">
-              {actions.map((a) => (
-                <li key={a.key} className="row between">
-                  <span className="stack-xs grow" style={{ minWidth: 0 }}>
-                    <strong>{a.title}</strong>
-                    <span className="tiny muted">{a.why}</span>
-                  </span>
-                  <Link href={target(a.tab)} className="button secondary small">
-                    Doen <Icon name="arrow" size={14} />
-                  </Link>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="small">Niets open. Kijk bij Cijfers wat je posts en mails deze week deden.</p>
-          )}
-        </section>
+        <NextSteps
+          groups={actions.map((a) => ({ key: a.key, title: a.title, why: a.why, projects: [{ projectId: current.id, projectName: current.name, color: null, href: target(a.tab), task: ACTION_TASKS[a.key] ?? null }] }))}
+          disabledReason={blocked}
+          project={current.name}
+        />
         {running.length ? (
           <section className="stack-s">
             <h2>Loopt nu</h2>
