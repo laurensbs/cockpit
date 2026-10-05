@@ -264,7 +264,7 @@ export type Platform = keyof typeof PLATFORMS
 
 export function postsTask(platform: Platform, language: string, pastTitles: string[]): string {
   return `Task: five posts for ${PLATFORMS[platform]}, in ${lang(language)}, as JSON.
-- posts: each with a title (for him), format (for example carousel, reel, story, text post, thread), hook (the first line or the first two seconds), caption (ready to paste), hashtags (at most 5, specific to the topic and market; none for Discord), visualBrief (what to film or design, concretely) and bestTime (day and time that suits the audience).
+- posts: each with a title (for him), format (for example carousel, reel, story, text post, thread), hook (the first line or the first two seconds), caption (ready to paste), hashtags (at most 5, specific to the topic and market; none for Discord), visualBrief (what to film or design, concretely), bestTime (day and time that suits the audience) and plannedFor: the day to post it (YYYY-MM-DD) within the coming seven days, spread over the week, at most one post per day, on days that suit the audience.
 - Mix the content pillars and formats; at least one post that is useful or fun without selling anything.
 - Never invent facts, numbers or testimonials; put what he must fill in in [square brackets]. Respect the red lines and the platform's rules.${pastTitles.length ? `\n- Do not repeat these earlier posts: ${pastTitles.map((t) => neutralize(t)).join('; ')}` : ''}`
 }

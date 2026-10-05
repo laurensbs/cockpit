@@ -17,6 +17,7 @@ import { acceptProspect, prospectWantsInfo, skipProspect } from '@/server/action
 import { completeQuest } from '@/server/actions/quests'
 import { Logo } from './Logo'
 import { STEP_LOOK, StepDisc } from './StepIcon'
+import { META_PLANNER } from './PostCard'
 import { PostImage } from './PostImage'
 
 type Feedback = { tone: 'good' | 'neutral' | 'bad'; text: string; xp: number }
@@ -338,6 +339,11 @@ function PostBody({ card }: { card: Extract<LessonCard, { kind: 'post' }> }) {
         </li>
         <li>
           <span className="step-no">3</span>
+          {card.platform === 'instagram' ? (
+            <a className="button secondary small" href={META_PLANNER} target="_blank" rel="noreferrer noopener">
+              Inplannen in Meta
+            </a>
+          ) : null}
           {open ? (
             <a className="button secondary small" href={open} target="_blank" rel="noreferrer noopener">
               Open {PLATFORM[card.platform] ?? card.platform}

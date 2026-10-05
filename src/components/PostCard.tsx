@@ -24,6 +24,9 @@ export interface PostView {
   projectName: string | null
 }
 
+/** Meta's own planner (Instagram and Facebook): it posts at the time he picks; the cockpit never posts itself. */
+export const META_PLANNER = 'https://business.facebook.com/latest/content_calendar'
+
 const PLATFORM_LABELS: Record<string, string> = { instagram: 'Instagram', tiktok: 'TikTok', linkedin: 'LinkedIn', x: 'X/Threads', discord: 'Discord' }
 
 /** A post ready to copy: hook, caption and hashtags, a brief for the visual, and a day to post it. */
@@ -55,6 +58,11 @@ export function PostCard({ post }: { post: PostView }) {
             </a>
           ) : null}
           <CopyButton text={copy} label="Kopieer tekst" />
+          {post.platform === 'instagram' ? (
+            <a className="button secondary small" href={META_PLANNER} target="_blank" rel="noreferrer noopener" title="Plak de tekst en het beeld in Meta; Meta plaatst de post op het moment dat je kiest">
+              Inplannen in Meta
+            </a>
+          ) : null}
           <label className="row nowrap small" style={{ gap: '0.35rem' }}>
             <span className="muted">Plan</span>
             <input

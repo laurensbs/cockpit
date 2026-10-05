@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { dayOf } from '@/lib/dates'
+import { addDays, dayOf } from '@/lib/dates'
 import { normalizeModel } from '@/lib/growth-model'
 import { normalizePoints } from '@/lib/metrics'
 import type { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
@@ -48,7 +48,7 @@ async function insertDrafts(
   kind: string,
   channel: string,
   language: string,
-  items: { title: string; body: Record<string, unknown>; contactId?: string | null }[],
+  items: { title: string; body: Record<string, unknown>; contactId?: string | null; plannedFor?: string | null }[],
 ): Promise<number> {
   if (!items.length) return 0
   await db.insert(s.contentItem).values(
@@ -62,6 +62,7 @@ async function insertDrafts(
       title: item.title,
       body: item.body,
       contactId: item.contactId ?? null,
+      ...(item.plannedFor ? { plannedFor: item.plannedFor, status: 'planned' } : {}),
       runId: SOURCE,
     })),
   )
@@ -130,6 +131,10 @@ export async function saveEmails(
 }
 
 export async function savePosts(db: Db, ownerId: string, project: { id: string; name: string }, input: { platform: string; language: string }, wire: z.infer<typeof PostsWire>): Promise<string> {
+  // A planned day counts when it is within the coming month; otherwise the post stays a draft without a day.
+  const today = dayOf(new Date())
+  const inWindow = (day: string | null) => (day && day >= today && day <= addDays(today, 31) ? day : null)
+  const posts = normalizePosts(wire)
   const n = await insertDrafts(
     db,
     ownerId,
@@ -138,9 +143,16 @@ export async function savePosts(db: Db, ownerId: string, project: { id: string; 
     input.platform,
     input.language,
     // Instagram takes at most five hashtags per post (since December 2025).
-    normalizePosts(wire).map(({ title, ...body }) => ({ title, body: input.platform === 'instagram' ? { ...body, hashtags: body.hashtags.slice(0, 5) } : body })),
+    posts.map(({ title, plannedFor, ...body }) => ({
+      title,
+      body: input.platform === 'instagram' ? { ...body, hashtags: body.hashtags.slice(0, 5) } : body,
+      plannedFor: inWindow(plannedFor),
+    })),
   )
-  return n ? `Opgeslagen: ${n} post${n === 1 ? '' : 's'} voor ${input.platform} (${project.name}). Hij plant en post ze zelf vanuit de Studio.` : 'Niets opgeslagen: er zaten geen posts in.'
+  const planned = posts.filter((p) => inWindow(p.plannedFor)).length
+  return n
+    ? `Opgeslagen: ${n} post${n === 1 ? '' : 's'} voor ${input.platform} (${project.name})${planned ? `, ${planned} ingepland in de kalender` : ''}. Op de dag zelf staat de post in zijn dagles; posten doet hij zelf (of hij plant hem in Meta).`
+    : 'Niets opgeslagen: er zaten geen posts in.'
 }
 
 export async function saveIdeas(db: Db, ownerId: string, project: { id: string; name: string }, input: { mode: string }, wire: z.infer<typeof IdeasWire>): Promise<string> {

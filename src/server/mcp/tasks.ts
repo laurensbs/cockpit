@@ -173,7 +173,7 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
     }
     case 'posts': {
       const platform = options.platform ?? 'instagram'
-      body = postsTask(platform, language, project ? await pastTitles(db, project.id, 'social') : [])
+      body = `${postsTask(platform, language, project ? await pastTitles(db, project.id, 'social') : [])}\nToday is ${dayOf(new Date())}.`
       if (options.note) extra = `What these posts must be about (his request): ${options.note}`
       if (project) {
         const learned = await learningFor(db, project.id)

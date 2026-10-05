@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, desc, eq, gt, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, isNull } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { dayOf, hourOf, weekdayOf, weekStart } from '@/lib/dates'
@@ -108,6 +108,39 @@ export async function maybeBuildPosts(db: Db, ownerId: string, now = new Date())
     const { started: ok } = await runHeadless(launchPrompt(ticket))
     if (ok) {
       await setSetting(db, ownerId, key, today)
+      started.push(p.name)
+    }
+  }
+  return started
+}
+
+/**
+ * "Plan de week": a project with socials and nothing planned for the coming days gets a week of posts,
+ * each on a day (Claude picks the days). Once a week per project, at most two projects a day.
+ */
+export async function maybePlanWeek(db: Db, ownerId: string, now = new Date()): Promise<string[]> {
+  if (!(await autopilotOn(db, ownerId))) return []
+  const today = dayOf(now)
+  if (weekdayOf(today) > 5 || hourOf(now) < 7) return []
+  const week = weekStart(today)
+  const projects = await db.select().from(s.project).where(eq(s.project.ownerId, ownerId))
+  const started: string[] = []
+  for (const p of projects) {
+    if (started.length >= 2 || /marketing staat uit/i.test(`${p.what} ${p.redLines}`)) continue
+    const socials = socialsOf(p.links)
+    if (!Object.keys(socials).length) continue
+    const key = `plan_week_${p.id}`
+    if ((await getSetting(db, ownerId, key)) === week) continue
+    const [{ n }] = await db
+      .select({ n: count() })
+      .from(s.contentItem)
+      .where(and(eq(s.contentItem.projectId, p.id), eq(s.contentItem.kind, 'social'), eq(s.contentItem.status, 'planned'), gte(s.contentItem.plannedFor, today)))
+    if (n >= 2) continue
+    const platform = socials.instagram ? 'instagram' : preferredPlatform(socials)
+    const note = `Plan de week: drie posts voor ${p.name}, elk op een andere dag in de komende zeven dagen. Mix: één die helpt of leert, één achter de schermen (wat er gebouwd is), één met een vraag aan de doelgroep. Echt, geen reclame.`.slice(0, 300)
+    const ticket = createTicket({ task: 'posts', projectId: p.id, options: { platform, note } })
+    if ((await runHeadless(launchPrompt(ticket))).started) {
+      await setSetting(db, ownerId, key, week)
       started.push(p.name)
     }
   }

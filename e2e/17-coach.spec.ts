@@ -47,6 +47,16 @@ test('Claude fills in the checklist and gives the best next step; he ticks it of
   await domain.getByRole('button', { name: 'Gedaan' }).click()
   await expect(domain.getByLabel('Geregeld')).toBeVisible()
 
+  // Posts come with a day: planned in the calendar, on that day in his lesson.
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  const posts = await mcpTool(request, 'save_posts', {
+    project: 'Webstability',
+    platform: 'instagram',
+    language: 'nl',
+    posts: [{ title: 'Week 1', format: 'carousel', hook: 'Zo komt een aanvraag binnen', caption: 'Drie stappen.', hashtags: ['#werkbon'], visualBrief: 'Schermen', bestTime: 'di 19:00', plannedFor: tomorrow }],
+  })
+  expect(posts.text).toContain('1 ingepland in de kalender')
+
   // Costs: what is still open, added up; he pays, the cockpit only counts.
   await page.goto('/kosten')
   await expect(page.getByRole('heading', { name: 'Kosten', level: 1 })).toBeVisible()

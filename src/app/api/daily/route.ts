@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/db'
-import { maybeAutopilot, maybeBuildPosts, maybeProspect } from '@/server/autopilot'
+import { maybeAutopilot, maybeBuildPosts, maybePlanWeek, maybeProspect } from '@/server/autopilot'
 import { claudeLoggedIn } from '@/server/claude'
 import { healClaudeConnection } from '@/server/claude-heal'
 import { pullAll } from '@/server/connectors/run'
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
   const autopilot = await maybeAutopilot(db, owner.userId)
   const prospects = await maybeProspect(db, owner.userId)
   const posts = await maybeBuildPosts(db, owner.userId)
+  const planned = await maybePlanWeek(db, owner.userId)
   const refreshed = await maybeRefresh(db, owner.userId)
-  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, setup, autopilot, prospects, posts, refreshed })
+  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, setup, autopilot, prospects, posts, planned, refreshed })
 }

@@ -149,7 +149,7 @@ export function planFromJson(value: unknown): Plan | null {
 
 export const EmailsWire = z.object({ drafts: z.array(z.object({ title: str, subject: str, body: str, ps: str })) })
 export const PostsWire = z.object({
-  posts: z.array(z.object({ title: str, format: str, hook: str, caption: str, hashtags: z.array(str), visualBrief: str, bestTime: str })),
+  posts: z.array(z.object({ title: str, format: str, hook: str, caption: str, hashtags: z.array(str), visualBrief: str, bestTime: str, plannedFor: str.optional() })),
 })
 export const IdeasWire = z.object({
   ideas: z.array(z.object({ title: str, category: str, why: str, firstStep: str, impact: z.number(), effort: z.number(), cost: str, wildness: z.number() })),
@@ -170,6 +170,8 @@ export interface PostDraft {
   hashtags: string[]
   visualBrief: string
   bestTime: string
+  /** The day to post it (YYYY-MM-DD), when Claude planned it. */
+  plannedFor: string | null
 }
 export interface Idea {
   title: string
@@ -213,6 +215,7 @@ export const normalizePosts = (w: z.infer<typeof PostsWire>): PostDraft[] =>
     hashtags: hashtags(p.hashtags),
     visualBrief: clean(p.visualBrief, 600),
     bestTime: clean(p.bestTime, 80),
+    plannedFor: /^\d{4}-\d{2}-\d{2}$/.test(p.plannedFor ?? '') ? p.plannedFor! : null,
   }))
 
 export const normalizeIdeas = (w: z.infer<typeof IdeasWire>): Idea[] =>
