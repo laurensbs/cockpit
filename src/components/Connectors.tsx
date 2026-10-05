@@ -47,7 +47,7 @@ export function ConnectorList({ projectId, connectors }: { projectId: string; co
                     Test
                   </button>
                   <button type="button" className="button ghost small" disabled={pending} onClick={() => start(() => deleteConnector(c.id))}>
-                    Weg
+                    Ontkoppelen
                   </button>
                 </span>
               </div>

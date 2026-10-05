@@ -91,7 +91,7 @@ test('Webstability: sources, a growth model from Claude, the pipeline, and the l
   expect(proposed.isError).toBe(false)
   await page.reload()
   await expect(page.getByText('Voorstel van Claude')).toBeVisible()
-  await page.getByRole('button', { name: 'Overnemen' }).click()
+  await page.getByRole('button', { name: 'Dit doel overnemen' }).click()
   await expect(page.getByRole('heading', { name: 'Doel: Vaste omzet per maand' })).toBeVisible()
   await expect(page.locator('.growth-card')).toContainText(/van €\s3\.000/)
   await expect(page.locator('.funnel')).toBeVisible()
@@ -116,7 +116,7 @@ test('Webstability: sources, a growth model from Claude, the pipeline, and the l
   await card.getByText('Deal').click()
   await card.getByLabel('Waarde (€)').fill('149')
   await card.getByLabel('Volgende stap').fill('Onboarding plannen')
-  await card.getByRole('button', { name: 'Bewaren' }).click()
+  await card.getByRole('button', { name: 'Deal bijwerken' }).click()
   await expect(card.getByRole('status').filter({ hasText: 'Bewaard.' })).toBeVisible()
 
   // Vandaag: the leak decides the step, and the chip opens Claude Code with experiments aimed at it.

@@ -78,7 +78,7 @@ export function CommandBar({ projects }: { projects: CommandProject[] }) {
               <input
                 autoFocus
                 value={query}
-                placeholder="Zoek een project of plek, kies een klus, of typ een vraag voor Claude…"
+                placeholder="Zoek, of vraag Claude iets…"
                 aria-label="Zoek of vraag Claude"
                 aria-controls="command-list"
                 aria-activedescendant={commands[active] ? `command-${active}` : undefined}

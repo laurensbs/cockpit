@@ -589,11 +589,11 @@ function Actions({
           onClick={() =>
             run(async () => {
               const r = await saveFollowers(card.projectId!, Number(followers))
-              return { tone: r.ok ? 'good' : 'bad', text: r.ok ? 'Bewaard.' : r.message, xp: r.xp }
+              return { tone: r.ok ? 'good' : 'bad', text: r.ok ? `${followers} volgers genoteerd.` : r.message, xp: r.xp }
             })
           }
         >
-          Bewaar
+          Opslaan
         </button>
       </div>
     )

@@ -42,10 +42,10 @@ export function ModelProposal({ briefId, model }: { briefId: string; model: Grow
             })
           }
         >
-          Overnemen
+          Dit doel overnemen
         </button>
         <button type="button" className="button ghost small" disabled={pending} onClick={() => start(() => dismissModel(briefId))}>
-          Weg
+          Niet dit doel
         </button>
         {message ? (
           <span className="tiny muted" role="status">

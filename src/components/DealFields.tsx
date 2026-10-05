@@ -40,7 +40,7 @@ export function DealFields({ contactId, value, period, nextStep, nextStepOn, tod
         </div>
         <div className="row">
           <button type="submit" className="button secondary small" disabled={pending}>
-            Bewaren
+            Deal bijwerken
           </button>
           {state.message ? (
             <span className="tiny muted" role="status">

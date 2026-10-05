@@ -48,8 +48,8 @@ test('Vandaag is calm; the lesson takes him through the day one card at a time',
     const title = (await page.getByRole('heading', { level: 1 }).textContent()) ?? ''
     if (title.includes('volgers')) {
       await page.getByLabel('Aantal volgers').fill('812')
-      await page.getByRole('button', { name: 'Bewaar' }).click()
-      await expect(page.locator('.lesson-foot.good')).toContainText('Bewaard.')
+      await page.getByRole('button', { name: 'Opslaan', exact: true }).click()
+      await expect(page.locator('.lesson-foot.good')).toContainText('volgers genoteerd.')
     } else {
       await page.locator('.lesson-actions').getByRole('button', { name: /^(Later|Nog niet|Niet bereikt)$/ }).first().click()
     }

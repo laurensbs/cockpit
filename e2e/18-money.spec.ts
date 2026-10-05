@@ -58,7 +58,7 @@ test('Claude writes down the money, the page adds it up and reminds, and his own
   const hosting = page.getByRole('listitem', { name: 'Hosting voorbeeld' })
   await hosting.getByRole('button', { name: 'Aanpassen' }).click()
   await hosting.getByLabel('Bedrag').fill('25')
-  await hosting.getByRole('button', { name: 'Bewaren' }).click()
+  await hosting.getByRole('button', { name: 'Wijziging opslaan' }).click()
   await expect(page.getByRole('listitem', { name: 'Hosting voorbeeld' })).toContainText('$25 per maand')
   await expect(page.getByRole('listitem', { name: 'Hosting voorbeeld' })).toContainText('door jou')
   const again = await mcpTool(request, 'save_money', { items: [{ kind: 'cost', title: 'Hosting voorbeeld', amount: 20, currency: 'USD', period: 'month' }] })

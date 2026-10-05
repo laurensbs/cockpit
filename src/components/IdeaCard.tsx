@@ -39,9 +39,7 @@ export function IdeaCard({ idea, index }: { idea: IdeaView; index: number }) {
         <span className="row" style={{ gap: '0.35rem' }}>
           <span className="idea-number num">{index + 1}</span>
           <span className="chip accent">{idea.category}</span>
-          <span className="chip flame" title={`Wildheid ${idea.wildness} van 5`}>
-            {'🔥'.repeat(idea.wildness)}
-          </span>
+          <span className="chip flame" title="Hoe gewaagd, van 1 (veilig) tot 5 (wild)">Gewaagd {idea.wildness}/5</span>
         </span>
         {idea.projectName ? <span className="tiny faint">{idea.projectName}</span> : null}
       </div>

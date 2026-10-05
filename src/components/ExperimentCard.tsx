@@ -84,7 +84,11 @@ export function ExperimentCard({ experiment: e }: { experiment: ExperimentView }
       ) : m && e.status === 'draft' ? (
         <p className="tiny muted">Gemeten met {m.label.toLowerCase()}{m.targetValue != null ? `, doel ${fmt(m.key, m.targetValue)}` : ''}.</p>
       ) : null}
-      {e.status === 'done' && e.learning ? <p className="small">💡 {e.learning}</p> : null}
+      {e.status === 'done' && e.learning ? (
+        <p className="small">
+          <Icon name="idea" size={14} /> {e.learning}
+        </p>
+      ) : null}
       {e.status === 'draft' ? (
         <button type="button" className="button primary small" disabled={pending} onClick={() => start(() => startExperiment(e.id))} style={{ alignSelf: 'start' }}>
           <Icon name="bolt" size={16} /> Start dit experiment

@@ -81,7 +81,7 @@ export function MoneyForm({ projects, item, onDone }: { projects: Project[]; ite
       </label>
       <div className="row">
         <button type="submit" className="button secondary small" disabled={pending}>
-          Bewaren
+          {item ? 'Wijziging opslaan' : 'Toevoegen'}
         </button>
         {state.message ? (
           <span className="tiny muted" role="status">

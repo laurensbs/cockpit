@@ -4,6 +4,7 @@ import * as s from '@/db/schema'
 import { weeklyFromJson } from '@/lib/ai/schemas'
 import { dayOf, weekStart } from '@/lib/dates'
 import { ClaudeButton } from './ClaudeButton'
+import { Icon } from './Icon'
 import { WeeklyBoss } from './WeeklyBoss'
 
 /** This week's focus from Claude Code, made with one press on Monday (or whenever he likes). */
@@ -54,8 +55,12 @@ export async function WeeklyFocus({ db, ownerId, disabledReason }: { db: Db; own
         <p className="small muted">{weekly.boss.why}</p>
         <WeeklyBoss briefId={brief.id} accepted={Boolean(accepted)} />
       </div>
-      {weekly.wins.length ? <p className="small">🏆 {weekly.wins.join(' · ')}</p> : null}
-      {weekly.avoiding ? <p className="small muted">🤔 {weekly.avoiding}</p> : null}
+      {weekly.wins.length ? (
+        <p className="small">
+          <Icon name="trophy" size={14} /> {weekly.wins.join(' · ')}
+        </p>
+      ) : null}
+      {weekly.avoiding ? <p className="small muted">Wat je misschien uitstelt: {weekly.avoiding}</p> : null}
     </section>
   )
 }
