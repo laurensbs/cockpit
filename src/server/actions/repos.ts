@@ -7,6 +7,7 @@ import * as s from '@/db/schema'
 import { COMPANY_COLORS } from '@/lib/options'
 import { planImport } from '@/lib/import-plan'
 import { normalizeUrl, REPO_NAME } from '@/lib/urls'
+import { discoverAll } from '../discover'
 import { githubSource } from '../github/source'
 import { syncAll, syncErrorText, syncRepo } from '../github/sync'
 import { actionOwner } from '../session'
@@ -83,13 +84,15 @@ export async function importAllRepos(_prev: FormState, form: FormData): Promise<
     if (Date.now() - started > 30_000) break
     await syncRepo(db, row)
   }
+  // Right away: each project's site, Vercel project and sources, so nothing is left to type in.
+  const found = await discoverAll(db, owner.userId, { force: true }).catch(() => ({ projects: 0, linked: 0 }))
   revalidatePath('/projects')
   revalidatePath('/github')
   revalidatePath('/')
   const added = plan.toExisting.reduce((n, g) => n + g.names.length, 0) + plan.newProjects.reduce((n, p) => n + p.names.length, 0)
   return {
     ok: true,
-    message: `${added} repo${added === 1 ? '' : "'s"} binnengehaald${plan.newProjects.length ? `: ${plan.newProjects.length} nieuw${plan.newProjects.length === 1 ? ' project' : 'e projecten'} (${plan.newProjects.map((p) => p.name).join(', ')})` : ''}.`,
+    message: `${added} repo${added === 1 ? '' : "'s"} binnengehaald${plan.newProjects.length ? `: ${plan.newProjects.length} nieuw${plan.newProjects.length === 1 ? ' project' : 'e projecten'} (${plan.newProjects.map((p) => p.name).join(', ')})` : ''}.${found.linked ? ` ${found.linked} ${found.linked === 1 ? 'koppeling' : 'koppelingen'} vanzelf gelegd.` : ''}`,
   }
 }
 

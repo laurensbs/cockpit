@@ -28,7 +28,7 @@ const CONFIG_ERRORS: Record<string, string> = {
   base: 'Een eigen server begint met https://.',
 }
 
-const fetchFor = (): typeof fetch => (fixturesAllowed() && process.env.COCKPIT_FAKE_CONNECTORS === '1' ? fixtureFetch : fetch)
+export const fetchFor = (): typeof fetch => (fixturesAllowed() && process.env.COCKPIT_FAKE_CONNECTORS === '1' ? fixtureFetch : fetch)
 
 /**
  * Pulls one source and stores what it delivers. A dry run (the "Test" button) reads only the last week
@@ -40,14 +40,16 @@ export async function pullConnector(db: Db, ownerId: string, row: ConnectorRow, 
   const secret = kind.secret ? await getSetting(db, ownerId, connectorSecretKey(row.id)) : ''
   if (kind.secret && !kind.secret.optional && !secret) return { ok: false, points: 0, error: 'Er is nog geen sleutel ingesteld.' }
   const shared = kind.shared ? await getSetting(db, ownerId, kind.shared.setting) : ''
-  if (kind.shared && !shared) {
+  if (kind.shared && !shared && !(kind.shared.fallback && secret)) {
     if (!dryRun) await db.update(s.connector).set({ lastRunAt: now, lastError: kind.shared.missing }).where(eq(s.connector.id, row.id))
     return { ok: false, points: 0, error: kind.shared.missing }
   }
+  // A shared key that stands in for the project's own: the project's key wins.
+  const key = kind.shared?.fallback ? secret || shared : secret
   const today = dayOf(now)
   const back = dryRun ? 7 : row.lastOkAt ? kind.window.again : kind.window.first
   try {
-    const pulled = await kind.pull({ config: row.config, secret: secret ?? '', shared: shared ?? '', from: addDays(today, -back), today, fetch: fetchFor() })
+    const pulled = await kind.pull({ config: row.config, secret: key ?? '', shared: kind.shared?.fallback ? '' : (shared ?? ''), from: addDays(today, -back), today, fetch: fetchFor() })
     const { ok, rejected } = normalizePoints(pulled.points, today)
     const note = [pulled.note, rejected.length ? `${rejected.length} cijfer(s) overgeslagen.` : ''].filter(Boolean).join(' ') || undefined
     if (!dryRun) {

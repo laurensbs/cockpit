@@ -10,7 +10,7 @@ import { Icon } from './Icon'
 export function GoogleAccountForm({ email }: { email: string | null }) {
   const { state, pending, onSubmit } = useForm(saveGoogleAccount, initialFormState)
   return (
-    <form className="stack-s" onSubmit={onSubmit} key={state.ok ? state.message : 'form'}>
+    <form className="stack-s" onSubmit={onSubmit} key={state.ok ? state.message : 'form'} aria-label="Google-service-account">
       {email ? (
         <p className="small">
           Gekoppeld als <code>{email}</code>

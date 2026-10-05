@@ -11,6 +11,7 @@ import { METRIC_KEYS, normalizePoints } from '@/lib/metrics'
 import { connectorKind, connectorSecretKey } from '../connectors'
 import { GOOGLE_ACCOUNT_SETTING } from '../connectors/google'
 import { pullAll, pullConnector } from '../connectors/run'
+import { discoverAll } from '../discover'
 import { rollupMonths, upsertPoints } from '../points'
 import { actionOwner } from '../session'
 import { setSetting } from '../settings'
@@ -165,6 +166,12 @@ export async function saveGoogleAccount(_prev: FormState, form: FormData): Promi
   const account = parseServiceAccount(text)
   if ('error' in account) return { ok: false, error: account.error }
   await setSetting(db, owner.userId, GOOGLE_ACCOUNT_SETTING, JSON.stringify({ type: 'service_account', ...account }))
+  // With the account in place, GA4 and Search Console get linked to the projects they belong to.
+  const found = await discoverAll(db, owner.userId, { force: true }).catch(() => ({ projects: 0, linked: 0 }))
+  if (found.linked) await pullAll(db, owner.userId, { force: true })
   revalidatePath('/', 'layout')
-  return { ok: true, message: `Bewaard: ${account.client_email}. Geef dit adres leesrechten in GA4 en Search Console.` }
+  return {
+    ok: true,
+    message: `Bewaard: ${account.client_email}. ${found.linked ? `${found.linked} ${found.linked === 1 ? 'koppeling' : 'koppelingen'} vanzelf gelegd. ` : ''}Geef dit adres leesrechten in GA4 en Search Console; de cockpit koppelt de rest zelf.`,
+  }
 }

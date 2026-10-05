@@ -139,3 +139,42 @@ export const gsc: ConnectorKind = {
     return { points: gscRows(report) as PulledPoint[] }
   },
 }
+
+/** A GET on a Google API with the service account; null when it may not (no access yet). */
+async function googleGet<T>(fetchFn: Fetch, sa: ServiceAccount, scope: string, url: string): Promise<T | null> {
+  const token = await accessToken(fetchFn, sa, scope)
+  try {
+    return await getJson<T>(fetchFn, url, { headers: { Authorization: `Bearer ${token}` } })
+  } catch (error) {
+    if (error instanceof ConnectorError && (error.status === 403 || error.status === 404)) return null
+    throw error
+  }
+}
+
+/** Every GA4 web stream the service account can read: its property, measurement id and address. */
+export async function listGa4Streams(fetchFn: Fetch, shared: string): Promise<{ property: string; measurementId: string | null; defaultUri: string | null }[]> {
+  const sa = account(shared)
+  const summaries = await googleGet<{ accountSummaries?: { propertySummaries?: { property?: string }[] }[] }>(fetchFn, sa, SCOPES.ga4, 'https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=200')
+  const properties = (summaries?.accountSummaries ?? [])
+    .flatMap((a) => a.propertySummaries ?? [])
+    .map((p) => p.property?.replace(/^properties\//, '') ?? '')
+    .filter((p) => /^\d{5,15}$/.test(p))
+    .slice(0, 25)
+  const out: { property: string; measurementId: string | null; defaultUri: string | null }[] = []
+  for (const property of properties) {
+    const streams = await googleGet<{ dataStreams?: { type?: string; webStreamData?: { measurementId?: string; defaultUri?: string } }[] }>(
+      fetchFn,
+      sa,
+      SCOPES.ga4,
+      `https://analyticsadmin.googleapis.com/v1beta/properties/${property}/dataStreams`,
+    )
+    for (const s of streams?.dataStreams ?? []) if (s.webStreamData) out.push({ property, measurementId: s.webStreamData.measurementId ?? null, defaultUri: s.webStreamData.defaultUri ?? null })
+  }
+  return out
+}
+
+/** Every Search Console property the service account can read. */
+export async function listGscSites(fetchFn: Fetch, shared: string): Promise<{ siteUrl: string; permissionLevel?: string }[]> {
+  const r = await googleGet<{ siteEntry?: { siteUrl?: string; permissionLevel?: string }[] }>(fetchFn, account(shared), SCOPES.gsc, 'https://www.googleapis.com/webmasters/v3/sites')
+  return (r?.siteEntry ?? []).filter((s): s is { siteUrl: string; permissionLevel?: string } => typeof s.siteUrl === 'string')
+}

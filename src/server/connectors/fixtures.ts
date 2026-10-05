@@ -198,6 +198,55 @@ export const fixtureFetch: typeof fetch = async (input, init) => {
       .map(({ day, i }) => ({ keys: [day], clicks: 5 + (i % 6), impressions: 180 + (i % 40), ctr: 0.03, position: 14.2 }))
     return json({ rows })
   }
+  // Vercel: his team's projects, which repository each deploys, their domains and last deploys.
+  if (url.hostname === 'api.vercel.com') {
+    if (auth !== 'Bearer vercel-fixture-token-1234567890') return json({ error: { code: 'forbidden' } }, 403)
+    const team = url.searchParams.get('teamId')
+    if (url.pathname === '/v2/teams') return json({ teams: [{ id: 'team_fixture', slug: 'laurens' }] })
+    if (url.pathname === '/v9/projects')
+      return json({
+        projects: team === 'team_fixture'
+          ? [
+              { id: 'prj_teampje', name: 'teampje', link: { type: 'github', org: 'laurensbs', repo: 'teampje' } },
+              { id: 'prj_ws', name: 'webstability', link: { type: 'github', org: 'laurensbs', repo: 'webstability' } },
+              { id: 'prj_rondje', name: 'rondje', link: { type: 'github', org: 'laurensbs', repo: 'value' } },
+            ]
+          : [],
+      })
+    const domains: Record<string, { name: string; verified: boolean; redirect?: string }[]> = {
+      prj_teampje: [{ name: 'teampje.vercel.app', verified: true }, { name: 'www.teampje.example', verified: true, redirect: 'teampje.example' }, { name: 'teampje.example', verified: true }],
+      prj_ws: [{ name: 'webstability.example', verified: true }],
+      prj_rondje: [{ name: 'rondje.example', verified: true }],
+    }
+    const domainMatch = url.pathname.match(/^\/v9\/projects\/([^/]+)\/domains$/)
+    if (domainMatch) return json({ domains: domains[domainMatch[1]] ?? [] })
+    if (url.pathname === '/v6/deployments') {
+      const project = url.searchParams.get('projectId')
+      return json({ deployments: [{ uid: project === 'prj_rondje' ? 'dpl_broken' : `dpl_${project}`, state: project === 'prj_rondje' ? 'ERROR' : 'READY', url: `${project}-abc.vercel.app` }] })
+    }
+  }
+  // A site with Plausible, Google Analytics, Vercel Analytics, Stripe and a Discord invite on it.
+  if (url.hostname === 'teampje.example' && url.pathname === '/') {
+    return new Response(
+      `<!doctype html><html><head><link rel="canonical" href="https://teampje.example/">
+<script defer data-domain="teampje.example" src="https://plausible.io/js/script.js"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TEAM1234"></script>
+<script defer src="/_vercel/insights/script.js"></script></head>
+<body><h1>Teampje</h1><a href="https://discord.gg/teampje">Discord</a><script src="https://js.stripe.com/v3/"></script></body></html>`,
+      { headers: { 'content-type': 'text/html; charset=utf-8' } },
+    )
+  }
+  // Google: which GA4 properties and Search Console sites the service account may read.
+  if (url.hostname === 'analyticsadmin.googleapis.com') {
+    if (auth !== 'Bearer ya29.fixture.ga4') return json({ error: { code: 401 } }, 401)
+    if (url.pathname === '/v1beta/accountSummaries') return json({ accountSummaries: [{ account: 'accounts/1', propertySummaries: [{ property: 'properties/777777', displayName: 'Teampje' }] }] })
+    if (url.pathname === '/v1beta/properties/777777/dataStreams')
+      return json({ dataStreams: [{ name: 'properties/777777/dataStreams/1', type: 'WEB_DATA_STREAM', webStreamData: { measurementId: 'G-TEAM1234', defaultUri: 'https://teampje.example' } }] })
+  }
+  if (url.hostname === 'www.googleapis.com' && url.pathname === '/webmasters/v3/sites') {
+    if (auth !== 'Bearer ya29.fixture.gsc') return json({ error: { code: 401 } }, 401)
+    return json({ siteEntry: [{ siteUrl: 'sc-domain:teampje.example', permissionLevel: 'siteFullUser' }, { siteUrl: 'https://andere.example/', permissionLevel: 'siteOwner' }] })
+  }
   if (url.hostname === 'discord.com' && url.pathname.startsWith('/api/v10/invites/')) {
     if (url.pathname.endsWith('/verlopen')) return json({ message: 'Unknown Invite', code: 10006 }, 404)
     return json({ code: url.pathname.split('/').pop(), approximate_member_count: 812, approximate_presence_count: 97 })

@@ -1,5 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
+import { DiscoveredCard } from '@/components/DiscoveredCard'
 import { ClaudeButton } from '@/components/ClaudeButton'
 import { ConnectorForm, ConnectorList } from '@/components/Connectors'
 import { FunnelStrip } from '@/components/FunnelStrip'
@@ -86,6 +87,8 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
         </details>
       </section>
 
+      <DiscoveredCard db={db} ownerId={owner.userId} projectId={id} />
+
       <section className="card stack-m" aria-labelledby="sources-title">
         <h2 id="sources-title" className="row">
           <Icon name="refresh" size={20} /> Bronnen
@@ -113,7 +116,7 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
                 delivers: k.delivers.map((d) => METRIC_DEFS[d].label),
                 fields: k.fields,
                 secret: k.secret,
-                needs: k.shared && !googleEmail ? k.shared.missing : null,
+                needs: k.shared && !k.shared.fallback && !googleEmail ? k.shared.missing : null,
               }))}
             />
           </div>

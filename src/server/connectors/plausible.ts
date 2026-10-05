@@ -3,6 +3,9 @@ import { plausibleQuery, type PlausibleResult, plausibleRows } from '@/lib/conne
 import { getJson } from './http'
 import type { ConnectorKind, PulledPoint } from './types'
 
+/** One Plausible key reads every site of his account. */
+export const PLAUSIBLE_KEY_SETTING = 'plausible_api_key'
+
 export const plausible: ConnectorKind = {
   kind: 'plausible',
   label: 'Plausible',
@@ -13,7 +16,8 @@ export const plausible: ConnectorKind = {
     { name: 'goal', label: 'Doel dat een lead is (optioneel)', placeholder: 'Contact', hint: 'De naam van een doel in Plausible, bijvoorbeeld het contactformulier.', required: false },
     { name: 'baseUrl', label: 'Eigen server (optioneel)', placeholder: 'https://plausible.io', required: false },
   ],
-  secret: { label: 'API-sleutel', placeholder: '…', hint: 'Plausible → Account → API keys → Stats API.' },
+  secret: { label: 'API-sleutel (optioneel)', placeholder: '…', hint: 'Leeg laten als je je Plausible-sleutel al bij Instellingen bewaarde: die ene sleutel leest al je domeinen.', optional: true },
+  shared: { setting: PLAUSIBLE_KEY_SETTING, missing: 'Plak je Plausible-sleutel in Instellingen → Bronnen (één keer, voor al je sites).', fallback: true },
   checkSecret: (key) => (key.trim().length >= 16 ? null : 'Een Plausible-sleutel is langer.'),
   window: { first: 120, again: 10 },
   async pull(ctx) {

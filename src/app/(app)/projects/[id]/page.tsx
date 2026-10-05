@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AskClaude } from '@/components/AskClaude'
 import { FunnelStrip } from '@/components/FunnelStrip'
+import { DiscoveredCard } from '@/components/DiscoveredCard'
 import { GrowthCard } from '@/components/GrowthCard'
 import { Heatmap } from '@/components/Heatmap'
 import { Icon } from '@/components/Icon'
@@ -133,6 +134,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       <NextSteps groups={steps} disabledReason={blocked} project={project.name} />
 
       <AskClaude projects={[]} project={{ id: project.id, name: project.name }} disabledReason={blocked} />
+
+      <DiscoveredCard db={db} ownerId={owner.userId} projectId={project.id} />
 
       <section className="card stack-m">
         <h2>Intake</h2>

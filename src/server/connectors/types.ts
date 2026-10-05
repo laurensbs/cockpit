@@ -40,8 +40,11 @@ export interface ConnectorKind {
   fields: ConnectorField[]
   secret: { label: string; placeholder: string; hint: string; optional?: boolean } | null
   checkSecret: (secret: string) => string | null
-  /** A key kept once for all projects, in the settings, and what to say while it is missing. */
-  shared?: { setting: string; missing: string }
+  /**
+   * A key kept once for all projects, in the settings, and what to say while it is missing. With
+   * `fallback`, a project's own key wins and the shared one is used when there is none (Plausible).
+   */
+  shared?: { setting: string; missing: string; fallback?: boolean }
   /** Checks the filled-in fields before they are saved. */
   checkConfig?: (config: Record<string, string>) => string | null
   /** Days to look back on the first pull, and on later pulls (to catch late data and refunds). */

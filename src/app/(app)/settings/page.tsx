@@ -3,6 +3,7 @@ import { ChannelSettings } from '@/components/ChannelSettings'
 import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
 import { ContentAutopilotToggle } from '@/components/ContentAutopilotToggle'
 import { CopyButton } from '@/components/CopyButton'
+import { DiscoverButton, OwnerKeyForm } from '@/components/Discover'
 import { Icon } from '@/components/Icon'
 import { KeepAwakeToggle } from '@/components/KeepAwakeToggle'
 import { MailSettingsForm } from '@/components/MailSettingsForm'
@@ -27,7 +28,9 @@ import { isPaused } from '@/server/publish/run'
 import { keepAwakeOn, lastAwake } from '@/server/keep-awake'
 import { mailConfig } from '@/server/outbox'
 import { requireOwner } from '@/server/session'
+import { PLAUSIBLE_KEY_SETTING } from '@/server/connectors/plausible'
 import { getSetting, githubTokenSource } from '@/server/settings'
+import { vercelTokenSource } from '@/server/vercel'
 import { githubStatus, type ServiceStatus } from '@/server/status'
 
 export const metadata = { title: 'Instellingen' }
@@ -58,6 +61,7 @@ export default async function SettingsPage() {
       .where(eq(s.connector.ownerId, owner.userId))
       .orderBy(asc(s.project.name), asc(s.connector.kind)),
   ])
+  const [vercel, plausibleKey] = await Promise.all([vercelTokenSource(db, owner.userId), getSetting(db, owner.userId, PLAUSIBLE_KEY_SETTING)])
   const now = new Date()
   const failing = sources.filter((c) => c.lastError).length
   const port = (await headers()).get('host')?.match(/:(\d+)$/)?.[1] ?? process.env.PORT ?? '41414'
@@ -257,6 +261,31 @@ export default async function SettingsPage() {
             leesrechten: in GA4 als Kijker, in Search Console als beperkte gebruiker.
           </p>
           <GoogleAccountForm email={googleEmail} />
+        </div>
+        <div className="stack-s">
+          <div className="row between">
+            <span className="label">Vercel</span>
+            {vercel.from === 'cli' ? <span className="chip good">Via je Vercel CLI</span> : vercel.from ? <span className="chip good">Ingesteld</span> : <span className="chip">Niet ingesteld</span>}
+          </div>
+          <p className="tiny muted">
+            Hiermee vindt de cockpit per project het Vercel-project, het echte domein en of de laatste deploy werkt; een mislukte deploy wordt een quest. Ben je in de Vercel CLI ingelogd (<code>vercel login</code>), dan gebruikt hij die vanzelf. Anders: vercel.com → Account Settings → Tokens → Create, en plak hem hier. De cockpit leest alleen.
+          </p>
+          <OwnerKeyForm what="vercel" set={Boolean(vercel.from)} from={vercel.from} />
+        </div>
+        <div className="stack-s">
+          <div className="row between">
+            <span className="label">Plausible</span>
+            {plausibleKey ? <span className="chip good">Ingesteld</span> : <span className="chip">Niet ingesteld</span>}
+          </div>
+          <p className="tiny muted">Eén Stats API-sleutel (Plausible → Account → API keys) leest al je sites. Staat het Plausible-script op de site van een project, dan koppelt de cockpit die site zelf.</p>
+          <OwnerKeyForm what="plausible" set={Boolean(plausibleKey)} />
+        </div>
+        <div className="stack-xs">
+          <span className="label">Automatisch koppelen</span>
+          <p className="tiny muted">
+            Elke dag kijkt de cockpit per project naar GitHub, Vercel, Google en de site zelf, en koppelt wat erbij hoort: het siteadres, Plausible, Google Analytics, Search Console en Discord. Wat je zelf invulde, laat hij staan. Per project zie je onder Cijfers wat hij vond.
+          </p>
+          <DiscoverButton label="Zoek koppelingen voor alle projecten" />
         </div>
       </section>
 

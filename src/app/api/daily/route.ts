@@ -3,6 +3,7 @@ import { getDb } from '@/db'
 import { maybeAutopilot, maybeContentAutopilot } from '@/server/autopilot'
 import { healClaudeConnection } from '@/server/claude-heal'
 import { pullAll } from '@/server/connectors/run'
+import { discoverAll } from '@/server/discover'
 import { dailyRound } from '@/server/game'
 import { refreshInstagramTokens } from '@/server/publish/refresh'
 import { scheduleApproved } from '@/server/publish/run'
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
   const db = await getDb()
   const claude = await healClaudeConnection(db, owner.userId)
   const github = await syncAll(db, owner.userId, 120_000)
+  // Before the sites are checked and the numbers pulled: what each project has (site, Vercel, sources).
+  const discovered = await discoverAll(db, owner.userId).catch(() => ({ projects: 0, linked: 0 }))
   const sites = await checkSites(db, owner.userId)
   const numbers = await pullAll(db, owner.userId)
   await refreshInstagramTokens(db, owner.userId)
@@ -32,5 +35,5 @@ export async function POST(request: Request) {
   await dailyRound(db, owner.userId)
   const autopilot = await maybeAutopilot(db, owner.userId)
   const content = await maybeContentAutopilot(db, owner.userId)
-  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, posts, autopilot, content })
+  return NextResponse.json({ ok: true, claude, github, discovered, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, posts, autopilot, content })
 }

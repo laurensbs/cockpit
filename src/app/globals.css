@@ -1731,6 +1731,12 @@ a.chip:hover {
   font-weight: 600;
 }
 
+/* ---------- found by the cockpit itself ---------- */
+.found-list li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- the weekly review ---------- */
 .review-columns {
   display: grid;
