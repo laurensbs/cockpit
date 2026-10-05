@@ -55,9 +55,12 @@ async function alive(base: string): Promise<boolean> {
   }
 }
 
-/** The configured port, or the next free one. A cockpit server still running from before is used as it is. */
+/**
+ * The usual port first, so a port it moved to once (because an old server was still there) does not stick;
+ * then the next free one. A cockpit server still running from before is used as it is.
+ */
 async function pickPort(config: Config): Promise<{ port: number; reuse: boolean }> {
-  for (let port = config.port, tries = 0; tries < 10; port++, tries++) {
+  for (let port = Math.min(config.port, DEFAULT_PORT), tries = 0; tries < 10; port++, tries++) {
     if (await canListen(port)) return { port, reuse: false }
     if (await alive(`http://127.0.0.1:${port}`)) return { port, reuse: true }
   }
