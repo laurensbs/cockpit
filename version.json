@@ -1,4 +1,4 @@
 {
-  "version": "0.7.1",
-  "notes": "Leren wat werkt: onder Contentweek → Wat werkt zie je per kanaal en per vorm wat je posts deden. De cockpit haalt elke dag de cijfers van Instagram en TikTok op (en je volgers); die van LinkedIn vul je zelf in. Claude krijgt het bij elke nieuwe contentweek mee en maakt meer van wat werkt, met af en toe een experiment."
+  "version": "0.8.0",
+  "notes": "Koppelen gaat vanzelf: de cockpit vindt per project via GitHub en Vercel je site en of de laatste deploy werkt, en op je site Plausible, Google Analytics, Search Console en Discord, en koppelt ze meteen. Zet in Instellingen → Bronnen één keer je Vercel-token (of gebruik je ingelogde Vercel CLI) en je Plausible-sleutel. Verder: de weekreview op Vandaag (stoppen, doorgaan, beginnen) en het pijplijnbord bij Contacten."
 }
