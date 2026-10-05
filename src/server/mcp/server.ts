@@ -184,6 +184,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         'Writes the intake of a project from what you know of it: its CLAUDE.md, STAND.md, VISIE.md, README and code. Only facts and decisions he made himself; never invent goals or numbers (the goal and north star come from his own documents, or say "voorstel"). Only the fields you send change. Plain Dutch, short sentences.',
       inputSchema: {
         project: PROJECT_ARG,
+        name: z.string().trim().min(1).max(80).optional().describe('The new name, only when his own documents say the project was renamed'),
         oneLiner: z.string().max(200).optional().describe('What it is and for whom, one line'),
         what: z.string().max(2000).optional().describe('What it does, the offer and price if decided, where it stands'),
         audience: z.string().max(1000).optional(),

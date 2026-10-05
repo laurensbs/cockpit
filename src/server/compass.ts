@@ -39,3 +39,14 @@ export function readCompass(project: { name: string; localPath: string | null })
     return null
   }
 }
+
+/** When his STAND.md last changed (ms), to notice that there is something new to read; null without one. */
+export function compassStamp(project: { name: string; localPath: string | null }): number | null {
+  if (process.env.COCKPIT_NO_COMPASS === '1') return null
+  const file = compassFile(project)
+  try {
+    return file ? statSync(file).mtimeMs : null
+  } catch {
+    return null
+  }
+}

@@ -238,6 +238,7 @@ export async function saveClaudeMetrics(db: Db, ownerId: string, project: { id: 
 }
 
 export interface IntakeInput {
+  name?: string
   oneLiner?: string
   what?: string
   audience?: string
@@ -284,6 +285,19 @@ export async function saveIntake(db: Db, ownerId: string, project: { id: string;
     const text = `${(changes.what as string | undefined) ?? current?.what ?? ''} ${(changes.redLines as string | undefined) ?? current?.redLines ?? ''}`
     if (/marketing staat uit/i.test(text)) return { ok: false, text: `Niets opgeslagen: voor ${project.name} staat marketing uit, dus geen prospectie.` }
   }
+  // A new name (a rebrand in his own documents): the project, and its company when that carried the old name.
+  const name = input.name?.replace(/\s+/g, ' ').trim()
+  if (name && name !== project.name) {
+    const others = await db.select({ id: s.project.id, name: s.project.name }).from(s.project).where(eq(s.project.ownerId, ownerId))
+    if (others.some((o) => o.id !== project.id && o.name.toLowerCase() === name.toLowerCase())) return { ok: false, text: `Niets opgeslagen: er is al een project dat ${name} heet.` }
+    changes.name = name
+    const [current] = await db.select({ companyId: s.project.companyId }).from(s.project).where(eq(s.project.id, project.id))
+    if (current?.companyId)
+      await db
+        .update(s.company)
+        .set({ name })
+        .where(and(eq(s.company.id, current.companyId), eq(s.company.ownerId, ownerId), eq(s.company.name, project.name)))
+  }
   if (!Object.keys(changes).length) return { ok: false, text: 'Niets opgeslagen: er zat geen veld in.' }
   const [row] = await db
     .update(s.project)
@@ -292,7 +306,8 @@ export async function saveIntake(db: Db, ownerId: string, project: { id: string;
     .returning()
   if (!row) return { ok: false, text: 'Niets opgeslagen: dat project bestaat niet.' }
   if (isIntakeDone(row)) await award(db, ownerId, { kind: 'intake', refId: row.id, projectId: row.id })
-  return { ok: true, text: `Intake van ${project.name} bijgewerkt (${Object.keys(changes).join(', ')}). Hij leest en past hem aan onder Bewerken.` }
+  const renamed = changes.name ? ` ${project.name} heet nu ${changes.name}.` : ''
+  return { ok: true, text: `Intake van ${row.name} bijgewerkt (${Object.keys(changes).join(', ')}).${renamed} Hij leest en past hem aan onder Bewerken.` }
 }
 
 export interface ProspectInput {

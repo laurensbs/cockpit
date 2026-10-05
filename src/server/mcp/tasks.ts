@@ -18,6 +18,7 @@ import {
   planTask,
   PLATFORMS,
   prospectTask,
+  refreshTask,
   postsTask,
   profileTask,
   RULES,
@@ -33,7 +34,7 @@ import { dataSummary } from '../outcome-state'
 import { learningFor } from '../learning'
 import { loadPoints } from '../points'
 
-export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'prospect', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model'] as const
+export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'prospect', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model', 'refresh'] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 export const isTaskKind = (v: unknown): v is TaskKind => typeof v === 'string' && (TASK_KINDS as readonly string[]).includes(v)
 
@@ -53,6 +54,7 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   weekly: 'Focus van de week',
   ask: 'Een vraag of opdracht van hem, in zijn eigen woorden',
   model: 'Groeimodel: één doelcijfer met een deadline en de trechter ernaartoe (een voorstel)',
+  refresh: 'Kennis bijwerken: wat er nieuw is (naam, aanbod, fase) in de intake zetten',
 }
 
 export const EMAIL_PURPOSE_KEYS = Object.keys(EMAIL_PURPOSES) as [keyof typeof EMAIL_PURPOSES]
@@ -240,6 +242,11 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
       handBack = `\`save_model\` with { "project": ${quoted}, "model": { "northStar": { "key", "target", "deadline" }, "funnel": [ { "key", "label", "rate" } ], "valuePerDeal", "note" } }`
       break
     }
+    case 'refresh':
+      if (!project) return { error: 'refresh needs a project.' }
+      body = refreshTask(name)
+      handBack = `\`save_intake\` with { "project": ${quoted}, …only the fields that changed… }, or no tool at all when nothing changed`
+      break
     case 'ask':
       if (!options.question) return { error: 'ask needs his question (question).' }
       body = askTask(options.question, project ? name : 'his projects')

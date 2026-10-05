@@ -7,6 +7,7 @@ import { pullAll } from '@/server/connectors/run'
 import { dailyRound } from '@/server/game'
 import { syncAll } from '@/server/github/sync'
 import { bearerOwner, getOwner } from '@/server/session'
+import { maybeRefresh } from '@/server/knowledge'
 import { checkSites } from '@/server/uptime'
 
 export const dynamic = 'force-dynamic'
@@ -30,5 +31,6 @@ export async function POST(request: Request) {
   const autopilot = await maybeAutopilot(db, owner.userId)
   const prospects = await maybeProspect(db, owner.userId)
   const posts = await maybeBuildPosts(db, owner.userId)
-  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, autopilot, prospects, posts })
+  const refreshed = await maybeRefresh(db, owner.userId)
+  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, autopilot, prospects, posts, refreshed })
 }

@@ -349,6 +349,16 @@ ${data || '- none yet'}
 - note: one to three sentences on why this target and which assumptions you made ("aanname").`
 }
 
+/** Keeping the intake up to date with what he decided and shipped (his STAND.md, pull requests, README). */
+export function refreshTask(name: string): string {
+  return `Task: keep what the cockpit knows about ${name} up to date.
+Compare the intake (inside <project>) with the newest facts in <compass> (his own STAND.md), <recent_work> (his pull requests and commits) and the README. Look for what he decided or shipped since the intake was written: a new name or brand, a new site address, a new offer or price, a feature that is now live, a new stage, a goal or deadline he set, a market or language that was added.
+- Changed: call save_intake once, with only the fields that changed, each rewritten as a whole (not appended). Keep his style: plain Dutch, short sentences, facts with their date.
+- A new name only when his own documents say the project was renamed; then also the site address if that changed.
+- Never invent goals, numbers or decisions, and never loosen the red lines.
+- Nothing changed: call no tool and say so in one sentence.`
+}
+
 export function askTask(question: string, scope: string): string {
   return `Task: he asks you something about ${scope}. His own words, his request to you:
 <question>

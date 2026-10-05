@@ -165,27 +165,60 @@ function appLog(message: string): void {
 
 let server: ChildProcess | null = null
 let win: BrowserWindow | null = null
+/** Where the window points, kept so the Dock icon can open it again after he closed it. */
+let opened: { base: string; token: string } | null = null
+
+/** Open the window (again): on a Mac, closing it leaves Cockpit running in the Dock, reading on. */
+async function showWindow() {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
+    return
+  }
+  if (!opened) return
+  win = await openWindow(opened.base, opened.token)
+  win.on('closed', () => {
+    win = null
+  })
+}
 
 async function main() {
   if (!app.requestSingleInstanceLock()) {
     app.quit()
     return
   }
-  app.on('second-instance', () => {
-    if (!win) return
-    if (win.isMinimized()) win.restore()
-    win.focus()
-  })
+  app.on('second-instance', () => void showWindow())
+  app.on('activate', () => void showWindow())
   await app.whenReady()
   // On a Mac the Edit menu is what makes Cmd+C, Cmd+V and Cmd+A work in the window.
   const view: MenuItemConstructorOptions = {
     label: 'Weergave',
     submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }],
   }
+  // Starting with the Mac keeps Cockpit up to date all day; he switches it on himself, here.
+  const appMenu: MenuItemConstructorOptions = {
+    label: 'Cockpit',
+    submenu: [
+      { role: 'about' },
+      { type: 'separator' },
+      {
+        label: 'Start bij inloggen',
+        type: 'checkbox',
+        checked: app.getLoginItemSettings().openAtLogin,
+        click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
+      },
+      { type: 'separator' },
+      { role: 'hide' },
+      { role: 'hideOthers' },
+      { role: 'unhide' },
+      { type: 'separator' },
+      { role: 'quit' },
+    ],
+  }
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(
       process.platform === 'darwin'
-        ? [{ role: 'appMenu' }, { role: 'editMenu' }, view, { role: 'windowMenu' }]
+        ? [appMenu, { role: 'editMenu' }, view, { role: 'windowMenu' }]
         : [{ label: 'Cockpit', submenu: [{ role: 'quit' }] }, { role: 'editMenu' }, view],
     ),
   )
@@ -220,10 +253,8 @@ async function main() {
     }
   }
 
-  win = await openWindow(base, token)
-  win.on('closed', () => {
-    win = null
-  })
+  opened = { base, token }
+  await showWindow()
 
   // The daily round: shortly after the start, then every twelve hours while the app is open.
   const daily = () => fetch(`${base}/api/daily`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined)
@@ -231,7 +262,11 @@ async function main() {
   setInterval(daily, 12 * 60 * 60 * 1000)
 }
 
-app.on('window-all-closed', () => app.quit())
+// On a Mac the app stays in the Dock when the window closes, so GitHub, the outbox and the daily round
+// keep going; Cmd+Q quits. Elsewhere closing the window quits.
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
+})
 // Wait for the server to close its database before the app goes; force it after five seconds. The
 // quit is held once and then finished with app.exit: on a Mac a second app.quit() after a held quit
 // is cancelled by the system, and the window would stay without its server.
