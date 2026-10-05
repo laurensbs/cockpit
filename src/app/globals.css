@@ -2156,6 +2156,10 @@ a.card.tile:hover {
 .setup-step.done strong {
   color: var(--muted);
 }
+/* A money line that stopped (cancelled, or a no): still there to take back, but out of the way. */
+.money-row.stopped {
+  opacity: 0.6;
+}
 .setup-mark {
   flex: none;
   display: grid;

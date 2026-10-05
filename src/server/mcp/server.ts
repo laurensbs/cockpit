@@ -7,6 +7,7 @@ import * as s from '@/db/schema'
 import { ArticlesWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
 import { CoachWire } from '@/lib/coach'
 import { addDays, dayOf } from '@/lib/dates'
+import { CURRENCIES, MONEY_KINDS, MONEY_PERIODS, MONEY_STATUSES } from '@/lib/finance'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
@@ -14,6 +15,7 @@ import { hideContactDetails } from '@/lib/redact'
 import { SETUP_ITEMS } from '@/lib/setup'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { saveCoach } from '../coach'
+import { saveMoney } from '../finance'
 import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
 import { saveSetupRows } from '../setup-check'
@@ -171,7 +173,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         kind = found.task
         projectId = found.projectId
         options = { ...found.options, ...options }
-      } else if (kind && kind !== 'weekly' && kind !== 'coach' && !(kind === 'ask' && !project)) {
+      } else if (kind && kind !== 'weekly' && kind !== 'coach' && kind !== 'money' && !(kind === 'ask' && !project)) {
         if (!project) return fail('Which project? Pass project (see list_projects).')
         const found = await resolveProject(db, ownerId, project)
         if ('error' in found) return fail(found.error)
@@ -248,6 +250,37 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         await saveSetupRows(db, ownerId, p.id, items.map((i) => ({ key: i.key, source: 'claude', status: i.status, note: i.note ?? '' })))
         return text(`Checklist van ${p.name} bijgewerkt (${items.length} ${items.length === 1 ? 'stap' : 'stappen'}). Hij ziet het op de projectpagina.`)
       }),
+  )
+
+  server.registerTool(
+    'save_money',
+    {
+      title: 'Write down money: costs, income, prices, spending to decide, dates',
+      description:
+        'Everything about money for his businesses, from his own documents (STAND.md, CLAUDE.md, invoices or price pages he mentions): what he pays now (kind cost: a subscription, a domain, hosting), what comes in (income), the prices he asks (price), spending that waits for his yes (plan) and dates to watch (deadline: a renewal, a tax return). Only facts from his documents or an official price page you checked (say which in the note); amount null when unknown, never a guess. project is the exact project name, or leave it out for the business as a whole (his Claude subscription, his accountant). Saving the same title again updates it; a line he changed himself stays his. Paying is always his: never buy or pay anything.',
+      inputSchema: {
+        items: z
+          .array(
+            z.object({
+              project: z.string().trim().max(80).nullable().optional(),
+              kind: z.enum(MONEY_KINDS),
+              title: z.string().trim().min(2).max(120),
+              amount: z.number().min(0).max(1_000_000).nullable().optional(),
+              currency: z.enum(CURRENCIES).optional(),
+              period: z.enum(MONEY_PERIODS),
+              nextDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe('YYYY-MM-DD: the next renewal, due date or decision day'),
+              status: z.enum(MONEY_STATUSES).optional(),
+              note: z.string().trim().max(300).optional().describe('Where it comes from (file and line, or the price page), in Dutch'),
+            }),
+          )
+          .min(1)
+          .max(60),
+      },
+    },
+    async ({ items }) => {
+      const result = await saveMoney(db, ownerId, items)
+      return result.ok ? text(result.text) : fail(result.text)
+    },
   )
 
   server.registerTool(

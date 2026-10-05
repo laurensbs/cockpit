@@ -133,11 +133,16 @@ export async function connectClaudeCode(token: string): Promise<{ ok: boolean; m
  * Runs Claude Code without a window (`claude -p`), on his own account, with only the cockpit's tools
  * allowed. Used by the autopilot; the result comes back through MCP like any other task.
  */
-export async function runHeadless(prompt: string, { web = false }: { web?: boolean } = {}): Promise<{ started: boolean; command: string }> {
-  // Only the cockpit's own tools, plus web search and fetch for a task that reads the web: --tools takes
-  // the built-in ones away (no Read, Edit or Bash, whatever his own settings allow), --allowedTools lets
-  // the rest run without asking. The brief already carries what it needs from his files.
-  const tools = web ? '--tools "WebSearch,WebFetch" --allowedTools mcp__cockpit WebSearch WebFetch' : `--tools "" ${CLAUDE_ARGS}`
+export async function runHeadless(prompt: string, { web = false, read = false }: { web?: boolean; read?: boolean } = {}): Promise<{ started: boolean; command: string }> {
+  // Only the cockpit's own tools, plus web search and fetch for a task that reads the web, or reading his
+  // own files for a task that needs his documents (never both: what a file says never leaves through the
+  // web). --tools takes the other built-in ones away (no Edit or Bash, whatever his own settings allow),
+  // --allowedTools lets the rest run without asking.
+  const tools = web
+    ? '--tools "WebSearch,WebFetch" --allowedTools mcp__cockpit WebSearch WebFetch'
+    : read
+      ? '--tools "Read,Glob,Grep" --allowedTools mcp__cockpit Read Glob Grep'
+      : `--tools "" ${CLAUDE_ARGS}`
   const command = `claude -p "${cleanPrompt(prompt)}" ${tools}`
   const fake = fakeTerminal()
   if (fake) {
@@ -151,7 +156,7 @@ export async function runHeadless(prompt: string, { web = false }: { web?: boole
     let out: number | 'ignore' = 'ignore'
     if (log) {
       mkdirSync(dirname(log), { recursive: true })
-      appendFileSync(log, `\n${RUN_MARKER}${new Date().toISOString()} ${web ? 'web' : 'cockpit'}\n`)
+      appendFileSync(log, `\n${RUN_MARKER}${new Date().toISOString()} ${web ? 'web' : read ? 'read' : 'cockpit'}\n`)
       out = openSync(log, 'a')
     }
     spawn(command, { shell: true, detached: true, stdio: ['ignore', out, out], windowsHide: true, cwd: homedir() }).unref()

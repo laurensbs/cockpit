@@ -362,6 +362,32 @@ export const setupItem = pgTable(
   (t) => [uniqueIndex('setup_item_project_key_source_idx').on(t.projectId, t.key, t.source)],
 )
 
+/**
+ * Money for his businesses: what he pays, what comes in, his prices, spending that waits for his decision
+ * and dates to watch. project_id null is the business as a whole. "key" keeps one line per thing, so
+ * Claude can save it again; a line he changed himself (source "jij") is his and stays.
+ */
+export const moneyItem = pgTable(
+  'money_item',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    kind: text('kind').notNull(),
+    title: text('title').notNull(),
+    amount: doublePrecision('amount'),
+    currency: text('currency').notNull().default('EUR'),
+    period: text('period').notNull(),
+    nextDate: date('next_date'),
+    status: text('status').notNull().default('active'),
+    note: text('note').notNull().default(''),
+    source: text('source').notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('money_item_owner_key_idx').on(t.ownerId, t.key)],
+)
+
 export const setting = pgTable(
   'setting',
   {

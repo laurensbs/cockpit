@@ -4,6 +4,7 @@ import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayOf } from '@/lib/dates'
 import { ACTION_KINDS } from '@/lib/game'
+import { amountText, upcoming, whenText } from '@/lib/finance'
 import { costOf } from '@/lib/costs'
 import { nextSetupStep } from '@/lib/setup'
 import { preferredPlatform, socialsOf } from '@/lib/socials'
@@ -13,6 +14,7 @@ import type { NextStepGroup } from '@/components/NextSteps'
 import { projectPulses } from './game'
 import { EMPTY_GROWTH, growthStates } from './growth-state'
 import { outcomeHref, outcomeStates } from './outcome-state'
+import { loadMoney } from './finance'
 import { loadSetup } from './setup-check'
 import { award } from './xp'
 
@@ -81,6 +83,25 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
     .orderBy(s.contact.lastContactAt)
     .limit(3)
   for (const q of quiet) steps.push({ kind: 'reply', key: `reply-${q.id}`, title: short(`Antwoordde ${q.organization}?`, 44), sub: byId.get(q.projectId)?.name ?? '', projectId: q.projectId, contactId: q.id })
+
+  // A money date within a week (a renewal, a tax return, a decision he set a day for): the nearest one.
+  const due = upcoming(await loadMoney(db, ownerId), today, 7)[0]
+  if (due) {
+    const kind = due.kind as 'cost' | 'deadline' | 'plan'
+    const when = whenText(today, due.nextDate!)
+    steps.push({
+      kind: 'money',
+      key: `money-${due.id}-${due.nextDate}`,
+      title: short(kind === 'cost' ? `${due.title} verlengt ${when}` : kind === 'plan' ? `Beslis: ${due.title}` : `${due.title}: ${when}`, 52),
+      sub: due.project ?? 'Je bedrijf',
+      projectId: due.projectId,
+      itemId: due.id,
+      moneyKind: kind,
+      amount: amountText(due),
+      when,
+      note: due.note,
+    })
+  }
 
   // One thing to arrange from a project's growth checklist (a Business Profile, a domain, live keys…):
   // the most useful open step of the project that needs it most, asked or explained in the lesson.

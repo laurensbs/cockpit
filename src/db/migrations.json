@@ -102,5 +102,13 @@
       "ALTER TABLE \"setup_item\" ADD CONSTRAINT \"setup_item_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
       "CREATE UNIQUE INDEX \"setup_item_project_key_source_idx\" ON \"setup_item\" USING btree (\"project_id\",\"key\",\"source\");"
     ]
+  },
+  {
+    "tag": "0006_money",
+    "statements": [
+      "CREATE TABLE \"money_item\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text,\n\t\"key\" text NOT NULL,\n\t\"kind\" text NOT NULL,\n\t\"title\" text NOT NULL,\n\t\"amount\" double precision,\n\t\"currency\" text DEFAULT 'EUR' NOT NULL,\n\t\"period\" text NOT NULL,\n\t\"next_date\" date,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"note\" text DEFAULT '' NOT NULL,\n\t\"source\" text NOT NULL,\n\t\"updated_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "ALTER TABLE \"money_item\" ADD CONSTRAINT \"money_item_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "CREATE UNIQUE INDEX \"money_item_owner_key_idx\" ON \"money_item\" USING btree (\"owner_id\",\"key\");"
+    ]
   }
 ]

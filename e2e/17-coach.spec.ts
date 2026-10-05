@@ -57,9 +57,9 @@ test('Claude fills in the checklist and gives the best next step; he ticks it of
   })
   expect(posts.text).toContain('1 ingepland in de kalender')
 
-  // Costs: what is still open, added up; he pays, the cockpit only counts.
-  await page.goto('/kosten')
-  await expect(page.getByRole('heading', { name: 'Kosten', level: 1 })).toBeVisible()
-  await expect(page.getByText('Betalen doe jij; Cockpit rekent alleen.')).toBeVisible()
+  // Costs: what is still open, added up on the money page; he pays, the cockpit only counts.
+  await page.goto('/geld')
+  await expect(page.getByRole('heading', { name: 'Geld', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Nog te regelen om te groeien' })).toBeVisible()
   await context.close()
 })

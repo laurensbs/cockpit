@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
+import { dayOf } from '@/lib/dates'
 import { expectedToken } from '@/lib/local'
 import { claudeLoggedIn, connectClaudeCode, launchPrompt, mcpUrl, openTerminal, runHeadless } from '../claude'
 import { isTaskKind, TaskOptions } from '../mcp/tasks'
@@ -109,6 +110,18 @@ export async function retryBackgroundToday(): Promise<{ ok: boolean; message: st
   revalidatePath('/')
   const started = (weekly === 'started' ? 1 : 0) + prospects.started.length + posts.length + planned.length
   return { ok: true, message: started ? `Claude is opnieuw begonnen (${started} ${started === 1 ? 'klus' : 'klussen'}).` : 'Er stond vandaag niets meer klaar om te doen.' }
+}
+
+/** "Zet al het geld erin": Claude reads his documents and writes down every cost, price and money date. */
+export async function askMoney(): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  if ((await claudeLoggedIn()) === false) return { ok: false, message: 'Claude Code is nog niet ingelogd. Typ in Terminal claude en dan /login.' }
+  const ticket = createTicket({ task: 'money', projectId: null, options: {} })
+  const { started } = await runHeadless(launchPrompt(ticket), { read: true })
+  if (started) await setSetting(await getDb(), owner.userId, 'money_round', dayOf(new Date()))
+  return started
+    ? { ok: true, message: 'Claude leest je documenten en zet alles over geld erin. Over een paar minuten staat het hier.' }
+    : { ok: false, message: 'Claude Code kon niet starten.' }
 }
 
 /**

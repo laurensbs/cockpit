@@ -2,7 +2,7 @@ import 'server-only'
 import { and, count, desc, eq, gt, gte, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { dayOf, hourOf, weekdayOf, weekStart } from '@/lib/dates'
+import { dayOf, daysBetween, hourOf, weekdayOf, weekStart } from '@/lib/dates'
 import { preferredPlatform, socialsOf } from '@/lib/socials'
 import { buildNote, recentPulls, recentWork } from '@/lib/today'
 import { launchPrompt, runHeadless } from './claude'
@@ -147,4 +147,22 @@ export async function maybePlanWeek(db: Db, ownerId: string, now = new Date()): 
     else await setSetting(db, ownerId, key, null)
   }
   return started
+}
+
+/**
+ * Money stays current by itself: when nothing about money is known yet, and then once a month, Claude
+ * reads his documents (read-only, no web) and writes down costs, prices and dates. Working days from 7:00.
+ */
+export async function maybeMoneyRound(db: Db, ownerId: string, now = new Date()): Promise<'not-now' | 'done-already' | 'started' | 'failed'> {
+  if (!(await autopilotOn(db, ownerId))) return 'not-now'
+  const today = dayOf(now)
+  if (weekdayOf(today) > 5 || hourOf(now) < 7) return 'not-now'
+  const last = await getSetting(db, ownerId, 'money_round')
+  const [{ n }] = await db.select({ n: count() }).from(s.moneyItem).where(eq(s.moneyItem.ownerId, ownerId))
+  if (last && (n > 0 ? daysBetween(last, today) < 30 : last === today)) return 'done-already'
+  await setSetting(db, ownerId, 'money_round', today)
+  const ticket = createTicket({ task: 'money', projectId: null, options: {} })
+  if ((await runHeadless(launchPrompt(ticket), { read: true })).started) return 'started'
+  await setSetting(db, ownerId, 'money_round', last)
+  return 'failed'
 }

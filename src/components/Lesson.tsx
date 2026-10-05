@@ -11,6 +11,7 @@ import type { LessonCard } from '@/server/lesson'
 import { runInBackground } from '@/server/actions/claude'
 import { setContactStatus } from '@/server/actions/contacts'
 import { gaveValue, markContentDone } from '@/server/actions/content'
+import { moneyStep } from '@/server/actions/money'
 import { saveFollowers } from '@/server/actions/numbers'
 import { setSetupStatus } from '@/server/actions/setup'
 import { acceptProspect, prospectWantsInfo, skipProspect } from '@/server/actions/prospects'
@@ -39,6 +40,7 @@ const KIND_LABEL: Record<LessonCard['kind'], string> = {
   reply: 'Antwoord?',
   give: 'Help iemand',
   setup: 'Regelen',
+  money: 'Geld',
   checkin: 'Je cijfers',
   post: 'Posten',
   build: 'Bouwen in het openbaar',
@@ -302,6 +304,23 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
             </ol>
           </div>
         ) : null}
+      </div>
+    )
+  if (card.kind === 'money')
+    return (
+      <div className="stack-m">
+        <Bubble title={card.moneyKind === 'plan' ? 'Jouw besluit' : 'Let op'}>
+          <p>
+            {card.moneyKind === 'cost'
+              ? `Dit verlengt ${card.when}. Wil je het houden, dan hoef je niets te doen; anders zeg je het nu op.`
+              : card.moneyKind === 'plan'
+                ? `Je wilde hier ${card.when} over beslissen. Ja of nee: dan weet je coach waar hij mee rekent.`
+                : `Dit moet ${card.when} geregeld zijn.`}
+          </p>
+          <p className="small muted">Bedrag: {card.amount}</p>
+        </Bubble>
+        {card.note ? <p className="small muted">{card.note}</p> : null}
+        <p className="tiny muted">Betalen doe je zelf; Cockpit rekent en herinnert alleen.</p>
       </div>
     )
   if (card.kind === 'give')
@@ -646,6 +665,45 @@ function Actions({
         <button type="button" className={second} onClick={() => later()}>
           Later
         </button>
+      </div>
+    )
+
+  if (card.kind === 'money')
+    return (
+      <div className="lesson-actions">
+        <button
+          type="button"
+          className={big}
+          disabled={pending}
+          onClick={() =>
+            run(async () => {
+              const r = await moneyStep(card.itemId, card.moneyKind === 'plan' ? 'yes' : 'done')
+              return { tone: r.ok ? 'good' : 'bad', text: r.message, xp: r.xp }
+            })
+          }
+        >
+          {card.moneyKind === 'cost' ? 'Houden ✓' : card.moneyKind === 'plan' ? 'Ja, doen' : 'Geregeld ✓'}
+        </button>
+        <div className="row">
+          {card.moneyKind !== 'deadline' ? (
+            <button
+              type="button"
+              className={second}
+              disabled={pending}
+              onClick={() =>
+                run(async () => {
+                  const r = await moneyStep(card.itemId, 'stop')
+                  return { tone: r.ok ? 'neutral' : 'bad', text: r.message, xp: 0 }
+                })
+              }
+            >
+              {card.moneyKind === 'cost' ? 'Opzeggen' : 'Nee'}
+            </button>
+          ) : null}
+          <button type="button" className={card.moneyKind === 'deadline' ? second : 'button ghost big'} onClick={() => later()}>
+            Later
+          </button>
+        </div>
       </div>
     )
 
