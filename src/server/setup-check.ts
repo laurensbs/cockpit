@@ -57,7 +57,7 @@ async function appStore(name: string): Promise<string | null> {
 
 function exampleKeys(dir: string): string[] | null {
   for (const name of ['.env.example', '.env.local.example', 'web/.env.example']) {
-    const file = join(dir, name)
+    const file = join(/*turbopackIgnore: true*/ dir, name)
     try {
       if (existsSync(/*turbopackIgnore: true*/ file)) return envExampleKeys(readFileSync(/*turbopackIgnore: true*/ file, 'utf8'))
     } catch {
