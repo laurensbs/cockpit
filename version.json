@@ -1,4 +1,4 @@
 {
-  "version": "0.6.0",
-  "notes": "De contentweek: Claude maakt voor al je projecten posts, carrousels, PDF-carrousels, video-scripts en forumantwoorden, volgens een spelboek per kanaal (LinkedIn waarde, Instagram wat werkt, TikTok pakkend, forums eerst helpen). De Cockpit tekent de beelden zelf in de huisstijl van elk project. Jij keurt de week in één keer goed; desgewenst elke maandag automatisch."
+  "version": "0.6.1",
+  "notes": "Video in de contentweek: zet je eigen clips en foto's onder Je media, en de Cockpit maakt er reels en TikToks van (1080×1920, met een tekstkaart per beat). Een carrousel wordt voor TikTok een slideshow. Voor video's waarin je zelf praat of filmt maakt hij een CapCut-pakket met script, ondertitels, tekstkaarten en je clips. Plus een fix voor het tekenen van beelden."
 }

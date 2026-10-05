@@ -1,15 +1,15 @@
 #!/bin/bash
 # Installeert of werkt Cockpit bij op een Mac met een Apple-chip.
 #
-# Wat dit script doet: het downloadt de twee delen uit deze repo naar een nieuwe tijdelijke map,
+# Wat dit script doet: het downloadt de delen uit deze repo naar een nieuwe tijdelijke map,
 # controleert of ze compleet zijn, pakt de app uit, haalt een oude Cockpit weg en zet de nieuwe in
 # Apps. Je gegevens (~/Library/Application Support/Cockpit) blijven staan.
 set -euo pipefail
 
-VERSION="0.6.0"
-SHA256="a99dabfd8348ee360373176597e4bb94e95cd54e683df2936883edcdb7f6995f"
+VERSION="0.6.1"
+SHA256="93754832876dee2981692a196b8a7fb791b48b63c4392b681452bfe8db0ee84d"
 BASE="https://raw.githubusercontent.com/laurensbs/cockpit/downloads"
-PARTS=("Cockpit-mac-arm64.tar.gz.1" "Cockpit-mac-arm64.tar.gz.2")
+PARTS=("Cockpit-mac-arm64.tar.gz.1" "Cockpit-mac-arm64.tar.gz.2" "Cockpit-mac-arm64.tar.gz.3")
 
 if [ "$(uname -m)" != "arm64" ]; then
   echo "Deze Mac heeft een Intel-chip. Deze Cockpit is voor Macs met een Apple-chip (M1 en nieuwer)."
@@ -18,7 +18,7 @@ fi
 
 work="$(mktemp -d /tmp/cockpit.XXXXXX)"
 cd "$work"
-echo "Cockpit $VERSION downloaden (ongeveer 150 MB)..."
+echo "Cockpit $VERSION downloaden (ongeveer 175 MB)..."
 for part in "${PARTS[@]}"; do
   curl -fL --progress-bar -o "$part" "$BASE/$part"
 done
