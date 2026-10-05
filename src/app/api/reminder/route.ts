@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Asked by the app every minute: is it time for today's nudge? At most once a day, only on a working day
- * from his chosen time, and only while his day goal is still open. Saying yes marks today as done.
+ * from his chosen time, and only while his day goal is still open and there is a step to take. Saying yes
+ * marks today as done.
  */
 export async function POST(request: Request) {
   const owner = bearerOwner(request) ?? (await getOwner())
@@ -21,6 +22,8 @@ export async function POST(request: Request) {
   const progress = await dayProgress(db, owner.userId)
   if (!reminderDue({ now, time: reminderTime(time), lastDay, reached: progress.done >= progress.goal })) return NextResponse.json({ show: false })
   const steps = await daySteps(db, owner.userId, 3)
+  // Nothing to do yet (Claude may still be working on today): ask again in a minute, the day stays open.
+  if (!steps.length) return NextResponse.json({ show: false })
   await setSetting(db, owner.userId, 'reminder_day', dayOf(now))
-  return NextResponse.json({ show: true, ...reminderText(Math.max(1, Math.min(steps.length || progress.goal, progress.goal - progress.done)), steps[0]?.title ?? null), sound: sound === '1' })
+  return NextResponse.json({ show: true, ...reminderText(Math.max(1, Math.min(steps.length, progress.goal - progress.done)), steps[0].title), sound: sound === '1' })
 }

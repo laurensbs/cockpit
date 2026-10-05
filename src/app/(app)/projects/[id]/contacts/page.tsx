@@ -134,7 +134,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
                     Bel {c.phone}
                   </a>
                 ) : null}
-                {c.basis === 'business' && !isStopped(c.status) ? <WantsInfo contactId={c.id} hasEmail={Boolean(c.email)} /> : null}
+                {c.basis === 'business' && !isStopped(c.status) ? <WantsInfo contactId={c.id} hasEmail={Boolean(c.email)} draftId={mine.filter((d) => d.status === 'draft').sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.id ?? null} /> : null}
                 {ANSWERED_STATUSES.includes(c.status) ? <DealFields contactId={c.id} value={c.dealValue} period={c.dealPeriod} nextStep={c.nextStep} nextStepOn={c.nextStepOn} today={today} /> : null}
                 <ClaudeButton task="contact_mail" projectId={id} label={mine.length ? 'Schrijf een nieuwe mail' : 'Schrijf een persoonlijke mail'} disabledReason={blocked} options={{ contactId: c.id, language }} variant="secondary" />
                 {mine.map((d) => {

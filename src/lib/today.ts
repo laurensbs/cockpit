@@ -11,7 +11,7 @@ interface Base {
 }
 
 export type DayStep =
-  | (Base & { kind: 'call'; questId: string; phone: string | null; contactId: string | null; hasEmail: boolean })
+  | (Base & { kind: 'call'; questId: string; phone: string | null; contactId: string | null; hasEmail: boolean; draft: { id: string; subject: string; body: string; followups: number } | null })
   | (Base & { kind: 'prospects'; count: number })
   | (Base & { kind: 'reply'; contactId: string })
   | (Base & { kind: 'give'; itemId: string; url: string; how: string })

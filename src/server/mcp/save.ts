@@ -8,6 +8,7 @@ import { normalizeModel } from '@/lib/growth-model'
 import { normalizePoints } from '@/lib/metrics'
 import type { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
 import { prospectKey } from '@/lib/prospect'
+import { hideContactDetails } from '@/lib/redact'
 import { normalizeUrl } from '@/lib/urls'
 import {
   type ArticlesWire,
@@ -269,7 +270,8 @@ export interface IntakeInput {
   languages?: (typeof LANGUAGES)[number][]
   markets?: (typeof MARKETS)[number][]
   stage?: (typeof STAGES)[number]
-  prospectPerDay?: number
+  /** Claude may only switch prospectie off; he switches it on himself. */
+  prospectPerDay?: 0
 }
 
 /**
@@ -298,11 +300,6 @@ export async function saveIntake(db: Db, ownerId: string, project: { id: string;
       prospectPerDay: input.prospectPerDay,
     }).filter(([, v]) => v !== undefined),
   )
-  if (input.prospectPerDay) {
-    const [current] = await db.select({ what: s.project.what, redLines: s.project.redLines }).from(s.project).where(eq(s.project.id, project.id))
-    const text = `${(changes.what as string | undefined) ?? current?.what ?? ''} ${(changes.redLines as string | undefined) ?? current?.redLines ?? ''}`
-    if (/marketing staat uit/i.test(text)) return { ok: false, text: `Niets opgeslagen: voor ${project.name} staat marketing uit, dus geen prospectie.` }
-  }
   // A new name (a rebrand in his own documents): the project, and its company when that carried the old name.
   const name = input.name?.replace(/\s+/g, ' ').trim()
   if (name && name !== project.name) {
@@ -330,7 +327,7 @@ export async function saveIntake(db: Db, ownerId: string, project: { id: string;
 
 /**
  * A better opening, a sharper fit, or a day before which a business should not come up (for example
- * "after the demo with Noah"). Only for a business still waiting for his yes or no.
+ * "after Tuesday's demo"). Only for a business still waiting for his yes or no.
  */
 export async function updateProspect(
   db: Db,
@@ -396,7 +393,6 @@ export async function saveProspects(db: Db, ownerId: string, project: { id: stri
     const note = [p.what?.trim(), p.howRequestsArrive?.trim() ? `Aanvragen nu: ${p.howRequestsArrive.trim()}` : '', p.why?.trim() ? `Waarom: ${p.why.trim()}` : '']
       .filter(Boolean)
       .join(' · ')
-      .slice(0, 1000)
     await db.insert(s.contact).values({
       id,
       ownerId,
@@ -404,10 +400,10 @@ export async function saveProspects(db: Db, ownerId: string, project: { id: stri
       organization: p.organization.trim().slice(0, 120),
       website,
       city: (p.city ?? '').trim().slice(0, 80),
-      note,
-      observation: p.observation.trim().slice(0, 400),
+      note: hideContactDetails(note).slice(0, 1000),
+      observation: hideContactDetails(p.observation.trim()).slice(0, 400),
       fit: p.fit && p.fit >= 1 && p.fit <= 5 ? Math.round(p.fit) : null,
-      pitch: (p.pitch ?? '').trim().slice(0, 600),
+      pitch: hideContactDetails((p.pitch ?? '').trim()).slice(0, 600),
       channel: (p.channel ?? 'call').trim().slice(0, 20),
       basis: 'business',
       source: 'prospect',

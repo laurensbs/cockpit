@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildNote, type DayStep, pickGivePlace, pickSteps, recentWork } from './today'
 
-const call = (n: number): DayStep => ({ kind: 'call', key: `call-${n}`, title: `Bel ${n}`, sub: '', projectId: 'p', questId: `q${n}`, phone: null, contactId: null, hasEmail: false })
+const call = (n: number): DayStep => ({ kind: 'call', key: `call-${n}`, title: `Bel ${n}`, sub: '', projectId: 'p', questId: `q${n}`, phone: null, contactId: null, hasEmail: false, draft: null })
 const growth: DayStep = { kind: 'growth', key: 'growth', title: 'Maak het groeimodel', sub: '', projectId: 'p', href: '/', task: 'model' }
 const prospects: DayStep = { kind: 'prospects', key: 'prospects-p', title: '5 nieuwe bedrijven', sub: '', projectId: 'p', count: 5 }
 const build: DayStep = { kind: 'build', key: 'build-p', title: 'Deel je bouwwerk', sub: '', projectId: 'p', platform: 'linkedin', note: '' }

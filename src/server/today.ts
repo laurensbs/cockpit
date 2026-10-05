@@ -35,10 +35,31 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
     .orderBy(s.quest.dueOn)
   const callContacts = calls.map((c) => c.sourceKey?.replace(/^prospect:/, '')).filter((id): id is string => Boolean(id))
   const contactRows = callContacts.length ? await db.select({ id: s.contact.id, phone: s.contact.phone, city: s.contact.city, email: s.contact.email }).from(s.contact).where(inArray(s.contact.id, callContacts)) : []
+  // The info mail for each call, so he reads exactly what goes out when they ask for it.
+  const callDrafts = callContacts.length
+    ? await db
+        .select({ id: s.contentItem.id, contactId: s.contentItem.contactId, body: s.contentItem.body, createdAt: s.contentItem.createdAt })
+        .from(s.contentItem)
+        .where(and(inArray(s.contentItem.contactId, callContacts), eq(s.contentItem.kind, 'email'), eq(s.contentItem.status, 'draft')))
+        .orderBy(desc(s.contentItem.createdAt))
+    : []
   for (const c of calls) {
     const contactId = c.sourceKey?.replace(/^prospect:/, '') ?? null
     const contact = contactRows.find((r) => r.id === contactId)
-    steps.push({ kind: 'call', key: `call-${c.id}`, title: short(c.title, 40), sub: [contact?.phone, contact?.city].filter(Boolean).join(' · '), projectId: c.projectId, questId: c.id, phone: contact?.phone ?? null, contactId, hasEmail: Boolean(contact?.email) })
+    const mail = callDrafts.find((d) => d.contactId === contactId)
+    const body = mail?.body as { subject?: string; body?: string; followups?: unknown[] } | undefined
+    steps.push({
+      kind: 'call',
+      key: `call-${c.id}`,
+      title: short(c.title, 40),
+      sub: [contact?.phone, contact?.city].filter(Boolean).join(' · '),
+      projectId: c.projectId,
+      questId: c.id,
+      phone: contact?.phone ?? null,
+      contactId,
+      hasEmail: Boolean(contact?.email),
+      draft: mail ? { id: mail.id, subject: body?.subject ?? '', body: body?.body ?? '', followups: body?.followups?.length ?? 0 } : null,
+    })
   }
 
   // Businesses Claude found, waiting for yes or no.
@@ -145,7 +166,15 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
 
   // What he built in the last two days (his GitHub sessions): one post about it, if none was made since.
   const repos = await db.select({ projectId: s.repo.projectId, recentCommits: s.repo.recentCommits, recentPulls: s.repo.recentPulls }).from(s.repo).where(and(eq(s.repo.ownerId, ownerId), eq(s.repo.includeInAi, true)))
-  const madeSince = new Set(posts.filter((p) => p.createdAt >= new Date(`${addDays(today, -2)}T00:00:00Z`)).map((p) => p.projectId))
+  // Any post made in the last two days counts, also one he already posted or turned down.
+  const madeSince = new Set(
+    (
+      await db
+        .selectDistinct({ projectId: s.contentItem.projectId })
+        .from(s.contentItem)
+        .where(and(eq(s.contentItem.ownerId, ownerId), eq(s.contentItem.kind, 'social'), gte(s.contentItem.createdAt, new Date(`${addDays(today, -2)}T00:00:00Z`))))
+    ).map((p) => p.projectId),
+  )
   const work = new Map<string, string[]>()
   for (const r of repos) if (r.projectId) work.set(r.projectId, [...(work.get(r.projectId) ?? []), ...recentPulls(r.recentPulls, today), ...recentWork(r.recentCommits, today)])
   const built = [...work.entries()].filter(([id, msgs]) => msgs.length && !madeSince.has(id) && byId.get(id) && !marketingOff(byId.get(id)!)).sort((a, b) => b[1].length - a[1].length)

@@ -273,7 +273,7 @@ export function ProspectList({ items }: { items: ProspectView[] }) {
 }
 
 /** After the call: they asked for information, so now the prepared mail may go. */
-export function WantsInfo({ contactId, hasEmail }: { contactId: string; hasEmail: boolean }) {
+export function WantsInfo({ contactId, hasEmail, draftId }: { contactId: string; hasEmail: boolean; draftId: string | null }) {
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [pending, start] = useTransition()
@@ -296,7 +296,7 @@ export function WantsInfo({ contactId, hasEmail }: { contactId: string; hasEmail
       onSubmit={(e) => {
         e.preventDefault()
         start(async () => {
-          const r = await prospectWantsInfo(contactId, email)
+          const r = await prospectWantsInfo(contactId, email, draftId)
           setResult({ ok: r.ok, text: r.message })
         })
       }}

@@ -96,28 +96,30 @@ export async function skipProspect(contactId: string, reason: string): Promise<{
 
 /**
  * They asked for information on the phone: now mailing them is allowed (they asked), so the mail Claude
- * prepared goes in the queue. An address they gave on the phone replaces the one from their site.
+ * prepared goes in the queue. Only the version he saw (draftId): if Claude wrote a newer one since, nothing
+ * goes until he has looked again. An address they gave on the phone replaces the one from their site.
  */
-export async function prospectWantsInfo(contactId: string, email: string): Promise<{ ok: boolean; message: string }> {
+export async function prospectWantsInfo(contactId: string, email: string, draftId: string | null): Promise<{ ok: boolean; message: string }> {
   const owner = await actionOwner()
   const db = await getDb()
   const contact = await ownContact(db, owner.userId, contactId)
   if (!contact) return { ok: false, message: 'Dit contact bestaat niet meer.' }
   const address = email.trim() || contact.email || ''
   if (!EMAIL.test(address)) return { ok: false, message: 'Vul het e-mailadres in dat ze je gaven.' }
-  await db
-    .update(s.contact)
-    .set({ email: address, basis: 'consent', status: contact.status === 'new' || contact.status === 'prospect' ? 'drafted' : contact.status, lastContactAt: new Date() })
-    .where(eq(s.contact.id, contact.id))
-  const [draft] = await db
+  const [newest] = await db
     .select({ id: s.contentItem.id })
     .from(s.contentItem)
     .where(and(eq(s.contentItem.contactId, contact.id), eq(s.contentItem.kind, 'email'), eq(s.contentItem.status, 'draft')))
     .orderBy(desc(s.contentItem.createdAt))
     .limit(1)
+  if (newest && newest.id !== draftId) return { ok: false, message: 'Er staat intussen een andere mail klaar. Lees hem eerst, dan stuur je hem.' }
+  await db
+    .update(s.contact)
+    .set({ email: address, basis: 'consent', status: contact.status === 'new' || contact.status === 'prospect' ? 'drafted' : contact.status, lastContactAt: new Date() })
+    .where(eq(s.contact.id, contact.id))
   refresh(contact.projectId)
-  if (!draft) return { ok: true, message: 'Bewaard. Er is nog geen mail klaar: laat Claude er een schrijven.' }
-  return scheduleDraft(db, owner.userId, draft.id, contact.id)
+  if (!newest) return { ok: true, message: 'Bewaard. Er is nog geen mail klaar: laat Claude er een schrijven.' }
+  return scheduleDraft(db, owner.userId, newest.id, contact.id)
 }
 
 /** How many businesses Claude looks for each working day for this project (0 = off). */

@@ -168,6 +168,9 @@ let win: BrowserWindow | null = null
 /** Where the window points, kept so the Dock icon can open it again after he closed it. */
 let opened: { base: string; token: string } | null = null
 
+/** A window being made, so a second click (Dock, notification) waits for it instead of making another. */
+let opening: Promise<BrowserWindow> | null = null
+
 /** Open the window (again): on a Mac, closing it leaves Cockpit running in the Dock, reading on. */
 async function showWindow(path?: string) {
   if (win) {
@@ -176,13 +179,26 @@ async function showWindow(path?: string) {
     win.focus()
   } else {
     if (!opened) return
-    win = await openWindow(opened.base, opened.token)
-    win.on('closed', () => {
-      win = null
-    })
+    if (!opening) {
+      opening = openWindow(opened.base, opened.token)
+        .then((made) => {
+          win = made
+          made.on('closed', () => {
+            win = null
+          })
+          return made
+        })
+        .finally(() => {
+          opening = null
+        })
+    }
+    await opening
   }
-  if (path && opened) await win.loadURL(`${opened.base}${path}`)
+  if (path && opened && win) await win.loadURL(`${opened.base}${path}`)
 }
+
+/** Shown notifications, held on to: one that is garbage collected forgets its click. */
+const notes = new Set<Notification>()
 
 /**
  * The daily nudge: the server says when (a working day, his time, day goal still open, once a day); the
@@ -195,7 +211,12 @@ async function remind(base: string, token: string) {
     const data = (await res.json()) as { show: boolean; title?: string; body?: string; sound?: boolean }
     if (!data.show || !Notification.isSupported()) return
     const note = new Notification({ title: data.title ?? 'Cockpit', body: data.body ?? '', silent: !data.sound })
-    note.on('click', () => void showWindow('/dag'))
+    notes.add(note)
+    note.on('click', () => {
+      notes.delete(note)
+      void showWindow('/dag')
+    })
+    note.on('close', () => notes.delete(note))
     note.show()
     appLog('reminder shown')
   } catch {

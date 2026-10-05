@@ -1,6 +1,7 @@
 import 'server-only'
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
+import { isPrivateAddress } from '@/lib/addresses'
 import { contactLinks, extractEmails, extractPhones, hostOf, pickBusinessEmail } from '@/lib/prospect'
 import { normalizeUrl } from '@/lib/urls'
 import { fixturesAllowed } from './status'
@@ -18,14 +19,6 @@ export interface SiteDetails {
   phone: string | null
 }
 
-const PRIVATE_V4 = [/^0\./, /^10\./, /^127\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./, /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./]
-
-function isPrivate(address: string): boolean {
-  if (isIP(address) === 4) return PRIVATE_V4.some((r) => r.test(address))
-  const a = address.toLowerCase()
-  return a === '::1' || a === '::' || a.startsWith('fc') || a.startsWith('fd') || a.startsWith('fe80') || a.startsWith('::ffff:127.') || a.startsWith('::ffff:10.') || a.startsWith('::ffff:192.168.')
-}
-
 /** Whether the cockpit may fetch this address: a public web address on a public host. */
 export async function isPublicUrl(raw: string): Promise<boolean> {
   let url: URL
@@ -38,21 +31,33 @@ export async function isPublicUrl(raw: string): Promise<boolean> {
   if (url.username || url.password) return false
   const host = url.hostname.replace(/^\[|\]$/g, '')
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return false
-  if (isIP(host)) return !isPrivate(host)
+  if (isIP(host)) return !isPrivateAddress(host)
   try {
     const addresses = await lookup(host, { all: true })
-    return addresses.length > 0 && addresses.every((a) => !isPrivate(a.address))
+    return addresses.length > 0 && addresses.every((a) => !isPrivateAddress(a.address))
   } catch {
     return false
   }
 }
 
+const MAX_REDIRECTS = 5
+
 export async function getPage(url: string): Promise<string | null> {
-  if (!(await isPublicUrl(url))) return null
   try {
-    const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' } })
-    if (!res.ok || !(res.headers.get('content-type') ?? '').includes('html')) return null
-    if (res.url && res.url !== url && !(await isPublicUrl(res.url))) return null
+    const signal = AbortSignal.timeout(TIMEOUT_MS)
+    // Follows redirects by hand, so every hop is checked before the cockpit goes there.
+    let res: Response | null = null
+    let next = url
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      if (!(await isPublicUrl(next))) return null
+      res = await fetch(next, { redirect: 'manual', signal, headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' } })
+      const location = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null
+      if (!location) break
+      await res.body?.cancel()
+      next = new URL(location, next).toString()
+      res = null
+    }
+    if (!res || !res.ok || !(res.headers.get('content-type') ?? '').includes('html')) return null
     const reader = res.body?.getReader()
     if (!reader) return null
     const chunks: Uint8Array[] = []

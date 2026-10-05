@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clip, REDACTED, redactSecrets } from './redact'
+import { clip, hideContactDetails, REDACTED, redactSecrets } from './redact'
 
 describe('redactSecrets', () => {
   it('blanks keys and tokens that end up in a README', () => {
@@ -37,5 +37,12 @@ describe('clip', () => {
     expect(clip('kort', 10)).toBe('kort')
     const long = `${'a'.repeat(90)}\n${'b'.repeat(50)}`
     expect(clip(long, 100)).toBe(`${'a'.repeat(90)}\n…`)
+  })
+})
+
+describe('hideContactDetails', () => {
+  it('hides addresses and phone numbers, and leaves years, prices and short numbers', () => {
+    const text = 'Mail info@bakkerij.es of bel +34 972 12 34 56 (ook 06-12345678). Sinds 2019, €450 + €99, 12 testers.'
+    expect(hideContactDetails(text)).toBe('Mail [e-mail] of bel [telefoon] (ook [telefoon]). Sinds 2019, €450 + €99, 12 testers.')
   })
 })

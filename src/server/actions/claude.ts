@@ -90,13 +90,13 @@ export async function runInBackground(task: string, projectId: string, options: 
 
 /**
  * After he logged in again: forget that today's background work was started (it failed), and start it
- * again (the weekly focus on Monday, the posts, the search for businesses).
+ * again (the weekly focus on Monday, the posts, the week plan, the search for businesses).
  */
 export async function retryBackgroundToday(): Promise<{ ok: boolean; message: string }> {
   const owner = await actionOwner()
   if ((await claudeLoggedIn()) === false) return { ok: false, message: 'Claude Code is nog niet ingelogd. Typ in Terminal claude en dan /login.' }
   const db = await getDb()
-  const { maybeAutopilot, maybeBuildPosts, maybeProspect } = await import('../autopilot')
+  const { maybeAutopilot, maybeBuildPosts, maybePlanWeek, maybeProspect } = await import('../autopilot')
   const projects = await db.select({ id: s.project.id }).from(s.project).where(eq(s.project.ownerId, owner.userId))
   for (const p of projects) {
     await setSetting(db, owner.userId, `build_post_${p.id}`, null)
@@ -104,8 +104,10 @@ export async function retryBackgroundToday(): Promise<{ ok: boolean; message: st
   }
   await setSetting(db, owner.userId, 'autopilot_week', null)
   const [weekly, prospects, posts] = await Promise.all([maybeAutopilot(db, owner.userId), maybeProspect(db, owner.userId), maybeBuildPosts(db, owner.userId)])
+  // After the single posts, so the week plan skips a project whose post just started.
+  const planned = await maybePlanWeek(db, owner.userId)
   revalidatePath('/')
-  const started = (weekly === 'started' ? 1 : 0) + prospects.started.length + posts.length
+  const started = (weekly === 'started' ? 1 : 0) + prospects.started.length + posts.length + planned.length
   return { ok: true, message: started ? `Claude is opnieuw begonnen (${started} ${started === 1 ? 'klus' : 'klussen'}).` : 'Er stond vandaag niets meer klaar om te doen.' }
 }
 

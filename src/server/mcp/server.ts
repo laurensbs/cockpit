@@ -10,6 +10,7 @@ import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
+import { hideContactDetails } from '@/lib/redact'
 import { SETUP_ITEMS } from '@/lib/setup'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { saveCoach } from '../coach'
@@ -203,7 +204,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         languages: z.array(z.enum(LANGUAGES)).max(LANGUAGES.length).optional(),
         markets: z.array(z.enum(MARKETS)).max(MARKETS.length).optional(),
         stage: z.enum(STAGES).optional(),
-        prospectPerDay: z.number().int().min(0).max(10).optional().describe('Prospectie: how many businesses you look for each working day (0 = off); never for a project with marketing off'),
+        prospectPerDay: z.literal(0).optional().describe('Only 0: switch prospectie off (for a project with marketing off, or when he says so). Switching it on is his choice, under Bewerken'),
       },
     },
     async ({ project, ...intake }) =>
@@ -254,7 +255,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     {
       title: 'Sharpen a proposal, or let it wait until a day',
       description:
-        'For a business still waiting for his yes or no (status "prospect", see list_contacts): a better opening for the phone (pitch, in their language), a corrected fit (1–5), and/or a day before which it must not come up in his day (notBefore, YYYY-MM-DD, with nextStep saying why, e.g. "Na de demo met Noah"). notBefore null shows it again right away. Only what you send changes.',
+        'For a business still waiting for his yes or no (status "prospect", see list_contacts): a better opening for the phone (pitch, in their language), a corrected fit (1–5), and/or a day before which it must not come up in his day (notBefore, YYYY-MM-DD, with nextStep saying why, e.g. "Na de demo van dinsdag"). notBefore null shows it again right away. Only what you send changes.',
       inputSchema: {
         project: PROJECT_ARG,
         contactId: z.string().trim().min(1).max(64),
@@ -498,7 +499,8 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
           .from(s.contact)
           .where(eq(s.contact.projectId, p.id))
           .orderBy(desc(s.contact.createdAt))
-        return text(rows.length ? JSON.stringify(rows, null, 2) : `No contacts for ${p.name} yet. He adds them under Contacten, or from the opportunities you find.`)
+        const safe = rows.map((r) => ({ ...r, note: hideContactDetails(r.note), pitch: hideContactDetails(r.pitch) }))
+        return text(safe.length ? JSON.stringify(safe, null, 2) : `No contacts for ${p.name} yet. He adds them under Contacten, or from the opportunities you find.`)
       }),
   )
 

@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, desc, eq, gt, gte, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { dayOf, hourOf, weekdayOf, weekStart } from '@/lib/dates'
@@ -57,7 +57,7 @@ export async function maybeProspect(db: Db, ownerId: string, now = new Date()): 
     const [open] = await db
       .select({ n: count() })
       .from(s.contact)
-      .where(and(eq(s.contact.projectId, p.id), eq(s.contact.status, 'prospect')))
+      .where(and(eq(s.contact.projectId, p.id), eq(s.contact.status, 'prospect'), or(isNull(s.contact.nextStepOn), lte(s.contact.nextStepOn, today))))
     if ((open?.n ?? 0) >= p.perDay * 2) {
       result.waiting.push(p.name)
       continue
@@ -131,6 +131,8 @@ export async function maybePlanWeek(db: Db, ownerId: string, now = new Date()): 
     if (!Object.keys(socials).length) continue
     const key = `plan_week_${p.id}`
     if ((await getSetting(db, ownerId, key)) === week) continue
+    // Not on a day the single post for this project was started: one Claude run per project a day.
+    if ((await getSetting(db, ownerId, `build_post_${p.id}`)) === today) continue
     const [{ n }] = await db
       .select({ n: count() })
       .from(s.contentItem)
@@ -138,11 +140,11 @@ export async function maybePlanWeek(db: Db, ownerId: string, now = new Date()): 
     if (n >= 2) continue
     const platform = socials.instagram ? 'instagram' : preferredPlatform(socials)
     const note = `Plan de week: drie posts voor ${p.name}, elk op een andere dag in de komende zeven dagen. Mix: één die helpt of leert, één achter de schermen (wat er gebouwd is), één met een vraag aan de doelgroep. Echt, geen reclame.`.slice(0, 300)
+    // Claim the week first, so a second round that starts at the same time skips this project.
+    await setSetting(db, ownerId, key, week)
     const ticket = createTicket({ task: 'posts', projectId: p.id, options: { platform, note } })
-    if ((await runHeadless(launchPrompt(ticket))).started) {
-      await setSetting(db, ownerId, key, week)
-      started.push(p.name)
-    }
+    if ((await runHeadless(launchPrompt(ticket))).started) started.push(p.name)
+    else await setSetting(db, ownerId, key, null)
   }
   return started
 }

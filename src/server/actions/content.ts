@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb, type Db } from '@/db'
@@ -98,7 +98,8 @@ export async function planContent(id: string, day: string | null): Promise<void>
   const [row] = await db
     .update(s.contentItem)
     .set({ plannedFor: day, status: day ? 'planned' : 'draft' })
-    .where(and(eq(s.contentItem.id, String(id)), eq(s.contentItem.ownerId, owner.userId), eq(s.contentItem.status, day ? 'draft' : 'planned')))
+    // A planned post can move to another day; taking the day off makes it a draft again.
+    .where(and(eq(s.contentItem.id, String(id)), eq(s.contentItem.ownerId, owner.userId), day ? inArray(s.contentItem.status, ['draft', 'planned']) : eq(s.contentItem.status, 'planned')))
     .returning({ projectId: s.contentItem.projectId })
   if (row) refresh(row.projectId)
 }

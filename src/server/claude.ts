@@ -134,8 +134,10 @@ export async function connectClaudeCode(token: string): Promise<{ ok: boolean; m
  * allowed. Used by the autopilot; the result comes back through MCP like any other task.
  */
 export async function runHeadless(prompt: string, { web = false }: { web?: boolean } = {}): Promise<{ started: boolean; command: string }> {
-  // Prospectie needs to search and read websites; it still gets no tool to send, post or write files.
-  const tools = web ? '--allowedTools mcp__cockpit WebSearch WebFetch' : CLAUDE_ARGS
+  // Only the cockpit's own tools, plus web search and fetch for a task that reads the web: --tools takes
+  // the built-in ones away (no Read, Edit or Bash, whatever his own settings allow), --allowedTools lets
+  // the rest run without asking. The brief already carries what it needs from his files.
+  const tools = web ? '--tools "WebSearch,WebFetch" --allowedTools mcp__cockpit WebSearch WebFetch' : `--tools "" ${CLAUDE_ARGS}`
   const command = `claude -p "${cleanPrompt(prompt)}" ${tools}`
   const fake = fakeTerminal()
   if (fake) {

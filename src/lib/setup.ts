@@ -240,6 +240,9 @@ export function setupProjectFrom(project: { what: string; oneLiner: string; site
   }
 }
 
+/** Accounts he makes once for all his apps: done for one project means done for all. */
+export const ACCOUNT_KEYS: readonly string[] = ['apple-dev', 'google-play']
+
 export interface SetupRow {
   key: string
   source: SetupSource
@@ -265,8 +268,9 @@ export function setupView(project: SetupProject, rows: readonly SetupRow[]): Set
   for (const item of SETUP_ITEMS) {
     const own = rows.filter((r) => r.key === item.key).sort((a, b) => RANK[b.source] - RANK[a.source])
     const best = own.find((r) => r.status !== 'unknown') ?? own[0]
-    // A step that does not apply by its rule still shows when someone said something about it.
-    if (!item.applies(project) && !own.some((r) => r.status === 'done' || r.status === 'todo')) continue
+    // A step that does not apply by its rule still shows when it is done, or when he or Claude says it is
+    // needed. A "todo" from the cockpit's own check is no reason: it checks every project the same way.
+    if (!item.applies(project) && !own.some((r) => r.status === 'done' || (r.status === 'todo' && r.source !== 'auto'))) continue
     out.push({ item, status: best?.status ?? 'unknown', source: best?.source ?? null, note: best?.note ?? '' })
   }
   return out.filter((v) => v.status !== 'na')

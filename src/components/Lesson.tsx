@@ -218,9 +218,21 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
 function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
   if (card.kind === 'call')
     return phase === 'ask-info' ? (
-      <Bubble title="Claude">
-        <p>Vroegen ze om informatie? Dan stuurt de cockpit de mail die ik klaarzette. Dat mag, want ze vroegen erom.</p>
-      </Bubble>
+      <div className="stack-m">
+        <Bubble title="Claude">
+          <p>Vroegen ze om informatie? Dan stuurt de cockpit deze mail. Dat mag, want ze vroegen erom. Lees hem even na.</p>
+        </Bubble>
+        {card.draft ? (
+          <div className="card sunken stack-xs">
+            <p className="eyebrow">Deze mail gaat dan weg</p>
+            <strong className="small">{card.draft.subject}</strong>
+            <p className="small prewrap">{card.draft.body}</p>
+            {card.draft.followups ? <span className="tiny muted">Met {card.draft.followups} korte opvolgmail{card.draft.followups === 1 ? '' : 's'} als ze niet antwoorden.</span> : null}
+          </div>
+        ) : (
+          <p className="small muted">Er staat nog geen mail klaar; Claude schrijft er een als je ja zegt.</p>
+        )}
+      </div>
     ) : (
       <div className="stack-m">
         {card.phone ? (
@@ -392,7 +404,7 @@ function Actions({
             disabled={pending || !card.contactId}
             onClick={() =>
               run(async () => {
-                const r = await prospectWantsInfo(card.contactId!, email)
+                const r = await prospectWantsInfo(card.contactId!, email, card.draft?.id ?? null)
                 return { tone: r.ok ? 'good' : 'bad', text: r.ok ? 'De infomail staat klaar.' : r.message, xp: 0 }
               })
             }
@@ -637,6 +649,19 @@ function Actions({
       </div>
     )
 
+  // A growth step without a task for Claude is something he does himself on another page.
+  if (card.kind === 'growth' && !card.task)
+    return (
+      <div className="lesson-actions">
+        <Link href={card.href} className={big}>
+          Ga ernaartoe
+        </Link>
+        <button type="button" className={second} onClick={() => later()}>
+          Later
+        </button>
+      </div>
+    )
+
   // build and growth: Claude does the work in the background.
   return (
     <div className="lesson-actions">
@@ -649,7 +674,7 @@ function Actions({
             const r =
               card.kind === 'build'
                 ? await runInBackground('posts', card.projectId!, { platform: card.platform, note: card.note })
-                : await runInBackground(card.task ?? 'ask', card.projectId!, card.options ?? {})
+                : await runInBackground(card.task!, card.projectId!, card.options ?? {})
             return { tone: r.ok ? 'good' : 'bad', text: r.ok ? 'Claude is ermee bezig.' : r.message, xp: 0 }
           })
         }

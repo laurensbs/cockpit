@@ -31,3 +31,12 @@ export function clip(text: string, max: number): string {
   const cut = text.lastIndexOf('\n', max)
   return `${text.slice(0, cut > max * 0.8 ? cut : max).trimEnd()}\n…`
 }
+
+// Addresses and phone numbers of a business stay in the cockpit (it reads them from the site itself);
+// in text that Claude writes or reads they become a placeholder.
+const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
+const PHONE = /\+?\(?\d[\d\s().-]{7,}\d/g
+
+export function hideContactDetails(text: string): string {
+  return text.replace(EMAIL, '[e-mail]').replace(PHONE, (m) => (m.replace(/\D/g, '').length >= 9 ? '[telefoon]' : m))
+}

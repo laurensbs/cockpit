@@ -29,6 +29,13 @@ describe('setupView', () => {
     expect(view.some((v) => v.item.key === 'gbp')).toBe(true)
   })
 
+  it('shows a step that does not apply only when it is done, or he or Claude says it is needed', () => {
+    const game = { web: false, app: true, paid: true, local: false }
+    expect(setupView(game, [{ key: 'gbp', source: 'auto', status: 'todo', note: '' }]).some((v) => v.item.key === 'gbp')).toBe(false)
+    expect(setupView(game, [{ key: 'gbp', source: 'claude', status: 'todo', note: '' }]).some((v) => v.item.key === 'gbp')).toBe(true)
+    expect(setupView(game, [{ key: 'domain', source: 'auto', status: 'done', note: '' }]).some((v) => v.item.key === 'domain')).toBe(true)
+  })
+
   it('leaves out what he marked as not needed, and counts the rest', () => {
     const view = setupView(app, rows)
     expect(view.some((v) => v.item.key === 'trustpilot')).toBe(false)

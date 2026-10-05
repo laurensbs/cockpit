@@ -3,11 +3,11 @@ import { execFile } from 'node:child_process'
 import { resolveMx, resolveTxt } from 'node:dns/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, ne } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { detectSetup, envExampleKeys, ownDomain, type Raw, vercelEnvNames } from '@/lib/setup-detect'
-import { type SetupRow, type SetupSource, type SetupStatus, setupProjectFrom, setupView, type SetupView } from '@/lib/setup'
+import { ACCOUNT_KEYS, type SetupRow, type SetupSource, type SetupStatus, setupProjectFrom, setupView, type SetupView } from '@/lib/setup'
 import { socialsOf } from '@/lib/socials'
 import { getPage } from './prospect-web'
 import { fixturesAllowed } from './status'
@@ -118,12 +118,16 @@ export async function checkSetup(db: Db, ownerId: string, projectId?: string): P
 }
 
 /** The checklist of one project, as he sees it. */
-export async function loadSetup(db: Db, project: { id: string; what: string; oneLiner: string; siteUrl: string | null; localPath: string | null }): Promise<SetupView[]> {
+export async function loadSetup(db: Db, project: { id: string; ownerId: string; what: string; oneLiner: string; siteUrl: string | null; localPath: string | null }): Promise<SetupView[]> {
   const rows = await db.select({ key: s.setupItem.key, source: s.setupItem.source, status: s.setupItem.status, note: s.setupItem.note }).from(s.setupItem).where(eq(s.setupItem.projectId, project.id))
-  return setupView(
-    setupProjectFrom(project),
-    rows.map((r) => ({ key: r.key, source: r.source as SetupSource, status: r.status as SetupStatus, note: r.note })),
-  )
+  // An Apple or Google developer account he made for one app counts for all of them.
+  const accounts = await db
+    .select({ key: s.setupItem.key, source: s.setupItem.source, name: s.project.name })
+    .from(s.setupItem)
+    .innerJoin(s.project, eq(s.project.id, s.setupItem.projectId))
+    .where(and(eq(s.setupItem.ownerId, project.ownerId), inArray(s.setupItem.key, [...ACCOUNT_KEYS]), eq(s.setupItem.status, 'done'), ne(s.setupItem.projectId, project.id), ne(s.setupItem.source, 'claude')))
+  const shared: SetupRow[] = accounts.map((a) => ({ key: a.key, source: a.source as SetupSource, status: 'done', note: `al geregeld via ${a.name}` }))
+  return setupView(setupProjectFrom(project), [...rows.map((r) => ({ key: r.key, source: r.source as SetupSource, status: r.status as SetupStatus, note: r.note })), ...shared])
 }
 
 /** His own word on a step ("done", "not needed"), or null to take it back. */
