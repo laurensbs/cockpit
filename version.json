@@ -1,4 +1,4 @@
 {
-  "version": "0.8.0",
+  "version": "0.8.1",
   "notes": "Koppelen gaat vanzelf: de cockpit vindt per project via GitHub en Vercel je site en of de laatste deploy werkt, en op je site Plausible, Google Analytics, Search Console en Discord, en koppelt ze meteen. Zet in Instellingen → Bronnen één keer je Vercel-token (of gebruik je ingelogde Vercel CLI) en je Plausible-sleutel. Verder: de weekreview op Vandaag (stoppen, doorgaan, beginnen) en het pijplijnbord bij Contacten."
 }
