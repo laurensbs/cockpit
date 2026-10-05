@@ -895,6 +895,16 @@ a.card:active {
   transform: translateY(4px);
   box-shadow: 0 0 0 var(--edge-color);
 }
+/* On a phone a long button may take two lines rather than stick out of the page. */
+@media (max-width: 640px) {
+  .button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+    padding-block: 0.55rem;
+  }
+}
 .button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1100,6 +1110,13 @@ a.card:active {
 .chip.bad {
   background: var(--bad-soft);
   color: var(--bad);
+}
+/* A chip with a sentence in it may wrap, with rounder corners. */
+.chip.wrap {
+  white-space: normal;
+  max-width: 100%;
+  border-radius: 12px;
+  line-height: 1.35;
 }
 /* A chip you tap to add something: a dashed outline that fills in on hover. */
 button.chip {
@@ -2062,6 +2079,61 @@ a.card.tile:hover {
   background: var(--tone);
   box-shadow: 0 3px 0 var(--tone-edge);
   color: #ffffff;
+}
+
+/* Where a draft goes: a small coloured icon tile and the platform's name. */
+.platform-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  min-width: 0;
+}
+.platform-badge strong {
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+.badge-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--tone-soft);
+  color: var(--tone-edge);
+}
+
+/* A fold-out line: a chevron that turns, instead of the browser's triangle. */
+:where(details:not(.more):not(.sidebar-more)) > summary:not(.button) {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: fit-content;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 800;
+}
+:where(details:not(.more):not(.sidebar-more)) > summary:not(.button)::-webkit-details-marker {
+  display: none;
+}
+:where(details:not(.more):not(.sidebar-more)) > summary:not(.button)::before {
+  content: '';
+  flex: none;
+  width: 0.5em;
+  height: 0.5em;
+  margin: 0 0.15em 0.15em 0.1em;
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+  color: var(--accent);
+}
+:where(details[open]:not(.more):not(.sidebar-more)) > summary:not(.button)::before {
+  transform: rotate(45deg);
+}
+.calendar .empty-day {
+  opacity: 0.6;
 }
 
 /* Pages arrive softly. */

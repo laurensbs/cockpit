@@ -396,17 +396,21 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       {tab === 'calendar' ? (
         <section className="card stack-s">
           <h2>Komende twee weken</h2>
-          <div className="calendar">
-            {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((day) => {
-              const planned = rows.filter((r) => r.plannedFor === day)
-              return (
-                <div key={day} className={`day${day === today ? ' today' : ''}`}>
-                  <span className="day-label small">{day === today ? 'vandaag' : dayLabel(day)}</span>
-                  <div className="stack-s">{planned.length ? planned.map((r) => (r.kind === 'social' ? postCard(r) : emailCard(r))) : <span className="tiny faint">—</span>}</div>
-                </div>
-              )
-            })}
-          </div>
+          {rows.some((r) => r.plannedFor && r.plannedFor >= today && r.plannedFor <= addDays(today, 13)) ? (
+            <div className="calendar">
+              {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((day) => {
+                const planned = rows.filter((r) => r.plannedFor === day)
+                return (
+                  <div key={day} className={`day${day === today ? ' today' : ''}${planned.length ? '' : ' empty-day'}`}>
+                    <span className="day-label small">{day === today ? 'vandaag' : dayLabel(day)}</span>
+                    <div className="stack-s">{planned.length ? planned.map((r) => (r.kind === 'social' ? postCard(r) : emailCard(r))) : <span className="tiny faint">—</span>}</div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="empty">Nog niets gepland voor de komende twee weken.</p>
+          )}
           <p className="tiny muted">Plan een post vanaf zijn kaart in Concepten (veld “Plan”).</p>
         </section>
       ) : null}

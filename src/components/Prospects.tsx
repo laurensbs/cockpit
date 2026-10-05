@@ -152,7 +152,7 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
         ) : null}
       </div>
       {p.waitUntil ? (
-        <p className="chip warn" style={{ width: 'fit-content' }}>
+        <p className="chip warn wrap" style={{ width: 'fit-content' }}>
           <CalendarClock size={14} strokeWidth={2.5} aria-hidden="true" /> Vanaf {p.waitUntil.label}
           {p.waitUntil.why ? ` · ${p.waitUntil.why}` : ''}
         </p>

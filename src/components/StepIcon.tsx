@@ -5,7 +5,7 @@ import { Building2, HandHeart, Hammer, Megaphone, MessageCircle, Phone, Rocket, 
 import type { DayStep } from '@/lib/today'
 
 export type StepKind = DayStep['kind'] | 'prospect'
-export type Tone = 'blue' | 'violet' | 'green' | 'pink' | 'gold' | 'orange' | 'teal' | 'lime'
+export type Tone = 'blue' | 'violet' | 'green' | 'pink' | 'gold' | 'orange' | 'teal' | 'lime' | 'gray'
 
 export const STEP_LOOK: Record<StepKind, { icon: LucideIcon; tone: Tone }> = {
   call: { icon: Phone, tone: 'blue' },

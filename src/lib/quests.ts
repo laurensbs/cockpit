@@ -155,3 +155,15 @@ export function bucketOf(dueOn: string | null, today: string): QuestBucket {
   if (dueOn === today) return 'today'
   return dueOn <= addDays(today, 6) ? 'week' : 'later'
 }
+
+/** Rule quests about a state (an intake, a plan, a growth target) that settle themselves once it is there. */
+const SETTLES = ['intake:', 'plan:', 'model:']
+
+/**
+ * The open rule quests whose reason is gone: the intake was filled in, the plan or the growth target
+ * exists. They close by themselves (no XP: that came with the thing itself), so nothing stale lingers.
+ */
+export function settledRuleKeys(openKeys: readonly string[], candidates: readonly { sourceKey: string }[]): string[] {
+  const still = new Set(candidates.map((c) => c.sourceKey))
+  return openKeys.filter((k) => SETTLES.some((prefix) => k.startsWith(prefix)) && !still.has(k))
+}

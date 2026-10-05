@@ -6,6 +6,7 @@ import { planContent } from '@/server/actions/content'
 import { ContentActions } from './ContentActions'
 import { CopyButton } from './CopyButton'
 import { DoneToggle } from './DoneToggle'
+import { PlatformBadge } from './PlatformBadge'
 
 export interface PostView {
   id: string
@@ -34,7 +35,7 @@ export function PostCard({ post }: { post: PostView }) {
     <article className="card stack-s draft">
       <div className="row between">
         <span className="row" style={{ gap: '0.35rem' }}>
-          <span className="chip accent">{PLATFORM_LABELS[post.platform] ?? post.platform}</span>
+          <PlatformBadge platform={post.platform} label={PLATFORM_LABELS[post.platform]} />
           <span className="chip">{post.format}</span>
         </span>
         {post.projectName ? <span className="tiny faint">{post.projectName}</span> : null}
