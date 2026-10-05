@@ -435,6 +435,7 @@ export function linkedinTask(name: string, language: string): string {
 - featured: 2–4 things to pin on his profile.
 - connect: 3–6 kinds of people to connect with for this project (roles or types of organisations, never named private persons), each with why and a connection note under 300 characters.
 - routine: a weekly routine of small steps (posting, commenting, messages) that fits a busy founder.
-- posts: five post drafts, each with a hook (the first line), the full text (under 1300 characters, short paragraphs, no engagement bait) and 3 hashtags.
-- Never invent results, numbers or testimonials; put what he must fill in in [square brackets].`
+- posts: five post drafts, each with a hook (the first line), the full text (under 1300 characters, short paragraphs, no engagement bait) and 3 hashtags. They follow the craft below: each one built on something only he can say (what he built, a lesson from a real conversation, a number from the information), worth saving or sending to a colleague.
+- Never invent results, numbers or testimonials; put what he must fill in in [square brackets].
+${CONTENT_CRAFT}`
 }
