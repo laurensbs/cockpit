@@ -6,6 +6,7 @@ import { pullAll } from '@/server/connectors/run'
 import { dailyRound } from '@/server/game'
 import { refreshInstagramTokens } from '@/server/publish/refresh'
 import { scheduleApproved } from '@/server/publish/run'
+import { pullPostStats } from '@/server/publish/stats'
 import { syncAll } from '@/server/github/sync'
 import { bearerOwner, getOwner } from '@/server/session'
 import { checkSites } from '@/server/uptime'
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 /**
  * The daily round: keep Claude Code connected, read GitHub again, check the sites, pull the numbers
- * from the connected sources, make the rule quests and give the commit XP.
+ * from the connected sources and what his posts did, make the rule quests and give the commit XP.
  * The app calls it when it starts and every twelve hours; the settings page has a button for it.
  */
 export async function POST(request: Request) {
@@ -27,8 +28,9 @@ export async function POST(request: Request) {
   const numbers = await pullAll(db, owner.userId)
   await refreshInstagramTokens(db, owner.userId)
   await scheduleApproved(db, owner.userId)
+  const posts = await pullPostStats(db, owner.userId).catch(() => ({ measured: 0, failed: 1, followers: 0 }))
   await dailyRound(db, owner.userId)
   const autopilot = await maybeAutopilot(db, owner.userId)
   const content = await maybeContentAutopilot(db, owner.userId)
-  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, autopilot, content })
+  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, posts, autopilot, content })
 }

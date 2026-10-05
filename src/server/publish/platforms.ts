@@ -30,8 +30,8 @@ export interface PublishInput {
 /** A LinkedIn-Version that is live (LinkedIn supports each for about a year); move it on with the app. */
 const LINKEDIN_VERSION = '202608'
 /** The Instagram Graph API version (each lives about two years). */
-const IG = 'https://graph.instagram.com/v23.0'
-const TIKTOK = 'https://open.tiktokapis.com'
+export const IG = 'https://graph.instagram.com/v23.0'
+export const TIKTOK = 'https://open.tiktokapis.com'
 
 interface MediaFile {
   role: string

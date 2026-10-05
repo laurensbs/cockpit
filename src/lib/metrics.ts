@@ -35,6 +35,10 @@ export const METRIC_DEFS = {
   followers: { label: 'Volgers', unit: 'count', agg: 'last', combine: 'prefer' },
   discord_members: { label: 'Discord-leden', unit: 'count', agg: 'last', combine: 'prefer' },
   discord_online: { label: 'Discord online', unit: 'count', agg: 'last', combine: 'prefer' },
+  instagram_followers: { label: 'Volgers Instagram', unit: 'count', agg: 'last', combine: 'prefer' },
+  tiktok_followers: { label: 'Volgers TikTok', unit: 'count', agg: 'last', combine: 'prefer' },
+  linkedin_followers: { label: 'Volgers LinkedIn', unit: 'count', agg: 'last', combine: 'prefer' },
+  social_reach: { label: 'Bereik van posts', unit: 'count', agg: 'sum', combine: 'prefer' },
 } as const satisfies Record<string, MetricDef>
 
 export type MetricKey = keyof typeof METRIC_DEFS
@@ -45,7 +49,7 @@ export const metricLabel = (key: string) => (isMetricKey(key) ? METRIC_DEFS[key]
 export const metricName = (key: string) => metricLabel(key).replace(/ \(€\)$/, '')
 
 /** Who said so. A number he typed beats Claude, Claude beats a connector, connectors beat the pipeline. */
-export const SOURCES = ['manual', 'claude', 'stripe', 'mollie', 'plausible', 'ga4', 'gsc', 'discord', 'app', 'pipeline'] as const
+export const SOURCES = ['manual', 'claude', 'stripe', 'mollie', 'plausible', 'ga4', 'gsc', 'discord', 'app', 'instagram', 'tiktok', 'posts', 'pipeline'] as const
 export type Source = (typeof SOURCES)[number]
 export const SOURCE_LABELS: Record<Source, string> = {
   manual: 'Jij',
@@ -57,6 +61,9 @@ export const SOURCE_LABELS: Record<Source, string> = {
   gsc: 'Search Console',
   discord: 'Discord',
   app: 'Eigen app',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  posts: 'Je posts',
   pipeline: 'Pijplijn',
 }
 const rank = (source: string) => {

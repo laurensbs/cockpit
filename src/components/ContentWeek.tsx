@@ -43,7 +43,7 @@ export interface WeekItemView {
   capcut: string | null
   /** Its channel is connected, so the cockpit can publish it. */
   connected: boolean
-  publish: { jobId: string; status: string; at: string; permalink: string | null; note: string | null } | null
+  publish: { jobId: string; status: string; at: string; permalink: string | null; note: string | null; stats: string | null } | null
 }
 
 const STATUS: Record<string, { label: string; tone: string }> = {
@@ -223,13 +223,16 @@ function PublishState({ item }: { item: WeekItemView }) {
       ) : p.status === 'publishing' ? (
         <span className="chip accent">Wordt geplaatst…</span>
       ) : p.status === 'published' ? (
-        <span className="row">
-          <span className="chip good">Geplaatst</span>
-          {p.permalink ? (
-            <a className="small" href={p.permalink} target="_blank" rel="noreferrer">
-              Bekijk op {item.channelLabel}
-            </a>
-          ) : null}
+        <span className="stack-xs">
+          <span className="row">
+            <span className="chip good">Geplaatst</span>
+            {p.permalink ? (
+              <a className="small" href={p.permalink} target="_blank" rel="noreferrer">
+                Bekijk op {item.channelLabel}
+              </a>
+            ) : null}
+          </span>
+          {p.stats ? <span className="tiny">{p.stats}</span> : null}
         </span>
       ) : p.status === 'failed' ? (
         <div className="row">

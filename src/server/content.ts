@@ -9,6 +9,7 @@ import { normalizeBrand } from '@/lib/brand'
 import { addDays } from '@/lib/dates'
 import { metricLabel } from '@/lib/metrics'
 import { ACTIVE_STAGES } from '@/lib/options'
+import { performanceFor } from './content-results'
 import { bottleneckLine, lessonLine, type LessonBody, outcomeStates, paceLine } from './outcome-state'
 
 // The content week's raw material per project: its rhythm, house style, profile, growth focus,
@@ -87,6 +88,7 @@ export async function contentProjects(db: Db, ownerId: string, today: string, on
       .orderBy(desc(s.mediaAsset.createdAt))
       .limit(200),
   ])
+  const performance = new Map(await Promise.all(ids.map(async (id) => [id, await performanceFor(db, ownerId, id)] as const)))
   return projects
     .map(({ project: p, color }) => {
       const profile = profiles.find((b) => b.projectId === p.id)?.content as Profile | undefined
@@ -120,6 +122,7 @@ export async function contentProjects(db: Db, ownerId: string, today: string, on
           .filter((m) => m.projectId === p.id)
           .slice(0, 30)
           .map((m) => ({ id: m.id, kind: m.role, description: m.description || 'zonder beschrijving' })),
+        performance: performance.get(p.id) ?? null,
       }
     })
     .filter((p) => only || rhythmTotal(p.rhythm) > 0)

@@ -77,7 +77,7 @@ export const fixtureFetch: typeof fetch = async (input, init) => {
     const form = method === 'POST' ? formOf(init?.body) : url.searchParams
     const token = form.get('access_token') ?? url.searchParams.get('access_token') ?? ''
     if (!token || token.includes('bad')) return json({ error: { message: 'Invalid OAuth access token', code: 190 } }, 400)
-    if (url.pathname === '/v23.0/me') return json({ user_id: '17841400000000001', username: 'webstability' })
+    if (url.pathname === '/v23.0/me') return json({ user_id: '17841400000000001', username: 'webstability', followers_count: 1204 })
     if (url.pathname === '/refresh_access_token') return json({ access_token: token, token_type: 'bearer', expires_in: 5_184_000 })
     if (url.pathname.endsWith('/media') && method === 'POST') {
       for (const key of ['image_url', 'video_url']) if (form.get(key) && !form.get(key)!.startsWith('https://blob.fixture.test/')) return json({ error: { message: 'media url not public' } }, 400)
@@ -90,7 +90,12 @@ export const fixtureFetch: typeof fetch = async (input, init) => {
       return json({ id: '17900000000000001' })
     }
     if (url.pathname.startsWith('/v23.0/container-')) return json({ status_code: 'FINISHED', id: url.pathname.split('/').pop() })
-    if (url.pathname === '/v23.0/17900000000000001') return json({ permalink: 'https://www.instagram.com/p/FIXTURE1/', id: '17900000000000001' })
+    if (url.pathname === '/v23.0/17900000000000001/insights') {
+      const asked = (url.searchParams.get('metric') ?? '').split(',')
+      const values: Record<string, number> = { views: 1240, reach: 980, likes: 50, comments: 4, shares: 9, saved: 41 }
+      return json({ data: asked.filter((m) => m in values).map((name) => ({ name, period: 'lifetime', values: [{ value: values[name] }] })) })
+    }
+    if (url.pathname === '/v23.0/17900000000000001') return json({ permalink: 'https://www.instagram.com/p/FIXTURE1/', id: '17900000000000001', like_count: 50, comments_count: 4 })
   }
 
   // TikTok: logging in (PKCE), and a video into his drafts.
@@ -101,13 +106,31 @@ export const fixtureFetch: typeof fetch = async (input, init) => {
       return json({ access_token: 'act.fixture', expires_in: 86_400, refresh_token: 'rft.fixture', refresh_expires_in: 31_536_000, open_id: 'open-fixture', scope: 'video.upload', token_type: 'Bearer' })
     }
     if (auth !== 'Bearer act.fixture') return json({ error: { code: 'access_token_invalid' } }, 401)
-    if (url.pathname === '/v2/user/info/') return json({ data: { user: { display_name: 'rondje.app' } }, error: { code: 'ok' } })
+    if (url.pathname === '/v2/user/info/') return json({ data: { user: { display_name: 'rondje.app', follower_count: 310 } }, error: { code: 'ok' } })
     if (url.pathname === '/v2/post/publish/inbox/video/init/') {
       const info = (jsonOf(init?.body).source_info ?? {}) as Record<string, unknown>
       log({ platform: 'tiktok', call: 'init', source: info.source, video_size: info.video_size })
       return json({ data: { publish_id: 'v_inbox_file~v2.1', upload_url: 'https://open-upload.tiktokapis.com/video/?upload_id=1' }, error: { code: 'ok' } })
     }
-    if (url.pathname === '/v2/post/publish/status/fetch/') return json({ data: { status: 'SEND_TO_USER_INBOX' }, error: { code: 'ok' } })
+    if (url.pathname === '/v2/post/publish/status/fetch/') {
+      // The first look: in his drafts. Later: he posted it, and TikTok says which video it became
+      // (as a bare 64-bit number, like TikTok does, which a JavaScript number cannot hold).
+      const seen = ((globalThis as unknown as { __fixtureTiktokSeen?: Set<string> }).__fixtureTiktokSeen ??= new Set())
+      const id = String(jsonOf(init?.body).publish_id ?? '')
+      if (!seen.has(id)) {
+        seen.add(id)
+        return json({ data: { status: 'SEND_TO_USER_INBOX' }, error: { code: 'ok' } })
+      }
+      return new Response('{"data":{"status":"PUBLISH_COMPLETE","publicaly_available_post_id":[7380000000000000123]},"error":{"code":"ok"}}', { headers: { 'content-type': 'application/json' } })
+    }
+    if (url.pathname === '/v2/video/query/') {
+      const ids = ((jsonOf(init?.body).filters as { video_ids?: string[] })?.video_ids ?? []).map(String)
+      const videos = ids
+        .filter((id) => id === '7380000000000000123')
+        .map((id) => ({ id, view_count: 5300, like_count: 410, comment_count: 22, share_count: 61, share_url: `https://www.tiktok.com/@rondje.app/video/${id}` }))
+      log({ platform: 'tiktok', call: 'video-query', ids })
+      return json({ data: { videos, cursor: 0, has_more: false }, error: { code: 'ok' } })
+    }
   }
   if (url.hostname === 'open-upload.tiktokapis.com') {
     if (!headers.get('content-range')) return json({ error: 'no range' }, 400)

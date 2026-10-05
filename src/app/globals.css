@@ -1738,6 +1738,30 @@ a.chip:hover {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   align-items: start;
 }
+/* What his posts did: the numbers he types in, and the best posts per channel. */
+.stats-fields {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 110px), 1fr));
+}
+.stats-fields .field {
+  min-width: 0;
+}
+.result-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+ul.result-list {
+  list-style: none;
+  padding-left: 0;
+}
+.result-list li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.result-fill > summary {
+  overflow-wrap: anywhere;
+}
 .week-card[data-status='approved'] {
   border-color: color-mix(in srgb, var(--good) 45%, var(--line));
 }

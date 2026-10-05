@@ -9,8 +9,11 @@ import { brandIssues, normalizeBrand } from '@/lib/brand'
 import { slideText, type WeekBody } from '@/lib/content-week'
 import { clean } from '@/lib/ai/schemas'
 import { addDays, dayOf } from '@/lib/dates'
+import { normalizeStats, STAT_KEYS, tiktokVideoId } from '@/lib/post-stats'
+import { isPublishChannel } from '@/lib/publish'
 import { rhythmSettingKey } from '../content'
 import { cancelPublish, runPublisher, schedulePublish } from '../publish/run'
+import { pullPostStats, recountReach } from '../publish/stats'
 import { renderItem, renderPending } from '../render/items'
 import { actionOwner } from '../session'
 import { setSetting } from '../settings'
@@ -92,8 +95,11 @@ export async function unapproveItem(itemId: string): Promise<void> {
 export async function markPosted(itemId: string): Promise<{ xp: number }> {
   const own = await ownItem(itemId)
   if (!own || own.item.status === 'done') return { xp: 0 }
-  await own.db.update(s.contentItem).set({ status: 'done', doneAt: new Date() }).where(eq(s.contentItem.id, own.item.id))
+  const now = new Date()
+  await own.db.update(s.contentItem).set({ status: 'done', doneAt: now }).where(eq(s.contentItem.id, own.item.id))
   await cancelPublish(own.db, own.owner.userId, own.item.id)
+  // Posted by hand: on record like a published post, so its numbers count and the day's cap knows.
+  if (isPublishChannel(own.item.channel)) await manualJob(own.db, own.owner.userId, own.item, now)
   const xp = await award(own.db, own.owner.userId, { kind: 'post', refId: own.item.id, projectId: own.item.projectId })
   refresh()
   return { xp }
@@ -255,4 +261,63 @@ export async function retryPublish(jobId: string): Promise<{ ok: boolean; messag
   const r = await runPublisher(db, owner.userId, now, { jobId: job.id })
   refresh()
   return r.ran === 'published' ? { ok: true, message: 'Geplaatst.' } : { ok: false, message: 'error' in r && r.error ? r.error : 'Dat lukte nu niet.' }
+}
+
+async function manualJob(db: Awaited<ReturnType<typeof getDb>>, ownerId: string, item: typeof s.contentItem.$inferSelect, at: Date): Promise<string> {
+  const id = crypto.randomUUID()
+  await db.insert(s.publishJob).values({ id, ownerId, projectId: item.projectId, contentItemId: item.id, channel: item.channel, status: 'published', publishAt: at, publishedAt: at })
+  return id
+}
+
+const HOSTS: Record<string, RegExp> = { linkedin: /(^|\.)linkedin\.com$/, instagram: /(^|\.)instagram\.com$/, tiktok: /(^|\.)tiktok\.com$/ }
+
+/** The numbers of a post he looked up himself (LinkedIn has no way to read them), and its link. */
+export async function savePostStats(_prev: FormState, form: FormData): Promise<FormState> {
+  const own = await ownItem(String(form.get('itemId') ?? ''))
+  if (!own || own.item.status !== 'done' || !isPublishChannel(own.item.channel)) return { ok: false, error: 'Dit item is niet geplaatst.' }
+  const typed: Record<string, number> = {}
+  for (const key of STAT_KEYS) {
+    const raw = String(form.get(key) ?? '').replace(/[.\s]/g, '').trim()
+    if (!raw) continue
+    if (!/^\d{1,10}$/.test(raw)) return { ok: false, error: 'Vul alleen hele getallen in.' }
+    typed[key] = Number(raw)
+  }
+  const link = String(form.get('link') ?? '').trim()
+  let url: URL | null = null
+  if (link) {
+    try {
+      url = new URL(link)
+    } catch {
+      url = null
+    }
+    if (!url || url.protocol !== 'https:' || !HOSTS[own.item.channel].test(url.hostname)) return { ok: false, error: `Plak de link van de post op ${own.item.channel === 'linkedin' ? 'LinkedIn' : own.item.channel === 'instagram' ? 'Instagram' : 'TikTok'}.` }
+  }
+  if (!Object.keys(typed).length && !url) return { ok: false, error: 'Vul een getal of de link in.' }
+  const [job] = await own.db
+    .select()
+    .from(s.publishJob)
+    .where(and(eq(s.publishJob.contentItemId, own.item.id), eq(s.publishJob.status, 'published')))
+  const jobId = job?.id ?? (await manualJob(own.db, own.owner.userId, own.item, own.item.doneAt ?? new Date()))
+  const videoId = url && own.item.channel === 'tiktok' ? tiktokVideoId(url.href) : null
+  await own.db
+    .update(s.publishJob)
+    .set({
+      ...(Object.keys(typed).length ? { stats: { ...normalizeStats(job?.stats), ...normalizeStats(typed) }, statsAt: new Date() } : {}),
+      ...(url ? { permalink: url.href } : {}),
+      // A TikTok link says which video it is: from then on the cockpit fetches its numbers itself.
+      ...(videoId ? { remoteId: videoId, error: null } : {}),
+    })
+    .where(eq(s.publishJob.id, jobId))
+  if (own.item.projectId) await recountReach(own.db, own.owner.userId, [own.item.projectId])
+  refresh()
+  return { ok: true, message: 'Bewaard.' }
+}
+
+/** "Cijfers ophalen": what Instagram and TikTok say about his posts, now instead of in the daily round. */
+export async function pullStatsNow(): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  const r = await pullPostStats(await getDb(), owner.userId, { force: true })
+  refresh()
+  if (!r.measured && !r.followers) return { ok: !r.failed, message: r.failed ? 'Ophalen lukte niet; kijk of je koppelingen nog werken (Instellingen → Kanalen).' : 'Nog niets te meten: dat kan voor posts die de cockpit op Instagram of TikTok plaatste.' }
+  return { ok: true, message: `${r.measured} ${r.measured === 1 ? 'post' : 'posts'} gemeten${r.followers ? ', volgers bijgewerkt' : ''}.${r.failed ? ' Een deel lukte niet; dat probeert hij morgen opnieuw.' : ''}` }
 }

@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, inArray } from 'drizzle-orm'
 import Link from 'next/link'
 import { ClaudeButton } from '@/components/ClaudeButton'
+import { PostStatsForm, PullStatsButton } from '@/components/ContentResults'
 import { ApproveWeekButton, BrandRhythmForm, WeekItemCard, type WeekItemView } from '@/components/ContentWeek'
 import { Icon } from '@/components/Icon'
 import { MediaLibrary, type MediaView } from '@/components/MediaLibrary'
@@ -12,8 +13,10 @@ import { normalizeBrand } from '@/lib/brand'
 import type { WeekBody } from '@/lib/content-week'
 import { addDays, dayLabel, dayOf } from '@/lib/dates'
 import { ACTIVE_STAGES } from '@/lib/options'
+import { hasStats, MIN_POSTS, normalizeStats, RESULT_DAYS, statsLine, summarize } from '@/lib/post-stats'
 import { claudeBlocked } from '@/server/claude-status'
 import { rhythms, rhythmTotal } from '@/server/content'
+import { followerLines, publishedPosts } from '@/server/content-results'
 import { channelReady } from '@/server/publish/accounts'
 import { requireOwner } from '@/server/session'
 import { getSetting } from '@/server/settings'
@@ -55,7 +58,7 @@ export default async function ContentPage() {
     : []
   const jobs = week.length
     ? await db
-        .select({ id: s.publishJob.id, itemId: s.publishJob.contentItemId, status: s.publishJob.status, publishAt: s.publishJob.publishAt, permalink: s.publishJob.permalink, error: s.publishJob.error, createdAt: s.publishJob.createdAt })
+        .select({ id: s.publishJob.id, itemId: s.publishJob.contentItemId, status: s.publishJob.status, publishAt: s.publishJob.publishAt, permalink: s.publishJob.permalink, error: s.publishJob.error, stats: s.publishJob.stats, createdAt: s.publishJob.createdAt })
         .from(s.publishJob)
         .where(and(eq(s.publishJob.ownerId, owner.userId), inArray(s.publishJob.contentItemId, week.map((r) => r.item.id))))
         .orderBy(asc(s.publishJob.createdAt))
@@ -102,7 +105,7 @@ export default async function ContentPage() {
       connected: ready.get(`${item.channel}:${item.channel === 'linkedin' ? '' : item.projectId}`) ?? false,
       publish: (() => {
         const job = jobs.filter((j) => j.itemId === item.id).at(-1)
-        return job ? { jobId: job.id, status: job.status, at: timeLabel(job.publishAt), permalink: job.permalink, note: job.error } : null
+        return job ? { jobId: job.id, status: job.status, at: timeLabel(job.publishAt), permalink: job.permalink, note: job.error, stats: statsLine(normalizeStats(job.stats)) || null } : null
       })(),
     }
   })
@@ -120,6 +123,14 @@ export default async function ContentPage() {
     seconds: m.durationMs ? Math.round(m.durationMs / 100) / 10 : null,
     portrait: m.width && m.height ? m.height > m.width : null,
   }))
+  const posts = await publishedPosts(db, owner.userId)
+  const results = summarize(posts)
+  const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? ''
+  const followers = (await Promise.all(projects.map(async (p) => ({ name: p.name, lines: await followerLines(db, owner.userId, p.id) })))).filter((f) => f.lines.length)
+  // LinkedIn gives no numbers, and a TikTok draft only has them once he posted it and the cockpit knows which.
+  const toFill = posts.filter((p) => !hasStats(p.stats) && (p.channel === 'linkedin' || (p.channel === 'tiktok' && !p.permalink)))
+  const nl = (n: number) => Math.round(n).toLocaleString('nl-NL')
+  const pct = (n: number) => `${(Math.round(n * 1000) / 10).toLocaleString('nl-NL')}%`
   const days = [...new Set(items.map((i) => i.day))].sort()
   const readyCount = items.filter((i) => i.status === 'draft' && i.render === 'done' && !i.forum).length
   const drawing = items.some((i) => i.render === 'pending')
@@ -181,6 +192,115 @@ export default async function ContentPage() {
           </div>
         </section>
       ))}
+
+      <section className="card stack-m" aria-labelledby="results-title">
+        <h2 id="results-title" className="row">
+          <Icon name="chart" size={20} /> Wat werkt
+        </h2>
+        <p className="small muted">
+          Wat je posts van de laatste {RESULT_DAYS} dagen deden. Instagram en TikTok haalt de cockpit elke dag zelf op; LinkedIn geeft ze niet vrij, die vul je hieronder in. Claude krijgt dit bij elke contentweek mee: meer van wat werkt, minder van wat niet werkt.
+        </p>
+        <PullStatsButton />
+        {results.length ? (
+          results.map((r) => (
+            <div key={r.channel} className="stack-s">
+              <h3>
+                {CHANNEL_LABELS[r.channel as keyof typeof CHANNEL_LABELS] ?? r.channel} · {r.posts} {r.posts === 1 ? 'post' : 'posts'} · middenwaarde {nl(r.medianReach)} bereikt · {pct(r.engagement)} interactie
+              </h3>
+              {r.early ? <p className="tiny muted">Nog minder dan {MIN_POSTS} gemeten posts: te vroeg voor conclusies, blijf variëren.</p> : null}
+              <div style={{ overflowX: 'auto' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Vorm</th>
+                      <th scope="col">Posts</th>
+                      <th scope="col">Bereik</th>
+                      <th scope="col">Interactie</th>
+                      <th scope="col">Bewaard/gedeeld</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {r.formats.map((f) => (
+                      <tr key={f.format}>
+                        <th scope="row">{FORMAT_LABELS[f.format as keyof typeof FORMAT_LABELS] ?? f.format}</th>
+                        <td className="num">{f.posts}</td>
+                        <td className="num">{nl(f.medianReach)}</td>
+                        <td className="num">{pct(f.engagement)}</td>
+                        <td className="num">{pct(f.keep)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ol className="stack-xs result-list">
+                {r.best.map((p) => (
+                  <li key={p.id} className="small">
+                    <strong>{p.hook}</strong>{' '}
+                    <span className="muted">
+                      ({projectName(p.projectId)}, {dayLabel(p.day)})
+                    </span>
+                    <br />
+                    <span className="tiny">{statsLine(p.stats)}</span>
+                    {p.permalink ? (
+                      <>
+                        {' '}
+                        <a className="tiny" href={p.permalink} target="_blank" rel="noreferrer">
+                          Bekijk
+                        </a>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))
+        ) : (
+          <p className="small muted">Nog geen gemeten posts. Na de eerste posts verschijnen hier per kanaal de vormen en posts die het best werken.</p>
+        )}
+        {followers.length ? (
+          <p className="small">
+            <strong>Volgers:</strong>{' '}
+            {followers
+              .map((f) => `${f.name}: ${f.lines.map((l) => `${CHANNEL_LABELS[l.channel as keyof typeof CHANNEL_LABELS] ?? l.channel} ${nl(l.now)}${l.change30 != null ? ` (${l.change30 >= 0 ? '+' : ''}${nl(l.change30)} in 30 dagen)` : ''}`).join(', ')}`)
+              .join(' · ')}
+          </p>
+        ) : null}
+        {toFill.length ? (
+          <div className="stack-s">
+            <h3>Nog in te vullen</h3>
+            {toFill.map((p) => (
+              <details key={p.id} className="result-fill">
+                <summary className="small">
+                  {CHANNEL_LABELS[p.channel as keyof typeof CHANNEL_LABELS] ?? p.channel} · {projectName(p.projectId)} · {dayLabel(p.day)}: {p.hook}
+                </summary>
+                <PostStatsForm itemId={p.id} channel={p.channel} stats={p.stats} link={p.permalink} />
+              </details>
+            ))}
+          </div>
+        ) : null}
+        {posts.length ? (
+          <details>
+            <summary className="small">Alle posts ({posts.length})</summary>
+            <ul className="stack-s result-list" style={{ marginTop: '0.6rem' }}>
+              {posts.map((p) => (
+                <li key={p.id} className="stack-xs">
+                  <span className="small">
+                    <strong>{p.hook}</strong>{' '}
+                    <span className="muted">
+                      ({CHANNEL_LABELS[p.channel as keyof typeof CHANNEL_LABELS] ?? p.channel}, {projectName(p.projectId)}, {dayLabel(p.day)})
+                    </span>
+                  </span>
+                  <span className="tiny">{hasStats(p.stats) ? statsLine(p.stats) : 'Nog geen cijfers'}</span>
+                  <details>
+                    <summary className="tiny">Cijfers aanpassen</summary>
+                    <PostStatsForm itemId={p.id} channel={p.channel} stats={p.stats} link={p.permalink} />
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </section>
 
       <section className="card stack-m" aria-labelledby="media-title">
         <h2 id="media-title" className="row">

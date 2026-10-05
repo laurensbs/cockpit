@@ -10,6 +10,7 @@ import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
+import { performanceFor, publishedPosts } from '../content-results'
 import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
 import { numbersReport } from './numbers'
@@ -281,6 +282,23 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         const report = await numbersReport(db, ownerId, p, { key, weeks: weeks ?? 8 })
         if (!report.metrics.length) return text(`No numbers for ${p.name}${key ? ` (${key})` : ''} yet. He connects sources under Cijfers, or types numbers in.`)
         return text(JSON.stringify(report, null, 1))
+      }),
+  )
+
+  server.registerTool(
+    'get_content_results',
+    {
+      title: 'What his posts did',
+      description:
+        'The measured results of a project\u2019s posts of the last 60 days: per channel the median reach and engagement, per format, the best and weakest posts, followers, and every post with its numbers. Read-only. Use it to say what works before you advise on content.',
+      inputSchema: { project: PROJECT_ARG },
+    },
+    async ({ project }) =>
+      withProject(project, async (p) => {
+        const [lines, posts] = await Promise.all([performanceFor(db, ownerId, p.id), publishedPosts(db, ownerId, new Date(), [p.id])])
+        if (!posts.length) return text(`No published posts for ${p.name} in the last 60 days yet.`)
+        const list = posts.slice(0, 40).map((x) => ({ channel: x.channel, format: x.format, hook: x.hook, day: x.day, time: x.time, stats: x.stats }))
+        return text(`${(lines ?? ['Nothing measured yet.']).join('\n')}\n\nPosts:\n${JSON.stringify(list, null, 1)}`)
       }),
   )
 
