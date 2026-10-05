@@ -100,6 +100,8 @@ export function upcoming(items: readonly MoneyItem[], today: string, days = 30):
     .filter((i) => i.status !== 'stopped' && i.nextDate && (i.kind === 'cost' || i.kind === 'deadline' || i.kind === 'plan'))
     .filter((i) => {
       const d = daysBetween(today, i.nextDate!)
+      // A one-time cost on a day that passed was simply paid; nothing to remind.
+      if (i.kind === 'cost' && i.period === 'once' && d < 0) return false
       return d >= -14 && d <= days
     })
     .sort((a, b) => a.nextDate!.localeCompare(b.nextDate!))

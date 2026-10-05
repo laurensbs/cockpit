@@ -65,6 +65,9 @@ describe('dates', () => {
     expect(upcoming(items, '2026-10-05', 7).map((i) => i.title)).toEqual(['Domein'])
     expect(upcoming(items, '2026-10-20', 7).map((i) => i.title)).toEqual(['Domein'])
     expect(upcoming(items, '2026-11-20', 7)).toEqual([])
+    const bought = item({ title: 'Gekocht', period: 'once', nextDate: '2026-10-03' })
+    expect(upcoming([bought], '2026-10-05', 7)).toEqual([])
+    expect(upcoming([bought], '2026-10-01', 7).map((i) => i.title)).toEqual(['Gekocht'])
   })
 
   it('moves a renewal on by its period, on the last day of a short month', () => {
