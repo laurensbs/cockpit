@@ -22,6 +22,7 @@ import { claudeBlocked } from '@/server/claude-status'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { mailStatus, outboxRows, queueByItem } from '@/server/outbox-views'
 import { dailySeries, loadPoints } from '@/server/points'
+import { seenHistory } from '@/server/seo'
 import { requireOwner } from '@/server/session'
 
 export const metadata = { title: 'Marketing' }
@@ -133,7 +134,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       : []
   const seoContent = (seoBrief?.content ?? {}) as { keywords?: SeoPlanView['keywords']; questions?: string[]; siteFixes?: string[] }
   const seoPlan: SeoPlanView | null = seoBrief
-    ? { keywords: seoContent.keywords ?? [], questions: seoContent.questions ?? [], siteFixes: seoContent.siteFixes ?? [], made: dayLabel(dayOf(seoBrief.createdAt)) }
+    ? { keywords: seoContent.keywords ?? [], questions: seoContent.questions ?? [], siteFixes: seoContent.siteFixes ?? [], made: dayLabel(dayOf(seoBrief.createdAt)), seen: await seenHistory(db, owner.userId, current.id) }
     : null
   const experiments = rows.filter((r) => r.kind === 'experiment')
   const now = new Date()

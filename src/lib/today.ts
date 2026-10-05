@@ -19,6 +19,7 @@ export type DayStep =
   | (Base & { kind: 'money'; itemId: string; moneyKind: 'cost' | 'deadline' | 'plan'; amount: string; when: string; late: boolean; note: string })
   | (Base & { kind: 'post'; itemId: string; platform: string; text: string; hook: string; profile: string | null; color: string; projectName: string; value: string; proof: string })
   | (Base & { kind: 'checkin'; platform: 'instagram' })
+  | (Base & { kind: 'seen'; month: string; questions: string[] })
   | (Base & { kind: 'build'; platform: string; note: string })
   | (Base & { kind: 'growth'; href: string; task: string | null; options?: Record<string, unknown> })
 
@@ -26,8 +27,8 @@ export type DayStep =
  * What comes first: what he promised today (calls), a money date that is near (a renewal, a tax return),
  * then decisions, then answers, then posting and growth.
  */
-const ORDER: DayStep['kind'][] = ['call', 'money', 'prospects', 'reply', 'setup', 'give', 'checkin', 'post', 'build', 'growth']
-const MAX_OF_KIND: Record<DayStep['kind'], number> = { call: 2, money: 1, prospects: 1, reply: 1, setup: 1, give: 1, checkin: 1, post: 1, build: 1, growth: 1 }
+const ORDER: DayStep['kind'][] = ['call', 'money', 'prospects', 'reply', 'setup', 'give', 'checkin', 'seen', 'post', 'build', 'growth']
+const MAX_OF_KIND: Record<DayStep['kind'], number> = { call: 2, money: 1, prospects: 1, reply: 1, setup: 1, give: 1, checkin: 1, seen: 1, post: 1, build: 1, growth: 1 }
 
 export function pickSteps(candidates: DayStep[], hidden: ReadonlySet<string> = new Set(), max = DAY_GOAL): DayStep[] {
   const out: DayStep[] = []

@@ -1,3 +1,5 @@
+import { monthLabel } from '@/lib/dates'
+import type { SeenResult } from '@/lib/visibility'
 import { CopyButton } from './CopyButton'
 
 export interface SeoPlanView {
@@ -5,6 +7,8 @@ export interface SeoPlanView {
   questions: string[]
   siteFixes: string[]
   made: string
+  /** His monthly "Word je gevonden?" results, newest first. */
+  seen: SeenResult[]
 }
 
 const INTENT: Record<string, string> = { informational: 'wil iets leren', comparing: 'vergelijkt', 'wanting to act': 'wil nu iets doen' }
@@ -21,6 +25,12 @@ export function SeoPlan({ plan }: { plan: SeoPlanView }) {
         <h2 id="seo-plan">Je zoekplan</h2>
         <p className="small muted">Gemaakt {plan.made}. Eerst de site op orde, dan één goed artikel per maand, en elke maand kijken of je genoemd wordt.</p>
       </div>
+      {plan.seen[0] ? (
+        <p className="small">
+          <strong>Gevonden:</strong> genoemd bij {plan.seen[0].named} van {plan.seen[0].asked} vragen in {monthLabel(`${plan.seen[0].month}-01`)}
+          {plan.seen[1] ? <span className="muted"> (de maand ervoor {plan.seen[1].named} van {plan.seen[1].asked})</span> : null}
+        </p>
+      ) : null}
       {plan.siteFixes.length ? (
         <div className="stack-xs">
           <p className="eyebrow">Wat je site nog mist</p>

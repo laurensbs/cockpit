@@ -5,6 +5,7 @@ import * as s from '@/db/schema'
 import { addDays, dayOf } from '@/lib/dates'
 import { ACTION_KINDS } from '@/lib/game'
 import { amountText, upcoming, whenText } from '@/lib/finance'
+import { monthOf, questionsForMonth } from '@/lib/visibility'
 import { costOf } from '@/lib/costs'
 import { nextSetupStep } from '@/lib/setup'
 import { preferredPlatform, socialsOf } from '@/lib/socials'
@@ -15,6 +16,7 @@ import { projectPulses } from './game'
 import { EMPTY_GROWTH, growthStates } from './growth-state'
 import { outcomeHref, outcomeStates } from './outcome-state'
 import { loadMoney } from './finance'
+import { customerQuestions, seenHistory } from './seo'
 import { loadSetup } from './setup-check'
 import { award } from './xp'
 
@@ -221,6 +223,14 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
   for (const p of projects) {
     if (!socialsOf(p.links).instagram || igConnected.has(p.id) || counted.has(p.id) || marketingOff(p)) continue
     steps.push({ kind: 'checkin', key: `checkin-${p.id}-${today}`, title: 'Hoeveel volgers op Instagram?', sub: p.name, projectId: p.id, platform: 'instagram' })
+  }
+
+  // "Word je gevonden?": once a month, three of the customers' real questions from the search plan.
+  const month = monthOf(today)
+  for (const p of projects.filter((x) => !marketingOff(x))) {
+    const questions = await customerQuestions(db, p.id)
+    if (!questions.length || (await seenHistory(db, ownerId, p.id)).some((r) => r.month === month)) continue
+    steps.push({ kind: 'seen', key: `seen-${p.id}-${month}`, title: 'Word je gevonden?', sub: p.name, projectId: p.id, month, questions: questionsForMonth(questions, month) })
   }
 
   if (growth) steps.push({ kind: 'growth', key: `growth-${growth.projectId}-${growth.title}`, title: short(growth.title, 44), sub: growth.projectName, projectId: growth.projectId, href: growth.href, task: growth.task, options: growth.options })

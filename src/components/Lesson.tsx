@@ -7,11 +7,13 @@ import { useState, useTransition } from 'react'
 import { chime } from '@/lib/chime'
 import { lessonLearned } from '@/lib/learning'
 import { shareUrl } from '@/lib/share'
+import { searchLinks } from '@/lib/visibility'
 import type { LessonCard } from '@/server/lesson'
 import { runInBackground } from '@/server/actions/claude'
 import { setContactStatus } from '@/server/actions/contacts'
 import { gaveValue, markContentDone } from '@/server/actions/content'
 import { moneyStep } from '@/server/actions/money'
+import { saveSeen } from '@/server/actions/seo'
 import { saveFollowers } from '@/server/actions/numbers'
 import { setSetupStatus } from '@/server/actions/setup'
 import { acceptProspect, prospectWantsInfo, skipProspect } from '@/server/actions/prospects'
@@ -42,6 +44,7 @@ const KIND_LABEL: Record<LessonCard['kind'], string> = {
   setup: 'Regelen',
   money: 'Geld',
   checkin: 'Je cijfers',
+  seen: 'Gevonden worden',
   post: 'Posten',
   build: 'Bouwen in het openbaar',
   growth: 'Groeien',
@@ -329,6 +332,13 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
         <p className="tiny muted">Betalen doe je zelf; Cockpit rekent en herinnert alleen.</p>
       </div>
     )
+  if (card.kind === 'seen')
+    return (
+      <Bubble title="Waarom">
+        <p>Steeds meer mensen krijgen hun antwoord van Google of ChatGPT zonder door te klikken. Kijk één keer per maand of jij genoemd wordt bij wat je klanten echt vragen.</p>
+        <p className="small muted">Open elke vraag, kijk of {card.sub} in het antwoord staat, en tik op Genoemd.</p>
+      </Bubble>
+    )
   if (card.kind === 'give')
     return (
       <div className="stack-m">
@@ -420,6 +430,7 @@ function Actions({
   decided: (reason?: string) => void
 }) {
   const [followers, setFollowers] = useState('')
+  const [named, setNamed] = useState<number[]>([])
   const [email, setEmail] = useState('')
   const big = 'button primary big'
   const second = 'button secondary big'
@@ -579,6 +590,52 @@ function Actions({
           }
         >
           Bewaar
+        </button>
+      </div>
+    )
+
+  if (card.kind === 'seen')
+    return (
+      <div className="lesson-actions">
+        <ul className="seen-list">
+          {card.questions.map((q, i) => {
+            const links = searchLinks(q)
+            const on = named.includes(i)
+            return (
+              <li key={q} className={on ? 'on' : ''}>
+                <p className="small">
+                  <strong>{q}</strong>
+                </p>
+                <div className="row" style={{ gap: '0.4rem' }}>
+                  <a className="button ghost small" href={links.google} target="_blank" rel="noreferrer noopener">
+                    Google
+                  </a>
+                  <a className="button ghost small" href={links.chatgpt} target="_blank" rel="noreferrer noopener">
+                    ChatGPT
+                  </a>
+                  <a className="button ghost small" href={links.perplexity} target="_blank" rel="noreferrer noopener">
+                    Perplexity
+                  </a>
+                  <button type="button" className={`button small ${on ? 'primary' : 'secondary'}`} aria-pressed={on} onClick={() => setNamed((n) => (on ? n.filter((x) => x !== i) : [...n, i]))}>
+                    {on ? 'Genoemd ✓' : 'Genoemd?'}
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+        <button
+          type="button"
+          className={big}
+          disabled={pending || !card.projectId}
+          onClick={() =>
+            run(async () => {
+              const r = await saveSeen(card.projectId!, card.month, card.questions.length, named.length)
+              return { tone: r.ok ? 'good' : 'bad', text: r.message, xp: r.xp }
+            })
+          }
+        >
+          Klaar, bewaar
         </button>
       </div>
     )

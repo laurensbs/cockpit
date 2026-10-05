@@ -2953,3 +2953,23 @@ html[data-shell='mac'] .lesson {
     display: none;
   }
 }
+
+/* "Word je gevonden?": one question per row, ticked when he is named in the answer. */
+.seen-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+  width: 100%;
+}
+.seen-list > li {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.7rem 0.8rem;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+}
+.seen-list > li.on {
+  border-color: var(--good);
+}
