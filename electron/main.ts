@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -64,6 +64,17 @@ async function pickPort(config: Config): Promise<{ port: number; reuse: boolean 
   throw new Error('Geen vrije poort gevonden')
 }
 
+/**
+ * The binary that runs the server as plain Node. On a Mac that is the app's Helper: started from the
+ * main binary, macOS counts the server as a second Cockpit, and one left behind blocks the next start.
+ */
+function nodeBinary(): string {
+  if (process.platform !== 'darwin' || !app.isPackaged) return process.execPath
+  const name = app.getName()
+  const helper = join(process.execPath, '..', '..', 'Frameworks', `${name} Helper.app`, 'Contents', 'MacOS', `${name} Helper`)
+  return existsSync(helper) ? helper : process.execPath
+}
+
 function startServer(port: number, config: Config, dataDir: string): ChildProcess {
   const serverDir = app.isPackaged ? join(process.resourcesPath, 'server') : join(app.getAppPath(), 'release', 'server')
   const script = join(serverDir, 'server.js')
@@ -72,7 +83,7 @@ function startServer(port: number, config: Config, dataDir: string): ChildProces
   mkdirSync(logDir, { recursive: true })
   const log = createWriteStream(join(logDir, 'server.log'), { flags: 'a' })
   log.write(`\n[${new Date().toISOString()}] start on 127.0.0.1:${port}\n`)
-  const child = spawn(process.execPath, [script], {
+  const child = spawn(nodeBinary(), [script], {
     cwd: serverDir,
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -139,6 +150,17 @@ async function openWindow(base: string, token: string): Promise<BrowserWindow> {
   })
   await win.loadURL(`${base}/`)
   return win
+}
+
+/** A line in logs/app.log: what the window process did, for when something goes wrong. */
+function appLog(message: string): void {
+  try {
+    const dir = join(app.getPath('userData'), 'logs')
+    mkdirSync(dir, { recursive: true })
+    appendFileSync(join(dir, 'app.log'), `[${new Date().toISOString()}] ${message}\n`)
+  } catch {
+    // Logging must never stop the app.
+  }
 }
 
 let server: ChildProcess | null = null
@@ -210,9 +232,29 @@ async function main() {
 }
 
 app.on('window-all-closed', () => app.quit())
-app.on('before-quit', () => {
-  server?.kill()
+// Wait for the server to close its database before the app goes; force it after five seconds. The
+// quit is held once and then finished with app.exit: on a Mac a second app.quit() after a held quit
+// is cancelled by the system, and the window would stay without its server.
+app.on('before-quit', (event) => {
+  const child = server
+  appLog(`before-quit (server ${child ? `pid ${child.pid}, exit ${child.exitCode}, signal ${child.signalCode}` : 'none'})`)
+  if (!child || child.exitCode != null || child.signalCode != null) return
+  event.preventDefault()
+  server = null
+  const force = setTimeout(() => {
+    appLog('server still running after 5 s: SIGKILL')
+    child.kill('SIGKILL')
+  }, 5000)
+  child.once('exit', (code, signal) => {
+    clearTimeout(force)
+    appLog(`server stopped (code ${code}, signal ${signal}); app.exit`)
+    app.exit(0)
+    // After a held quit macOS can keep the window process alive even after app.exit: end it ourselves.
+    setTimeout(() => process.exit(0), 1000).unref()
+  })
+  appLog(`SIGTERM to server: ${child.kill('SIGTERM')}`)
 })
+app.on('will-quit', () => appLog('will-quit'))
 
 main().catch((error: unknown) => {
   dialog.showErrorBox('Cockpit kon niet starten', error instanceof Error ? error.message : String(error))

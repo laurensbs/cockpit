@@ -53,6 +53,12 @@ async function migrate(): Promise<void> {
   }
 }
 
+/** Closes the database cleanly, so a stopped server never leaves a half-written folder behind. */
+export async function closeDb(): Promise<void> {
+  const client = (state.db as unknown as { $client?: PGlite }).$client
+  if (client && !client.closed) await client.close()
+}
+
 /** Runs the migrations once per server instance. */
 export function ready(): Promise<void> {
   state.ready ??= migrate().catch((error) => {

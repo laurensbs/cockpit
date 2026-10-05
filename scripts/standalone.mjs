@@ -4,7 +4,7 @@
 // Next links some external packages (PGlite) with symlinks that point to an absolute path on the
 // build machine. Those would be broken on any other computer, so they are copied as real folders,
 // and the build fails if any link is left that points outside the server folder.
-import { cpSync, existsSync, lstatSync, readdirSync, readlinkSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, readdirSync, readlinkSync, rmdirSync, rmSync, unlinkSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
 const out = 'release/server'
@@ -18,6 +18,15 @@ cpSync('.next/static', `${out}/.next/static`, { recursive: true })
 if (existsSync('public')) cpSync('public', `${out}/public`, { recursive: true })
 
 // A link into the standalone build becomes a real copy of the same folder inside the server.
+// The link itself is unlinked, never followed: on a Mac, Node's rmSync treats a link to a folder as
+// that folder and refuses. A Windows junction only goes with rmdir, which leaves its target alone.
+const removeLink = (path) => {
+  try {
+    unlinkSync(path)
+  } catch {
+    rmdirSync(path)
+  }
+}
 const standalone = resolve('.next/standalone')
 const localize = (dir) => {
   for (const name of readdirSync(dir)) {
@@ -28,7 +37,7 @@ const localize = (dir) => {
       const full = isAbsolute(target) ? target : resolve(dir, target)
       const inside = relative(standalone, full)
       if (!inside.startsWith('..') && !isAbsolute(inside)) {
-        rmSync(path, { force: true })
+        removeLink(path)
         cpSync(join(out, inside), path, { recursive: true })
       }
     } else if (stat.isDirectory()) localize(path)
