@@ -1,5 +1,6 @@
 import { AutopilotToggle } from '@/components/AutopilotToggle'
 import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
+import { ContentAutopilotToggle } from '@/components/ContentAutopilotToggle'
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/Icon'
 import { KeepAwakeToggle } from '@/components/KeepAwakeToggle'
@@ -34,13 +35,14 @@ function StatusChip({ status }: { status: ServiceStatus }) {
 export default async function SettingsPage() {
   const owner = await requireOwner('/settings')
   const db = await getDb()
-  const [{ token, from }, stored, version, connectedAt, mail, autopilot, googleEmail, awake, sources] = await Promise.all([
+  const [{ token, from }, stored, version, connectedAt, mail, autopilot, contentAutopilot, googleEmail, awake, sources] = await Promise.all([
     githubTokenSource(db, owner.userId),
     getSetting(db, owner.userId, 'github_token'),
     claudeVersion(),
     getSetting(db, owner.userId, 'claude_connected'),
     mailConfig(db, owner.userId),
     getSetting(db, owner.userId, 'autopilot_weekly'),
+    getSetting(db, owner.userId, 'autopilot_content'),
     googleAccountEmail(db, owner.userId),
     keepAwakeOn(db, owner.userId),
     db
@@ -101,6 +103,7 @@ export default async function SettingsPage() {
           </p>
         ) : null}
         {version ? <AutopilotToggle on={autopilot === '1'} /> : null}
+        {version ? <ContentAutopilotToggle on={contentAutopilot === '1'} /> : null}
         {version ? (
           <ConnectClaudeButton connectedAt={connectedAt} />
         ) : (

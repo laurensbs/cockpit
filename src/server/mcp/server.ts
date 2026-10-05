@@ -4,7 +4,7 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { ArticlesWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
+import { ArticlesWire, ContentWeekWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
 import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
@@ -14,8 +14,8 @@ import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
 import { numbersReport } from './numbers'
 import { resolveProject, type ProjectRef } from './projects'
-import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
-import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
+import { saveArticles, saveClaudeMetrics, saveContentWeek, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
+import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isPortfolioTask, isTaskKind, PLATFORM_KEYS, PORTFOLIO_TASKS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
 
 const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] })
@@ -151,7 +151,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
       inputSchema: {
         ticket: z.string().trim().max(16).optional().describe('The ticket from the cockpit button'),
         task: z.enum(TASK_KINDS).optional().describe(TASK_KINDS.map((k) => `${k}: ${TASK_LABELS[k]}`).join('; ')),
-        project: z.string().optional().describe('Name or id; not needed for weekly'),
+        project: z.string().optional().describe(`Name or id; not needed for ${PORTFOLIO_TASKS.join(' and ')}`),
         ...TaskOptions.shape,
       },
     },
@@ -165,7 +165,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         kind = found.task
         projectId = found.projectId
         options = { ...found.options, ...options }
-      } else if (kind && kind !== 'weekly' && !(kind === 'ask' && !project)) {
+      } else if (kind && !isPortfolioTask(kind, Boolean(project))) {
         if (!project) return fail('Which project? Pass project (see list_projects).')
         const found = await resolveProject(db, ownerId, project)
         if ('error' in found) return fail(found.error)
@@ -242,6 +242,20 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     'save_experiments',
     { title: 'Save growth experiments', description: 'Stores organic growth experiments with their ICE scores; he runs them from a board.', inputSchema: { project: PROJECT_ARG, experiments: ExperimentsWire.shape.experiments } },
     async ({ project, experiments }) => withProject(project, async (p) => text(await saveExperiments(db, ownerId, p, { experiments }))),
+  )
+
+  server.registerTool(
+    'save_content_week',
+    {
+      title: 'Save the content week',
+      description:
+        'Stores the content week: posts, carousels, documents, reels and stories for LinkedIn, Instagram and TikTok, and forum answers, each on its day. The cockpit draws the slides and covers in the project’s house style; he approves the week, and the cockpit publishes only what he approved. Forum answers he posts himself. Use get_task with task "content" first.',
+      inputSchema: { items: ContentWeekWire.shape.items },
+    },
+    async ({ items }) => {
+      const result = await saveContentWeek(db, ownerId, items)
+      return result.ok ? text(result.text) : fail(result.text)
+    },
   )
 
   server.registerTool(
@@ -403,7 +417,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         title: TASK_LABELS[kind],
         description: `${TASK_LABELS[kind]}: the full brief, then save the result with the cockpit tool it names.`,
         argsSchema: {
-          project: z.string().optional().describe(kind === 'weekly' ? 'Not needed' : 'The project, by name'),
+          project: z.string().optional().describe(PORTFOLIO_TASKS.includes(kind) ? 'Not needed' : 'The project, by name'),
           option: z.string().optional().describe('purpose, platform, mode, language, persona or contactId as key=value, separated by spaces'),
         },
       },
@@ -411,7 +425,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         const pairs = Object.fromEntries((option ?? '').split(/\s+/).filter(Boolean).map((p) => p.split('=') as [string, string]))
         const options = TaskOptions.safeParse(pairs)
         let projectId: string | null = null
-        if (kind !== 'weekly') {
+        if (!PORTFOLIO_TASKS.includes(kind)) {
           const found = await resolveProject(db, ownerId, project ?? '')
           if ('error' in found) return { messages: [{ role: 'user' as const, content: { type: 'text' as const, text: found.error } }] }
           projectId = found.id

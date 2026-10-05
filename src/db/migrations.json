@@ -73,5 +73,16 @@
       "CREATE UNIQUE INDEX \"metric_point_unique_idx\" ON \"metric_point\" USING btree (\"project_id\",\"key\",\"day\",\"source\");",
       "CREATE INDEX \"metric_point_owner_idx\" ON \"metric_point\" USING btree (\"owner_id\",\"project_id\",\"key\",\"day\");"
     ]
+  },
+  {
+    "tag": "0003_content",
+    "statements": [
+      "CREATE TABLE \"media_asset\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text,\n\t\"content_item_id\" text,\n\t\"origin\" text NOT NULL,\n\t\"role\" text NOT NULL,\n\t\"position\" integer DEFAULT 0 NOT NULL,\n\t\"file\" text NOT NULL,\n\t\"mime\" text NOT NULL,\n\t\"bytes\" integer DEFAULT 0 NOT NULL,\n\t\"width\" integer,\n\t\"height\" integer,\n\t\"duration_ms\" integer,\n\t\"description\" text DEFAULT '' NOT NULL,\n\t\"created_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "ALTER TABLE \"project\" ADD COLUMN \"brand\" jsonb;",
+      "ALTER TABLE \"media_asset\" ADD CONSTRAINT \"media_asset_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "ALTER TABLE \"media_asset\" ADD CONSTRAINT \"media_asset_content_item_id_content_item_id_fk\" FOREIGN KEY (\"content_item_id\") REFERENCES \"public\".\"content_item\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "CREATE INDEX \"media_owner_project_idx\" ON \"media_asset\" USING btree (\"owner_id\",\"project_id\");",
+      "CREATE INDEX \"media_item_idx\" ON \"media_asset\" USING btree (\"content_item_id\");"
+    ]
   }
 ]

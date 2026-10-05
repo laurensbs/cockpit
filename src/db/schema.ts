@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import type { Brand } from '../lib/brand'
 import type { GrowthModel } from '../lib/growth-model'
 // Every row belongs to an owner ('local' in the app on your own computer), so the cockpit can serve
 // more people later without a rewrite.
@@ -66,6 +67,8 @@ export const project = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
     // The growth model he accepted: one target number with a deadline, and the funnel that leads to it.
     growthModel: jsonb('growth_model').$type<GrowthModel>(),
+    // The house style for the images and videos the cockpit draws (colours, typefaces, handle).
+    brand: jsonb('brand').$type<Partial<Brand>>(),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -334,4 +337,33 @@ export const setting = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [uniqueIndex('setting_owner_key_idx').on(t.ownerId, t.key)],
+)
+
+/**
+ * A picture, a PDF or a video of a project, on this computer: one he added (a clip, a photo) or one the
+ * cockpit drew for a post (a slide, a cover, a reel). The file sits in the media folder; this row says
+ * what it is.
+ */
+export const mediaAsset = pgTable(
+  'media_asset',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    contentItemId: text('content_item_id').references(() => contentItem.id, { onDelete: 'cascade' }),
+    // upload (his own) | render (drawn by the cockpit)
+    origin: text('origin').notNull(),
+    // slide | cover | pdf | video | photo | clip
+    role: text('role').notNull(),
+    position: integer('position').notNull().default(0),
+    file: text('file').notNull(),
+    mime: text('mime').notNull(),
+    bytes: integer('bytes').notNull().default(0),
+    width: integer('width'),
+    height: integer('height'),
+    durationMs: integer('duration_ms'),
+    description: text('description').notNull().default(''),
+    createdAt: createdAt(),
+  },
+  (t) => [index('media_owner_project_idx').on(t.ownerId, t.projectId), index('media_item_idx').on(t.contentItemId)],
 )

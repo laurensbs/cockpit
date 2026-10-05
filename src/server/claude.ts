@@ -132,8 +132,9 @@ export async function connectClaudeCode(token: string): Promise<{ ok: boolean; m
  * Runs Claude Code without a window (`claude -p`), on his own account, with only the cockpit's tools
  * allowed. Used by the autopilot; the result comes back through MCP like any other task.
  */
-export async function runHeadless(prompt: string): Promise<{ started: boolean; command: string }> {
-  const command = `claude -p "${cleanPrompt(prompt)}" ${CLAUDE_ARGS}`
+export async function runHeadless(prompt: string, { web = false }: { web?: boolean } = {}): Promise<{ started: boolean; command: string }> {
+  // A task that needs the web (forums for the content week) may also search and read pages; nothing else.
+  const command = `claude -p "${cleanPrompt(prompt)}" ${CLAUDE_ARGS}${web ? ' WebSearch WebFetch' : ''}`
   const fake = fakeTerminal()
   if (fake) {
     record(fake, { command, headless: true })

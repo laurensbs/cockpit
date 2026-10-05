@@ -7,7 +7,7 @@ import * as s from '@/db/schema'
 import { expectedToken } from '@/lib/local'
 import { connectClaudeCode, launchPrompt, mcpUrl, openTerminal } from '../claude'
 import { setKeepAwakeSetting } from '../keep-awake'
-import { isTaskKind, TaskOptions } from '../mcp/tasks'
+import { isPortfolioTask, isTaskKind, TaskOptions } from '../mcp/tasks'
 import { createTicket } from '../mcp/tickets'
 import { actionOwner } from '../session'
 import { setSetting } from '../settings'
@@ -29,7 +29,7 @@ export async function openInClaude(task: string, projectId: string | null, optio
   if (task === 'ask' && !parsed.data.question) return { ok: false, error: 'Wat wil je Claude vragen?' }
   let cwd: string | null = null
   let id: string | null = null
-  if (task !== 'weekly' && !(task === 'ask' && !projectId)) {
+  if (!isPortfolioTask(task, Boolean(projectId))) {
     const db = await getDb()
     const [project] = await db
       .select({ id: s.project.id, localPath: s.project.localPath })
@@ -71,5 +71,13 @@ export async function setKeepAwake(on: boolean): Promise<void> {
   const owner = await actionOwner()
   await setKeepAwakeSetting(await getDb(), owner.userId, on)
   revalidatePath('/settings')
+}
+
+/** The content autopilot: on Monday morning Claude Code makes the content week by itself. */
+export async function setContentAutopilot(on: boolean): Promise<void> {
+  const owner = await actionOwner()
+  await setSetting(await getDb(), owner.userId, 'autopilot_content', on ? '1' : null)
+  revalidatePath('/settings')
+  revalidatePath('/studio')
 }
 

@@ -15,6 +15,7 @@ export const PLACES: { label: string; href: string; hint?: string }[] = [
   { label: 'Vandaag', href: '/' },
   { label: 'Projecten', href: '/projects' },
   { label: 'Marketing', href: '/studio', hint: 'concepten, mails, artikelen, experimenten' },
+  { label: 'Contentweek', href: '/content', hint: 'posts, reels, carrousels, forums goedkeuren' },
   { label: 'Quests', href: '/quests' },
   { label: 'Bedrijven', href: '/companies', hint: 'omzet, kosten, winst' },
   { label: 'GitHub', href: '/github', hint: 'alles binnenhalen' },
@@ -68,6 +69,7 @@ export function buildCommands(query: string, projects: CommandProject[], current
   const scope = q ? [...(current ? [current] : []), ...projects.filter((p) => p.id !== current?.id)] : current ? [current] : []
   const jobs: Command[] = []
   if (!q || matches(q, 'focus van de week weekfocus alle projecten')) jobs.push({ id: 'weekly', group: 'Claude Code', label: 'Maak de focus van de week', hint: 'alle projecten', kind: 'claude', task: 'weekly', projectId: null })
+  if (!q || matches(q, 'contentweek content posts reels instagram tiktok linkedin forums')) jobs.push({ id: 'content', group: 'Claude Code', label: 'Maak de contentweek', hint: 'alle projecten', kind: 'claude', task: 'content', projectId: null })
   for (const p of scope)
     for (const job of PROJECT_JOBS)
       if (!q || matches(q, job.label, p.name)) jobs.push({ id: `${job.task}-${JSON.stringify(job.options ?? {})}-${p.id}`, group: 'Claude Code', label: job.label, hint: p.name, kind: 'claude', task: job.task, projectId: p.id, options: job.options })

@@ -8,6 +8,7 @@ const PLACES: { href: string; label: string; icon: IconName }[] = [
   { href: '/', label: 'Vandaag', icon: 'today' },
   { href: '/projects', label: 'Projecten', icon: 'projects' },
   { href: '/studio', label: 'Marketing', icon: 'studio' },
+  { href: '/content', label: 'Contentweek', icon: 'calendar' },
   { href: '/quests', label: 'Quests', icon: 'quests' },
   { href: '/companies', label: 'Bedrijven', icon: 'companies' },
 ]

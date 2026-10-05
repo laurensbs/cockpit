@@ -28,6 +28,8 @@ test('the app starts its own server and opens the cockpit', async () => {
   const health = (await window.evaluate(() => fetch('/api/health').then((r) => r.json()))) as { ok: boolean; database: string; github: string }
   expect(health).toMatchObject({ ok: true, database: 'pglite', github: packaged ? 'off' : 'fixtures' })
   expect(await window.evaluate(() => location.origin)).toBe(`http://127.0.0.1:${config.port}`)
+  // It can draw slides: the fonts and the WebAssembly made it into the app.
+  expect(await window.evaluate(() => fetch('/api/render/check').then((r) => r.json()))).toMatchObject({ ok: true })
 
   // The window can move through the app.
   await window.getByRole('link', { name: 'Projecten' }).first().click()

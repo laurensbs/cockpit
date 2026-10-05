@@ -8,9 +8,10 @@ import { PaceChip } from '@/components/GrowthCard'
 import { NextSteps, SetupChecklist, type NextStepGroup } from '@/components/NextSteps'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { getDb } from '@/db'
-import { greeting } from '@/lib/dates'
+import { dayOf, greeting } from '@/lib/dates'
 import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
 import { claudeBlocked } from '@/server/claude-status'
+import { contentWeekSummary } from '@/server/content'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { outcomeHref, outcomeStates } from '@/server/outcome-state'
@@ -25,12 +26,13 @@ export default async function TodayPage() {
   const db = await getDb()
   await dailyRound(db, owner.userId)
   const outcomes = await outcomeStates(db, owner.userId)
-  const [stats, quests, pulses, growth, blocked] = await Promise.all([
+  const [stats, quests, pulses, growth, blocked, content] = await Promise.all([
     playerStats(db, owner.userId),
     questViews(db, owner.userId, { status: 'open', limit: 50 }),
     projectPulses(db, owner.userId, new Date(), outcomes),
     growthStates(db, owner.userId),
     claudeBlocked(),
+    contentWeekSummary(db, owner.userId, dayOf(new Date())),
   ])
   const setup = await setupSteps(db, owner.userId, pulses.length)
   const setupLeft = setup.some((step) => !step.done && !step.optional)
@@ -100,6 +102,17 @@ export default async function TodayPage() {
       <AskClaude projects={pulses.map((p) => ({ id: p.id, name: p.name }))} disabledReason={blocked} />
 
       {pulses.length ? <NextSteps groups={ordered.slice(0, 5).map((g) => ({ key: g.key, title: g.title, why: g.why, projects: g.projects }))} disabledReason={blocked} /> : null}
+
+      {content.ready || content.dueToday ? (
+        <Link href="/content" className="notice row between content-nudge">
+          <span>
+            <strong>Contentweek</strong> · {content.ready ? `${content.ready} klaar om goed te keuren` : ''}
+            {content.ready && content.dueToday ? ', ' : ''}
+            {content.dueToday ? `${content.dueToday} vandaag te plaatsen` : ''}
+          </span>
+          <Icon name="arrow" size={18} />
+        </Link>
+      ) : null}
 
       {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}
 

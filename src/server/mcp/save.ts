@@ -1,5 +1,5 @@
 import 'server-only'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
@@ -28,8 +28,13 @@ import {
   type ProfileWire,
   type WeeklyWire,
 } from '@/lib/ai/schemas'
+import { CHANNEL_LABELS } from '@/lib/ai/playbooks'
+import type { ContentItemInput } from '@/lib/ai/schemas'
+import { normalizeWeek, weekBody } from '@/lib/content-week'
+import { plannedLinkedinDays } from '../content'
 import { rollupMonths, upsertPoints } from '../points'
 import { award } from '../xp'
+import { resolveProject } from './projects'
 
 // What Claude Code hands back goes through the same normalizers as before: clamped, trimmed, safe
 // to show. Every save says in one line what it stored, so Claude can tell him.
@@ -230,3 +235,68 @@ export async function saveClaudeMetrics(db: Db, ownerId: string, project: { id: 
     text: `${ok.length} cijfer${ok.length === 1 ? '' : 's'} opgeslagen voor ${project.name}.${rejected.length ? ` Overgeslagen: ${rejected.map((r) => `${r.point.key} op ${r.point.day} (${r.why})`).join('; ')}.` : ''}`,
   }
 }
+
+/**
+ * The content week from Claude: every item checked, stored as a draft on its day, and its slides or
+ * cover drawn in the background. An item with "replaces" takes the place of the one he asked to redo.
+ */
+export async function saveContentWeek(db: Db, ownerId: string, items: ContentItemInput[]): Promise<{ ok: boolean; text: string }> {
+  const today = dayOf(new Date())
+  const { ok, skipped } = normalizeWeek(items, today, await plannedLinkedinDays(db, ownerId, today))
+  const projects = new Map<string, { id: string; name: string; language: string } | { error: string }>()
+  const stored: { channel: string; project: string }[] = []
+  for (const piece of ok) {
+    if (!projects.has(piece.project)) {
+      const found = await resolveProject(db, ownerId, piece.project)
+      if ('error' in found) projects.set(piece.project, found)
+      else {
+        const [row] = await db.select({ languages: s.project.languages }).from(s.project).where(eq(s.project.id, found.id))
+        projects.set(piece.project, { ...found, language: row?.languages[0] ?? 'nl' })
+      }
+    }
+    const project = projects.get(piece.project)!
+    if ('error' in project) {
+      skipped.push(`"${piece.title}": ${project.error}`)
+      continue
+    }
+    if (piece.replaces) {
+      const [old] = await db
+        .select({ id: s.contentItem.id })
+        .from(s.contentItem)
+        .where(and(eq(s.contentItem.id, piece.replaces), eq(s.contentItem.ownerId, ownerId), eq(s.contentItem.projectId, project.id)))
+      if (!old) {
+        skipped.push(`"${piece.title}": there is no item ${piece.replaces} on ${project.name} to replace.`)
+        continue
+      }
+      await db.update(s.contentItem).set({ status: 'archived' }).where(eq(s.contentItem.id, old.id))
+    }
+    await db.insert(s.contentItem).values({
+      id: crypto.randomUUID(),
+      ownerId,
+      projectId: project.id,
+      kind: piece.channel === 'forum' ? 'forum' : 'social',
+      channel: piece.channel,
+      language: piece.language ?? project.language,
+      title: piece.title,
+      body: piece.channel === 'forum' ? { ...weekBody(piece), render: { status: 'done' } } : weekBody(piece),
+      status: 'draft',
+      plannedFor: piece.day,
+      runId: SOURCE,
+    })
+    stored.push({ channel: piece.channel, project: project.name })
+  }
+  if (stored.length) {
+    await award(db, ownerId, { kind: 'generate', refId: `content:${today}:${stored.length}:${crypto.randomUUID().slice(0, 8)}` })
+    // Draw the slides and covers now, in the background; the Studio shows them when they are ready.
+    void import('../render/items').then(({ renderPending }) => renderPending(db, ownerId)).catch(() => undefined)
+  }
+  const perChannel = Object.entries(Object.groupBy(stored, (x) => x.channel)).map(([c, list]) => `${list?.length ?? 0} ${CHANNEL_LABELS[c as keyof typeof CHANNEL_LABELS] ?? c}`)
+  const lines = [
+    stored.length
+      ? `Opgeslagen: ${stored.length} item${stored.length === 1 ? '' : 's'} voor de contentweek (${perChannel.join(', ')}). De cockpit tekent nu de beelden; hij keurt alles goed onder Marketing → Contentweek.`
+      : 'Niets opgeslagen.',
+    ...(skipped.length ? [`Niet opgeslagen (fix these and call save_content_week again with only those items):\n${skipped.map((x) => `- ${x}`).join('\n')}`] : []),
+  ]
+  return { ok: stored.length > 0, text: lines.join('\n') }
+}
+

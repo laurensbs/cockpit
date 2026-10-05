@@ -22,15 +22,19 @@ import {
   weeklyTask,
   askTask,
   modelTask,
+  contentTask,
 } from '@/lib/ai/prompts'
+import { CHANNEL_LABELS, CONTENT_CHANNELS, PLAYBOOKS } from '@/lib/ai/playbooks'
+import { CONTENT_WINDOW_DAYS, type WeekBody } from '@/lib/content-week'
 import { addDays, dayOf } from '@/lib/dates'
 import { METRIC_DEFS, METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
+import { contentProjects } from '../content'
 import { dataSummary } from '../outcome-state'
 import { loadPoints } from '../points'
 
-export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model'] as const
+export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model', 'content'] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 export const isTaskKind = (v: unknown): v is TaskKind => typeof v === 'string' && (TASK_KINDS as readonly string[]).includes(v)
 
@@ -49,7 +53,13 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   weekly: 'Focus van de week',
   ask: 'Een vraag of opdracht van hem, in zijn eigen woorden',
   model: 'Groeimodel: één doelcijfer met een deadline en de trechter ernaartoe (een voorstel)',
+  content: 'Contentweek voor alle projecten: posts, carrousels, video’s en forumantwoorden',
 }
+
+/** Tasks about the whole portfolio rather than one project. */
+export const PORTFOLIO_TASKS: readonly TaskKind[] = ['weekly', 'content']
+/** A portfolio task, or a question asked without a project. */
+export const isPortfolioTask = (task: string, hasProject: boolean) => (PORTFOLIO_TASKS as readonly string[]).includes(task) || (task === 'ask' && !hasProject)
 
 export const EMAIL_PURPOSE_KEYS = Object.keys(EMAIL_PURPOSES) as [keyof typeof EMAIL_PURPOSES]
 export const PLATFORM_KEYS = Object.keys(PLATFORMS) as [keyof typeof PLATFORMS]
@@ -62,10 +72,11 @@ export const TaskOptions = z.object({
   mode: z.enum(IDEA_MODE_KEYS).optional().describe('ideas: the way of thinking'),
   language: z.enum(LANGUAGES).optional().describe('the language of the result; default: the project’s first language'),
   persona: z.string().trim().max(80).optional().describe('ideas in persona mode: whose perspective'),
-  note: z.string().trim().max(300).optional().describe('emails: what must be in this batch'),
+  note: z.string().trim().max(300).optional().describe('emails: what must be in this batch; content: his remark on the item to redo'),
   contactId: z.string().trim().max(64).optional().describe('contact_mail: the contact (see list_contacts)'),
   question: z.string().trim().max(600).optional().describe('ask: his question or request, in his own words'),
   focus: z.enum(METRIC_KEYS).optional().describe('experiments: the metric the experiments must move (where the funnel leaks)'),
+  itemId: z.string().trim().max(64).optional().describe('content: redo this one item of the content week'),
 })
 export type TaskOptions = z.infer<typeof TaskOptions>
 
@@ -102,7 +113,7 @@ export interface Brief {
  * never as instructions), the task, and how to hand the result back with a tool.
  */
 export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projectId: string | null, options: TaskOptions): Promise<Brief | { error: string }> {
-  const portfolio = task === 'weekly' || (task === 'ask' && !projectId)
+  const portfolio = isPortfolioTask(task, Boolean(projectId))
   const ctx = portfolio ? await loadPortfolioContext(db, ownerId) : projectId ? await loadJobContext(db, ownerId, projectId) : null
   if (!ctx) return { error: portfolio ? 'The portfolio could not be loaded.' : 'This task needs a project.' }
   const project = ctx.project
@@ -214,6 +225,36 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
       if (!options.question) return { error: 'ask needs his question (question).' }
       body = askTask(options.question, project ? name : 'his projects')
       break
+    case 'content': {
+      const today = dayOf(new Date())
+      const to = addDays(today, 6)
+      if (options.itemId) {
+        const [item] = await db
+          .select()
+          .from(s.contentItem)
+          .where(and(eq(s.contentItem.id, options.itemId), eq(s.contentItem.ownerId, ownerId)))
+        if (!item?.projectId) return { error: `No content item with id ${options.itemId}.` }
+        const projects = await contentProjects(db, ownerId, today, item.projectId)
+        const b = item.body as WeekBody
+        body = contentTask({
+          from: today,
+          to: addDays(today, CONTENT_WINDOW_DAYS - 1),
+          projects,
+          playbooks: [PLAYBOOKS[item.channel as keyof typeof PLAYBOOKS] ?? ''],
+          redo: { id: item.id, project: projects[0]?.name ?? '', channel: item.channel, format: b.contentFormat ?? '', title: item.title, text: b.forum?.answer ?? b.caption ?? '', note: options.note ?? '' },
+        })
+      } else {
+        const projects = await contentProjects(db, ownerId, today)
+        if (!projects.length) return { error: 'No active project has a content rhythm. He sets it in the Studio under Contentweek.' }
+        const used = CONTENT_CHANNELS.filter((c) => projects.some((p) => p.rhythm[c] > 0))
+        body = contentTask({ from: today, to, projects, playbooks: used.map((c) => PLAYBOOKS[c]) })
+        extra = `Use your web search and web fetch tools for the forum answers${used.includes('forum') ? '' : ' (none needed this week)'} and to check current formats when unsure. Channels this week: ${used.map((c) => CHANNEL_LABELS[c]).join(', ')}.`
+      }
+      handBack =
+        '`save_content_week` with { "items": [ { "project", "channel", "format", "title", "hook", "text", "hashtags", "day", "time", "slides": [ { "title", "body" } ], "reel": { "durationSec", "beats": [ { "sec", "text", "shot" } ], "coverText", "voiceover", "mediaIds" }, "forum": { "place", "url", "answer", "disclosure" }, "goal", "why"' +
+        (options.itemId ? ', "replaces" } ] }' : ' } ] } — in a few calls of at most 20 items when the week is big')
+      break
+    }
     case 'weekly':
       body = weeklyTask(dayOf(new Date()))
       handBack = '`save_weekly` with { "weekly": { "headline", "focus": [ … ], "wins", "avoiding", "boss": { "title", "project", "why" } } }'

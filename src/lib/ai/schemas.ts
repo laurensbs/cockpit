@@ -419,3 +419,37 @@ export const linkedinFromJson = (value: unknown): LinkedinPlan | null => {
   const r = LinkedinWire.safeParse(value)
   return r.success ? normalizeLinkedin(r.data) : null
 }
+
+// ---------- the content week ----------
+
+const slideWire = z.object({ title: str.describe('Big text on the slide, max ~10 words'), body: str.optional().describe('Supporting text, max ~25 words') })
+
+export const ContentItemWire = z.object({
+  project: str.describe('The project, by name'),
+  channel: z.enum(['linkedin', 'instagram', 'tiktok', 'forum']),
+  format: z.enum(['text', 'image', 'carousel', 'document', 'reel', 'story', 'answer']).describe('What the channel takes: see the playbooks'),
+  language: z.enum(['nl', 'en', 'es', 'fr', 'de']).optional().describe('Default: the project’s first language'),
+  title: str.describe('A short internal title'),
+  hook: str.describe('The first line or first second: what stops the scroll'),
+  text: str.describe('The full caption or post text, ready to publish (forum: a one-line summary)'),
+  hashtags: z.array(str).optional(),
+  day: str.describe('YYYY-MM-DD, within the next 14 days'),
+  time: str.optional().describe('HH:MM, Amsterdam time'),
+  slides: z.array(slideWire).max(10).optional().describe('image: 1 slide; carousel/document/story: 3–10 slides'),
+  reel: z
+    .object({
+      durationSec: z.number().optional(),
+      beats: z.array(z.object({ sec: z.number().describe('Start second'), text: str.describe('On-screen text'), shot: str.optional().describe('What is on screen') })).max(12),
+      coverText: str.optional(),
+      voiceover: str.optional(),
+      mediaIds: z.array(str).max(6).optional().describe('His own clips or photos (see list_media), if any fit'),
+    })
+    .optional(),
+  forum: z.object({ place: str, url: str.describe('The thread or the community, as found'), answer: str.describe('The full answer he posts'), disclosure: str.optional() }).optional(),
+  goal: z.string().optional().describe('The metric key it should move, e.g. leads'),
+  why: str.optional().describe('One line: why this, now'),
+  replaces: str.optional().describe('Only when redoing one item: the id of the item it replaces'),
+})
+export type ContentItemInput = z.infer<typeof ContentItemWire>
+
+export const ContentWeekWire = z.object({ items: z.array(ContentItemWire).min(1).max(60) })
