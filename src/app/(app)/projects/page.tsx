@@ -36,7 +36,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <header className="stack-s">
           <p className="eyebrow">Start</p>
           <h1>Zet je projecten erin</h1>
-          <p className="lede">Vink aan waar je nu aan werkt. Namen en repo's kun je later nog aanpassen.</p>
+          <p className="lede">Vink aan waar je nu aan werkt. Namen en repo&apos;s kun je later nog aanpassen.</p>
         </header>
         <StarterSetup starters={STARTER_PROJECTS} repoNames={await repoNames(source)} github={source !== null} />
       </div>
