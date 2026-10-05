@@ -1,8 +1,11 @@
 'use client'
 
+import { Mail, Phone, Star } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { acceptProspect, prospectNow, prospectWantsInfo, setProspecting, skipProspect, writeAllMails } from '@/server/actions/prospects'
+import { Logo } from './Logo'
+import { StepDisc } from './StepIcon'
 
 const REASONS = ['past niet', 'klopt niet wat Claude zag', 'te groot', 'te ver weg', 'anders'] as const
 const VERB: Record<string, string> = { call: 'Ja, ik bel ze', visit: 'Ja, ik ga langs', form: 'Ja, ik vul hun formulier in', email: 'Ja, ik bel ze' }
@@ -133,37 +136,48 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
       </li>
     )
   return (
-    <li className="card stack-s" aria-label={`Voorstel: ${p.organization}`}>
-      <div className="row between wrap">
-        <div className="stack-xs">
-          <strong>{p.organization}</strong>
+    <li className="card stack-m prospect-card" aria-label={`Voorstel: ${p.organization}`}>
+      <div className="prospect-head">
+        <StepDisc kind={p.channel === 'visit' ? 'prospect' : 'call'} size={52} />
+        <div className="stack-xs grow">
+          <strong className="prospect-name">{p.organization}</strong>
           <span className="tiny muted">{[p.city, p.website ? p.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : null].filter(Boolean).join(' · ')}</span>
         </div>
         {p.fit ? (
-          <span className="tiny" aria-label={`Past ${p.fit} van 5`}>
-            {'★'.repeat(p.fit)}
-            <span className="faint">{'★'.repeat(5 - p.fit)}</span>
+          <span className="chip fit" aria-label={`Past ${p.fit} van 5`}>
+            <Star size={14} strokeWidth={2.5} fill="currentColor" aria-hidden="true" /> {p.fit}/5
           </span>
         ) : null}
       </div>
       {p.note ? <p className="small muted">{p.note}</p> : null}
-      <div className="notice small stack-xs">
-        <strong>Wat Claude zag</strong>
-        <span>{p.observation}</span>
-        {p.website ? (
-          <a href={p.website} target="_blank" rel="noreferrer" className="tiny">
-            Kijk zelf op hun site
-          </a>
-        ) : null}
+      <div className="bubble-row">
+        <span className="bubble-who" aria-hidden="true">
+          <Logo />
+        </span>
+        <div className="bubble small">
+          <p className="bubble-title">Wat Claude zag</p>
+          <p>{p.observation}</p>
+          {p.website ? (
+            <a href={p.website} target="_blank" rel="noreferrer" className="tiny">
+              Kijk zelf op hun site
+            </a>
+          ) : null}
+        </div>
       </div>
       {p.pitch ? (
-        <p className="small">
-          <strong>Zo kun je openen:</strong> “{p.pitch}”
-        </p>
+        <div className="card sunken stack-xs">
+          <p className="eyebrow">Zo kun je openen</p>
+          <p className="small">“{p.pitch}”</p>
+        </div>
       ) : null}
-      <p className="tiny muted">
-        {p.hasPhone ? 'Telefoonnummer gevonden' : 'Geen telefoonnummer gevonden'} · {p.hasEmail ? 'algemeen mailadres gevonden' : 'geen mailadres gevonden'}
-      </p>
+      <div className="row" style={{ gap: '0.4rem' }}>
+        <span className={`chip ${p.hasPhone ? 'good' : ''}`}>
+          <Phone size={13} strokeWidth={2.5} aria-hidden="true" /> {p.hasPhone ? 'Telefoonnummer gevonden' : 'Geen telefoonnummer gevonden'}
+        </span>
+        <span className={`chip ${p.hasEmail ? 'good' : ''}`}>
+          <Mail size={13} strokeWidth={2.5} aria-hidden="true" /> {p.hasEmail ? 'algemeen mailadres gevonden' : 'geen mailadres gevonden'}
+        </span>
+      </div>
       {p.draft ? (
         <details>
           <summary className="small">De infomail die Claude klaarzette (gaat pas als ze om info vragen)</summary>
@@ -203,10 +217,10 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
           </div>
         </div>
       ) : (
-        <div className="row wrap">
+        <div className="row wrap prospect-actions">
           <button
             type="button"
-            className="button primary"
+            className="button primary big"
             disabled={pending}
             onClick={() =>
               start(async () => {
@@ -217,10 +231,10 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
           >
             {VERB[p.channel] ?? VERB.call}
           </button>
-          <button type="button" className="button secondary" disabled={pending} onClick={() => setAsking(true)}>
+          <button type="button" className="button secondary big" disabled={pending} onClick={() => setAsking(true)}>
             Nee
           </button>
-          <button type="button" className="button ghost" disabled={pending} onClick={() => setLater(true)}>
+          <button type="button" className="button ghost big" disabled={pending} onClick={() => setLater(true)}>
             Later
           </button>
         </div>

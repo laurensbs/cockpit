@@ -23,6 +23,8 @@ test('the five projects go in at once, linked to GitHub, with a company overview
   // Rondje was read from GitHub: stack, activity and commits, with secrets from the README kept out.
   await page.getByRole('link', { name: /Rondje/ }).first().click()
   await expect(page.getByRole('heading', { name: 'Rondje', level: 1 })).toBeVisible()
+  // The code and the activity wait behind "Meer over …", so the page starts with what to do.
+  await page.getByText('Meer over Rondje').click()
   await expect(page.getByText('laurensbs/value')).toBeVisible()
   await expect(page.getByText('Next.js', { exact: true })).toBeVisible()
   await expect(page.getByText(/actieve dagen in 30/)).toBeVisible()

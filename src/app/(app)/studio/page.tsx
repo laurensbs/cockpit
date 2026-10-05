@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm'
+import { FlaskConical, Mail, Megaphone, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { ArticleCard } from '@/components/ArticleCard'
 import { EmailDraftCard } from '@/components/EmailDraftCard'
@@ -216,31 +217,43 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     hub = (
       <>
         <section className="kpis">
-          <div className="kpi card flat">
+          <Link href={href({ tab: 'drafts' })} className="kpi card tile tone-orange">
+            <span className="tile-ico" aria-hidden="true">
+              <Megaphone size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Posts deze week</span>
             <span className="value">{postsDone}</span>
             <span className="tiny muted">{postsPlanned} gepland</span>
-          </div>
-          <div className="kpi card flat">
+          </Link>
+          <Link href={href({ tab: 'mails' })} className="kpi card tile tone-blue">
+            <span className="tile-ico" aria-hidden="true">
+              <Mail size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Mails deze week</span>
             <span className="value">{sentThisWeek}</span>
             <span className="tiny muted">{outbox.filter((o) => o.status === 'queued').length} in de wachtrij</span>
-          </div>
-          <div className="kpi card flat">
+          </Link>
+          <Link href={`/projects/${current.id}/contacts`} className="kpi card tile tone-green">
+            <span className="tile-ico" aria-hidden="true">
+              <MessageCircle size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Antwoorden</span>
             <span className="value">{contacts.filter((c) => ANSWERED_STATUSES.includes(c.status)).length}</span>
             <span className="tiny muted">van {contacts.length} contacten</span>
-          </div>
-          <div className="kpi card flat">
+          </Link>
+          <Link href={href({ tab: 'experiments' })} className="kpi card tile tone-violet">
+            <span className="tile-ico" aria-hidden="true">
+              <FlaskConical size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Experimenten</span>
             <span className="value">{running.length}</span>
             <span className="tiny muted">{experiments.filter((e) => e.status === 'done' && str(b(e).result) === 'won').length} gewonnen</span>
-          </div>
+          </Link>
         </section>
         <section className="card stack-s">
           <h2>Organische groei: wat nu?</h2>
           {actions.length ? (
-            <ol className="list">
+            <ol className="list next-steps">
               {actions.map((a) => (
                 <li key={a.key} className="row between">
                   <span className="stack-xs grow" style={{ minWidth: 0 }}>

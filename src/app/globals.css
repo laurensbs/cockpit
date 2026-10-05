@@ -1226,10 +1226,12 @@ a.chip {
 
 .empty {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 2rem 1.25rem;
   color: var(--muted);
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-m);
+  font-weight: 750;
+  border: 2px dashed var(--edge);
+  border-radius: var(--radius-l);
+  background: var(--surface-2);
 }
 
 .skeleton {
@@ -1787,8 +1789,34 @@ a.chip:hover {
   border-radius: 16px;
   font-size: 1.4rem;
 }
+/* The next steps as numbered stops, like the path on Vandaag. */
+.next-steps {
+  counter-reset: step;
+}
 .next-steps > li {
-  padding-block: 0.75rem;
+  position: relative;
+  padding-block: 0.85rem;
+  padding-left: 3.4rem;
+}
+.next-steps > li::before {
+  counter-increment: step;
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.85rem;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 0 var(--accent-edge);
+  color: #ffffff;
+  font: 900 1rem/1 var(--font-display);
+}
+.next-steps > li:first-child::before {
+  background: var(--green);
+  box-shadow: 0 4px 0 var(--green-edge);
 }
 .next-projects {
   gap: 0.4rem;
@@ -1940,6 +1968,120 @@ a.chip:hover {
 .deal-late {
   color: var(--bad);
   font-weight: 600;
+}
+
+/* ---------- a project's own header ---------- */
+
+.project-hero-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.project-disc {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--tone);
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--tone) 72%, #000000);
+  color: #ffffff;
+  font: 900 1.9rem/1 var(--font-display);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.12);
+}
+.project-hero h1 {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+}
+.project-actions {
+  flex: none;
+}
+@media (max-width: 720px) {
+  .project-hero-top {
+    flex-wrap: wrap;
+  }
+  .project-disc {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    font-size: 1.5rem;
+  }
+  .project-actions {
+    width: 100%;
+  }
+}
+
+/* A business Claude found: badge, name, fit; what it saw in a bubble; one big yes. */
+.prospect-head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.prospect-head > .grow {
+  min-width: 0;
+}
+.prospect-head .tiny,
+.prospect-name {
+  overflow-wrap: anywhere;
+}
+.prospect-name {
+  font-size: 1.12rem;
+  font-weight: 900;
+}
+.chip.fit {
+  background: var(--gold-soft);
+  color: var(--gold-edge);
+}
+.prospect-actions .button.primary {
+  flex: 1 1 220px;
+}
+.prospect-card .bubble-who,
+.prospect-card .bubble-who svg {
+  width: 36px;
+  height: 36px;
+}
+
+/* A number you can tap: an icon tile with the number, raised like a button. */
+a.card.tile {
+  position: relative;
+  display: grid;
+  gap: 0.2rem;
+  align-content: start;
+  border-color: var(--line);
+}
+a.card.tile:hover {
+  border-color: color-mix(in srgb, var(--tone) 55%, var(--line));
+}
+.tile-ico {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.35rem;
+  border-radius: 12px;
+  background: var(--tone);
+  box-shadow: 0 3px 0 var(--tone-edge);
+  color: #ffffff;
+}
+
+/* Pages arrive softly. */
+.main > * {
+  animation: page-in 0.22s ease-out;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .main > * {
+    animation: none;
+  }
 }
 
 /* ---------- discs: the round, raised badge of a kind of step ---------- */
@@ -2385,6 +2527,7 @@ html[data-shell='mac'] .lesson {
   position: relative;
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
   padding: 0.9rem 1.05rem;
   border: 2px solid var(--line);
   border-radius: 18px;
