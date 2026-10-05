@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles } from 'lucide-react'
+import { Check, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { amountText, CURRENCIES, KIND_LABEL, MONEY_KINDS, MONEY_PERIODS, type MoneyItem, PERIOD_LABEL, whenText } from '@/lib/finance'
@@ -159,7 +159,7 @@ export function MoneyRow({ item, today, projects, act }: { item: MoneyItem; toda
           ) : act ? (
             <>
               <button type="button" className="button secondary small" disabled={pending} onClick={() => step('done')}>
-                {item.kind === 'cost' ? 'Houden ✓' : 'Geregeld ✓'}
+                <Check size={16} strokeWidth={3} aria-hidden="true" /> {item.kind === 'cost' ? 'Houden' : 'Geregeld'}
               </button>
               {item.kind === 'cost' ? (
                 <button type="button" className="button ghost small" disabled={pending} onClick={() => step('stop')}>

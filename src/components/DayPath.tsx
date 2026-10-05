@@ -11,10 +11,25 @@ const at = (i: number) => ({ '--x': `${WIND[i % WIND.length]}px` }) as React.CSS
  * Vandaag: the day as a path. What he did today first (gold), then what is waiting (the first one asks
  * to start), then the day goal. Every node opens the lesson (/dag), where Claude takes him through it.
  */
-export function DayPath({ steps, done, goal }: { steps: DayStep[]; done: number; goal: number }) {
+export function DayPath({
+  steps,
+  done,
+  goal,
+  empty,
+  children,
+}: {
+  steps: DayStep[]
+  done: number
+  goal: number
+  /** With no steps and the goal still open: where to start instead (a setup step, or the projects). */
+  empty?: { title: string; href: string; label: string } | null
+  /** The coach's one line, under the heading. */
+  children?: React.ReactNode
+}) {
   const finished = done >= goal
   const shown = steps.slice(0, 3)
   const doneNodes = Math.min(done, goal)
+  const waiting = !finished && !shown.length
   return (
     <section className="stack-m" aria-label="Vandaag">
       <div className="unit tone-violet">
@@ -22,14 +37,20 @@ export function DayPath({ steps, done, goal }: { steps: DayStep[]; done: number;
           <p className="unit-eyebrow">
             Vandaag · {Math.min(done, goal)} van {goal}
           </p>
-          <h2>{finished ? 'Dagdoel gehaald' : shown.length ? 'Jouw stappen van vandaag' : 'Alles gedaan'}</h2>
+          <h2>{finished ? 'Dagdoel gehaald' : shown.length ? 'Jouw stappen van vandaag' : 'Claude zet je stappen klaar'}</h2>
+          {waiting && empty ? <p className="small">{empty.title}</p> : null}
         </div>
         {shown.length ? (
           <Link href="/dag" className="button big unit-cta">
             {finished ? 'Nog een rondje' : 'Start je dag'}
           </Link>
+        ) : waiting && empty ? (
+          <Link href={empty.href} className="button big unit-cta">
+            {empty.label}
+          </Link>
         ) : null}
       </div>
+      {children}
       <ol className="path">
         {Array.from({ length: doneNodes }, (_, i) => (
           <li key={`done-${i}`} className="path-node done" style={at(i)}>
@@ -44,7 +65,7 @@ export function DayPath({ steps, done, goal }: { steps: DayStep[]; done: number;
         ))}
         {shown.map((step, i) => (
           <li key={step.key} className={`path-node${i === 0 ? ' now' : ''}`} style={at(doneNodes + i)}>
-            <Link href="/dag" className="node-btn" aria-label={`${step.title}: start de les`}>
+            <Link href="/dag" className="node-btn" aria-label={`${step.title}: start je dag`}>
               <StepDisc kind={step.kind} size={76} />
             </Link>
             {i === 0 ? <span className="node-start">Start</span> : null}
@@ -60,7 +81,7 @@ export function DayPath({ steps, done, goal }: { steps: DayStep[]; done: number;
           </span>
           <span className="node-label">
             <strong>Dagdoel</strong>
-            <span className="tiny muted">{finished ? '+30 XP binnen · meer mag, hoeft niet' : `Nog ${goal - doneNodes} ${goal - doneNodes === 1 ? 'stap' : 'stappen'} · +30 XP`}</span>
+            <span className="tiny muted">{finished ? 'Gehaald · meer mag, hoeft niet' : `Nog ${goal - doneNodes} ${goal - doneNodes === 1 ? 'stap' : 'stappen'}`}</span>
           </span>
         </li>
       </ol>

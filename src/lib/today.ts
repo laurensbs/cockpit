@@ -8,10 +8,12 @@ interface Base {
   title: string
   sub: string
   projectId: string | null
+  /** Why this step is here today, from real data ("Je mailde ze di 29 sep, al 6 dagen niets gehoord"). */
+  why?: string
 }
 
 export type DayStep =
-  | (Base & { kind: 'call'; questId: string; phone: string | null; contactId: string | null; hasEmail: boolean; draft: { id: string; subject: string; body: string; followups: number } | null })
+  | (Base & { kind: 'call'; questId: string; phone: string | null; contactId: string | null; hasEmail: boolean; draft: { id: string; subject: string; body: string; followups: number } | null; observation?: string; pitch?: string; website?: string | null })
   | (Base & { kind: 'prospects'; count: number })
   | (Base & { kind: 'reply'; contactId: string })
   | (Base & { kind: 'give'; itemId: string; url: string; how: string })
@@ -20,7 +22,7 @@ export type DayStep =
   | (Base & { kind: 'post'; itemId: string; platform: string; text: string; hook: string; profile: string | null; color: string; projectName: string; value: string; proof: string })
   | (Base & { kind: 'checkin'; platform: 'instagram' })
   | (Base & { kind: 'seen'; month: string; questions: string[] })
-  | (Base & { kind: 'build'; platform: string; note: string })
+  | (Base & { kind: 'build'; platform: string; note: string; work?: string[] })
   | (Base & { kind: 'growth'; href: string; task: string | null; options?: Record<string, unknown> })
 
 /**
@@ -75,4 +77,29 @@ const talkRank = (type: string) => (TALK.test(type) ? 0 : /^other$/i.test(type.t
 export function pickGivePlace<T extends { id: string; type: string; url: string | null; rating: number }>(places: T[], recent: ReadonlySet<string>): T | null {
   const open = places.filter((p) => p.url && p.rating >= 0 && !recent.has(p.id) && talkRank(p.type) !== null)
   return [...open].sort((a, b) => talkRank(a.type)! - talkRank(b.type)! || b.rating - a.rating)[0] ?? null
+}
+
+// What a step is, counted, and roughly how long it takes: the day in one line ("2 telefoontjes en 1 post · ± 13 minuten").
+const STEP_WORDS: Record<DayStep['kind'], [string, string, number]> = {
+  call: ['telefoontje', 'telefoontjes', 5],
+  money: ['geldzaak', 'geldzaken', 2],
+  prospects: ['keuze over nieuwe bedrijven', 'keuzes over nieuwe bedrijven', 3],
+  reply: ['antwoord nakijken', 'antwoorden nakijken', 1],
+  setup: ['ding regelen', 'dingen regelen', 10],
+  give: ['iemand helpen', 'mensen helpen', 10],
+  checkin: ['cijfer invullen', 'cijfers invullen', 1],
+  seen: ['zoekcheck', 'zoekchecks', 5],
+  post: ['post', 'posts', 3],
+  build: ['post over wat je bouwde', 'posts over wat je bouwde', 2],
+  growth: ['groeistap', 'groeistappen', 2],
+}
+
+export function dayLine(steps: readonly DayStep[]): string {
+  if (!steps.length) return ''
+  const counts = new Map<DayStep['kind'], number>()
+  for (const s of steps) counts.set(s.kind, (counts.get(s.kind) ?? 0) + 1)
+  const parts = [...counts.entries()].map(([kind, n]) => `${n} ${n === 1 ? STEP_WORDS[kind][0] : STEP_WORDS[kind][1]}`)
+  const minutes = steps.reduce((t, s) => t + STEP_WORDS[s.kind][2], 0)
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} en ${parts[parts.length - 1]}` : parts[0]
+  return `${list} · ± ${minutes} minuten`
 }

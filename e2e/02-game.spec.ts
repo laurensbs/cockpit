@@ -3,11 +3,10 @@ import { newVisitor, shot } from './helpers'
 
 test('quests give XP, a boss levels you up, recurring quests come back', async ({ browser }) => {
   const { context, page } = await newVisitor(browser)
-  await page.goto('/')
-  await expect(page.getByText('Level 1 · Dromer')).toBeVisible()
+  await page.goto('/quests')
+  await expect(page.getByText(/Level 1 · 0 XP/)).toBeVisible()
 
   // A quest of his own, done: XP and a streak.
-  await page.goto('/quests')
   const form = page.locator('#nieuw')
   await form.getByLabel('Quest', { exact: true }).fill('Btw-aangifte Q3 Webstability')
   await form.getByLabel('Wanneer').fill(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date()))
@@ -36,12 +35,12 @@ test('quests give XP, a boss levels you up, recurring quests come back', async (
   await shot(page, '06-level-up')
   await party.click()
 
-  // Today shows the level, the XP and the streak.
+  // Today shows the streak; the level and the XP stay on Taken.
   await page.goto('/')
-  await expect(page.getByText('Level 2 · Knutselaar')).toBeVisible()
-  await expect(page.getByText('+275 XP vandaag')).toBeVisible()
   await expect(page.getByText('1 dag op rij')).toBeVisible()
   await shot(page, '07-today')
+  await page.goto('/quests')
+  await expect(page.getByText(/Level 2 · 275 XP/)).toBeVisible()
 
   // Reopening takes the XP back out.
   await page.goto('/quests')

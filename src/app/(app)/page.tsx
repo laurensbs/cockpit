@@ -1,11 +1,10 @@
-import { Crown, Flame, Zap } from 'lucide-react'
+import { Flame } from 'lucide-react'
 import Link from 'next/link'
 import { HealthRing } from '@/components/HealthRing'
 import { Icon } from '@/components/Icon'
 import { QuestItem } from '@/components/QuestItem'
 import { Sparkline } from '@/components/Sparkline'
-import { AskClaude } from '@/components/AskClaude'
-import { PaceChip } from '@/components/GrowthCard'
+import { GrowthCard, PaceChip } from '@/components/GrowthCard'
 import { NextSteps, SetupChecklist } from '@/components/NextSteps'
 import { ClaudeLoggedOut } from '@/components/ClaudeLoggedOut'
 import { CoachCard } from '@/components/CoachCard'
@@ -15,7 +14,7 @@ import { WeekScoreCard } from '@/components/WeekScoreCard'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
 import { ago } from '@/lib/time'
-import { pickSteps } from '@/lib/today'
+import { dayLine, pickSteps } from '@/lib/today'
 import { headlessProblem } from '@/server/claude'
 import { latestCoach } from '@/server/coach'
 import { claudeBlocked } from '@/server/claude-status'
@@ -47,7 +46,7 @@ export default async function TodayPage() {
   const ordered = orderNextSteps(pulses, outcomes, growth)
   const now = quests.filter((q) => q.bucket === 'overdue' || q.bucket === 'today' || q.kind === 'boss').slice(0, 5)
   const shown = now.length >= 3 ? now : [...now, ...quests.filter((q) => !now.includes(q))].slice(0, 3)
-  const { level, actionStreak, buildStreak } = stats
+  const { actionStreak } = stats
   // The day route: the first growth step of the least healthy project closes the list.
   const daySteps = pickSteps(await dayCandidates(db, owner.userId, growthStep(ordered)), new Set(), 8)
   const progress = await dayProgress(db, owner.userId)
@@ -55,28 +54,53 @@ export default async function TodayPage() {
   const coach = await latestCoach(db, owner.userId)
 
   const left = Math.max(0, progress.goal - progress.done)
+  // The goal that matters most: the project whose goal is furthest behind (a date and one number).
+  const RANK = { overdue: 0, far_behind: 1, behind: 2, no_data: 3, on_track: 4, ahead: 5, done: 6 } as const
+  const goalProject = pulses
+    .map((p) => ({ id: p.id, o: outcomes.get(p.id) }))
+    .filter((x) => x.o?.model && x.o.pace)
+    .map((x) => ({ id: x.id, model: x.o!.model!, pace: x.o!.pace!, spark: x.o!.spark, sources: x.o!.sources }))
+    .sort((a, b) => RANK[a.pace.status] - RANK[b.pace.status])[0]
+  // An empty day: start where the cockpit itself is not ready yet, or with the projects.
+  const firstSetup = setup.find((step) => !step.done && !step.optional)
+  const empty = firstSetup
+    ? { title: `Eerst dit: ${firstSetup.title.charAt(0).toLowerCase()}${firstSetup.title.slice(1)}.`, href: firstSetup.href, label: 'Doe dit eerst' }
+    : pulses.length
+      ? { title: 'Laat Claude bedrijven zoeken of posts maken; morgen staan je stappen hier.', href: `/projects/${pulses[0].id}/contacts`, label: 'Bedrijven zoeken' }
+      : { title: 'Zet je projecten erin, dan maakt Claude je stappen.', href: '/projects', label: 'Projecten toevoegen' }
   const name = owner.name ? owner.name.split(' ')[0] : null
 
   return (
     <div className="today">
       <header className="today-head stack-xs">
         <h1>{name ? `${greeting(new Date())}, ${name}` : greeting(new Date())}</h1>
-        <p className="muted">
-          {left ? `${left} ${left === 1 ? 'stap' : 'stappen'} tot je dagdoel · een paar minuten` : 'Dagdoel gehaald. Meer mag, hoeft niet.'}
-        </p>
+        <p className="muted">{left ? (dayLine(daySteps.slice(0, 3)) || 'Claude zet je stappen klaar') : 'Dagdoel gehaald. Meer mag, hoeft niet.'}</p>
       </header>
 
       {setupLeft ? <SetupChecklist steps={setup} /> : null}
 
       {headlessProblem() === 'logged-out' ? <ClaudeLoggedOut /> : null}
-      <DayPath steps={daySteps} done={progress.done} goal={progress.goal} />
-
-      <aside className="today-rail" aria-label="Je voortgang">
+      <DayPath steps={daySteps} done={progress.done} goal={progress.goal} empty={empty}>
         <CoachCard
           coach={{ advice: coach?.advice ?? null, projectId: coach?.projectId ?? null, projectName: coach?.projectName ?? null, when: coach ? ago(coach.at) : null, stamp: coach ? coach.at.toISOString() : null }}
           scope={null}
           disabledReason={blocked}
+          line
         />
+      </DayPath>
+
+      <aside className="today-rail" aria-label="Je voortgang">
+        {goalProject ? (
+          <GrowthCard projectId={goalProject.id} model={goalProject.model} pace={goalProject.pace} spark={goalProject.spark} sources={goalProject.sources} />
+        ) : pulses.length ? (
+          <section className="card stack-xs">
+            <h3>Je doel</h3>
+            <p className="small muted">Nog geen doel met een datum. Laat Claude er een voorstellen: één cijfer dat telt, en wat ervoor nodig is.</p>
+            <Link href={`/projects/${pulses[0].id}/numbers`} className="button secondary small" style={{ width: 'fit-content' }}>
+              Doel kiezen
+            </Link>
+          </section>
+        ) : null}
         <section className="card rail-card">
           <span className="disc tone-orange" style={{ width: 56, height: 56 }} aria-hidden="true">
             <Flame size={28} strokeWidth={2.5} fill={actionStreak.today ? 'currentColor' : 'none'} />
@@ -88,43 +112,12 @@ export default async function TodayPage() {
             <p className="tiny muted">{actionStreak.today ? 'Vandaag al gedaan. Goed bezig.' : 'Doe vandaag één stap om je reeks te houden.'}</p>
           </div>
         </section>
-        <section className="card stack-s rail-level">
-          <div className="rail-card">
-            <span className="disc tone-gold" style={{ width: 56, height: 56 }} aria-hidden="true">
-              <Crown size={28} strokeWidth={2.5} fill="currentColor" />
-            </span>
-            <div className="grow">
-              <h3>
-                Level {level.level} · {level.title}
-              </h3>
-              <p className="tiny muted num">
-                {level.current} / {level.needed} XP naar level {level.level + 1}
-              </p>
-            </div>
-          </div>
-          <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={level.needed} aria-valuenow={level.current} aria-label="XP naar het volgende level">
-            <span style={{ width: `${Math.round(level.progress * 100)}%` }} />
-          </div>
-        </section>
-        <section className="card rail-card">
-          <span className="disc tone-lime" style={{ width: 56, height: 56 }} aria-hidden="true">
-            <Zap size={28} strokeWidth={2.5} fill="currentColor" />
-          </span>
-          <div className="grow">
-            <h3 className="num">+{stats.todayXp} XP vandaag</h3>
-            <p className="tiny muted">
-              {buildStreak.length} {buildStreak.length === 1 ? 'dag' : 'dagen'} op rij gebouwd
-            </p>
-          </div>
-        </section>
         <WeekScoreCard score={week} projects={pulses.map((p) => ({ id: p.id, name: p.name, color: p.color }))} />
       </aside>
 
       {/* Everything else stays quiet behind one button: the day route is the page. */}
       <details className="more stack-l">
         <summary className="button secondary">Meer</summary>
-        <AskClaude projects={pulses.map((p) => ({ id: p.id, name: p.name }))} disabledReason={blocked} />
-
         {pulses.length ? <NextSteps groups={ordered.slice(0, 5).map((g) => ({ key: g.key, title: g.title, why: g.why, projects: g.projects }))} disabledReason={blocked} /> : null}
 
         {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}

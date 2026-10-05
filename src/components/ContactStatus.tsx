@@ -4,6 +4,7 @@ import { useTransition } from 'react'
 import { CONTACT_STATUSES, CONTACT_STATUS_LABELS } from '@/lib/options'
 import { deleteContact, setContactStatus } from '@/server/actions/contacts'
 import { useCelebrate } from './CelebrationProvider'
+import { ConfirmButton } from './ConfirmButton'
 
 export function ContactStatus({ contactId, status }: { contactId: string; status: string }) {
   const [pending, start] = useTransition()
@@ -31,9 +32,7 @@ export function ContactStatus({ contactId, status }: { contactId: string; status
           </option>
         ))}
       </select>
-      <button type="button" className="button ghost small" disabled={pending} onClick={() => start(() => deleteContact(contactId))}>
-        Weg
-      </button>
+      <ConfirmButton label="Verwijderen" confirm="Contact en zijn mails verwijderen?" action={async () => void (await deleteContact(contactId))} />
     </span>
   )
 }

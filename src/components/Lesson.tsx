@@ -46,8 +46,8 @@ const KIND_LABEL: Record<LessonCard['kind'], string> = {
   checkin: 'Je cijfers',
   seen: 'Gevonden worden',
   post: 'Posten',
-  build: 'Bouwen in het openbaar',
-  growth: 'Groeien',
+  build: 'Laat zien wat je bouwde',
+  growth: 'Groeistap',
 }
 
 /** Claude speaks: its badge and a speech bubble. */
@@ -240,14 +240,37 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
       </div>
     ) : (
       <div className="stack-m">
+        {card.observation ? (
+          <Bubble title="Wat Claude zag">
+            <p>{card.observation}</p>
+            {card.website ? (
+              <a href={card.website} target="_blank" rel="noreferrer noopener" className="tiny row nowrap" style={{ gap: '0.3rem', width: 'fit-content' }}>
+                Bekijk hun site <ExternalLink size={14} strokeWidth={2.5} aria-hidden="true" />
+              </a>
+            ) : null}
+          </Bubble>
+        ) : null}
+        {card.pitch ? (
+          <div className="card sunken stack-xs">
+            <p className="eyebrow">Zo open je</p>
+            <p>“{card.pitch}”</p>
+          </div>
+        ) : null}
         {card.phone ? (
           <a className="button secondary big lesson-call" href={`tel:${card.phone}`}>
             <Phone size={24} strokeWidth={2.5} aria-hidden="true" /> {card.phone}
           </a>
         ) : (
-          <p className="muted">Geen nummer gevonden: kijk op hun site.</p>
+          <p className="muted">
+            Geen nummer gevonden.{' '}
+            {card.website ? (
+              <a href={card.website} target="_blank" rel="noreferrer noopener">
+                Open {hostOf(card.website)}
+              </a>
+            ) : null}
+          </p>
         )}
-        {card.sub ? <p className="tiny muted">{card.sub}</p> : null}
+        {card.why || card.sub ? <p className="tiny muted">{[card.why, card.sub].filter(Boolean).join(' · ')}</p> : null}
       </div>
     )
   if (card.kind === 'prospect') {
@@ -275,19 +298,31 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
   if (card.kind === 'build')
     return (
       <Bubble title="Claude">
-        <p>Ik maak er een post van, over wat je bouwde. Jij kijkt hem daarna na.</p>
+        {card.work?.length ? (
+          <>
+            <p className="small muted">Wat je bouwde:</p>
+            <ul className="small">
+              {card.work.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        <p>Daar maak ik een post van die laat zien wat het voor je klanten doet. Jij kijkt hem na.</p>
       </Bubble>
     )
   if (card.kind === 'growth')
     return (
-      <Bubble title="Claude">
-        <p>Ik doe het werk op de achtergrond. Het staat daarna in de cockpit.</p>
+      <Bubble title="Waarom">
+        {card.why ? <p>{card.why}</p> : null}
+        <p className="small muted">{card.task ? 'Claude doet het werk op de achtergrond; het staat straks klaar in Cockpit.' : 'Dit doe je zelf; de knop brengt je erheen.'}</p>
       </Bubble>
     )
   if (card.kind === 'reply')
     return (
-      <Bubble title="Claude">
-        <p>Een antwoord is goud: daarmee telt het mee in je trechter.</p>
+      <Bubble title="Waarom">
+        <p>{card.why ?? 'Je mailde ze een tijd geleden en hoorde nog niets.'}</p>
+        <p className="small muted">Kwam er een antwoord? Dan telt het mee als gesprek, en stoppen de opvolgmails vanzelf.</p>
       </Bubble>
     )
   if (card.kind === 'setup')
@@ -490,7 +525,7 @@ function Actions({
             })
           }
         >
-          Gebeld ✓
+          <Check size={20} strokeWidth={3} aria-hidden="true" /> Gebeld
         </button>
         <button type="button" className={second} onClick={() => later('Morgen weer een kans.')}>
           Niet bereikt
@@ -617,7 +652,13 @@ function Actions({
                     Perplexity
                   </a>
                   <button type="button" className={`button small ${on ? 'primary' : 'secondary'}`} aria-pressed={on} onClick={() => setNamed((n) => (on ? n.filter((x) => x !== i) : [...n, i]))}>
-                    {on ? 'Genoemd ✓' : 'Genoemd?'}
+                    {on ? (
+                      <>
+                        <Check size={16} strokeWidth={3} aria-hidden="true" /> Genoemd
+                      </>
+                    ) : (
+                      'Genoemd?'
+                    )}
                   </button>
                 </div>
               </li>
@@ -654,7 +695,13 @@ function Actions({
             })
           }
         >
-          {card.status === 'unknown' ? 'Ja, geregeld' : 'Gedaan ✓'}
+          {card.status === 'unknown' ? (
+            'Ja, geregeld'
+          ) : (
+            <>
+              <Check size={20} strokeWidth={3} aria-hidden="true" /> Gedaan
+            </>
+          )}
         </button>
         <div className="row">
           {card.status === 'unknown' ? (
@@ -707,7 +754,7 @@ function Actions({
             })
           }
         >
-          Gedaan ✓
+          <Check size={20} strokeWidth={3} aria-hidden="true" /> Gedaan
         </button>
         <button type="button" className={second} onClick={() => later()}>
           Later
@@ -729,7 +776,7 @@ function Actions({
             })
           }
         >
-          Gepost ✓
+          <Check size={20} strokeWidth={3} aria-hidden="true" /> Gepost
         </button>
         <button type="button" className={second} onClick={() => later()}>
           Later
@@ -751,7 +798,13 @@ function Actions({
             })
           }
         >
-          {card.moneyKind === 'cost' ? 'Houden ✓' : card.moneyKind === 'plan' ? 'Ja, doen' : 'Geregeld ✓'}
+          {card.moneyKind === 'plan' ? (
+            'Ja, doen'
+          ) : (
+            <>
+              <Check size={20} strokeWidth={3} aria-hidden="true" /> {card.moneyKind === 'cost' ? 'Houden' : 'Geregeld'}
+            </>
+          )}
         </button>
         <div className="row">
           {card.moneyKind !== 'deadline' ? (

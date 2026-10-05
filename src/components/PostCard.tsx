@@ -52,7 +52,7 @@ export function PostCard({ post }: { post: PostView }) {
       <p className="draft-subject">{post.hook}</p>
       {post.value ? (
         <p className="tiny muted">
-          <strong>Waarom dit werkt:</strong> {post.value}
+          <strong>Waarom deze post:</strong> {post.value}
           {post.proof ? ` · Echt van jou: ${post.proof}` : ''}
         </p>
       ) : null}

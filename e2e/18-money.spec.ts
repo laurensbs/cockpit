@@ -45,7 +45,7 @@ test('Claude writes down the money, the page adds it up and reminds, and his own
   const soon = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Komt eraan' }) })
   const domain = soon.getByRole('listitem', { name: 'Domein voorbeeld.test' })
   await expect(domain).toContainText('verlengt over 3 dagen')
-  await domain.getByRole('button', { name: 'Houden ✓' }).click()
+  await domain.getByRole('button', { name: 'Houden', exact: true }).click()
   await expect(soon.getByRole('listitem', { name: 'Domein voorbeeld.test' })).toHaveCount(0)
   await expect(page.getByRole('listitem', { name: 'Domein voorbeeld.test' })).toContainText(nextYear(renewal))
 

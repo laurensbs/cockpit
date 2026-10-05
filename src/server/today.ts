@@ -2,7 +2,7 @@ import 'server-only'
 import { and, count, desc, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { addDays, dayOf } from '@/lib/dates'
+import { addDays, dayLabel, dayOf, daysBetween } from '@/lib/dates'
 import { ACTION_KINDS } from '@/lib/game'
 import { amountText, upcoming, whenText } from '@/lib/finance'
 import { monthOf, questionsForMonth } from '@/lib/visibility'
@@ -25,7 +25,7 @@ const marketingOff = (p: { what: string; redLines: string }) => /marketing staat
 const short = (text: string, max = 60) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text)
 
 /** Every step the day route could offer now, before the choice (pickSteps). */
-export async function dayCandidates(db: Db, ownerId: string, growth: { title: string; projectId: string; projectName: string; href: string; task: string | null; options?: Record<string, unknown> } | null): Promise<DayStep[]> {
+export async function dayCandidates(db: Db, ownerId: string, growth: { title: string; projectId: string; projectName: string; href: string; task: string | null; options?: Record<string, unknown>; why?: string } | null): Promise<DayStep[]> {
   const today = dayOf(new Date())
   const projects = await db.select().from(s.project).where(eq(s.project.ownerId, ownerId))
   const byId = new Map(projects.map((p) => [p.id, p]))
@@ -33,12 +33,12 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
 
   // Calls he said yes to: due today or earlier.
   const calls = await db
-    .select({ id: s.quest.id, title: s.quest.title, projectId: s.quest.projectId, sourceKey: s.quest.sourceKey })
+    .select({ id: s.quest.id, title: s.quest.title, projectId: s.quest.projectId, sourceKey: s.quest.sourceKey, createdAt: s.quest.createdAt })
     .from(s.quest)
     .where(and(eq(s.quest.ownerId, ownerId), eq(s.quest.status, 'open'), eq(s.quest.source, 'prospect'), lte(s.quest.dueOn, today)))
     .orderBy(s.quest.dueOn)
   const callContacts = calls.map((c) => c.sourceKey?.replace(/^prospect:/, '')).filter((id): id is string => Boolean(id))
-  const contactRows = callContacts.length ? await db.select({ id: s.contact.id, phone: s.contact.phone, city: s.contact.city, email: s.contact.email }).from(s.contact).where(inArray(s.contact.id, callContacts)) : []
+  const contactRows = callContacts.length ? await db.select({ id: s.contact.id, phone: s.contact.phone, city: s.contact.city, email: s.contact.email, observation: s.contact.observation, pitch: s.contact.pitch, website: s.contact.website }).from(s.contact).where(inArray(s.contact.id, callContacts)) : []
   // The info mail for each call, so he reads exactly what goes out when they ask for it.
   const callDrafts = callContacts.length
     ? await db
@@ -63,6 +63,10 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
       contactId,
       hasEmail: Boolean(contact?.email),
       draft: mail ? { id: mail.id, subject: body?.subject ?? '', body: body?.body ?? '', followups: body?.followups?.length ?? 0 } : null,
+      observation: contact?.observation ?? '',
+      pitch: contact?.pitch ?? '',
+      website: contact?.website ?? null,
+      why: `Je zei ${dayLabel(dayOf(c.createdAt))} ja tegen dit bedrijf.`,
     })
   }
 
@@ -84,7 +88,18 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
     .where(and(eq(s.contact.ownerId, ownerId), eq(s.contact.status, 'sent'), lte(s.contact.lastContactAt, new Date(Date.now() - 3 * 86_400_000))))
     .orderBy(s.contact.lastContactAt)
     .limit(3)
-  for (const q of quiet) steps.push({ kind: 'reply', key: `reply-${q.id}`, title: short(`Antwoordde ${q.organization}?`, 44), sub: byId.get(q.projectId)?.name ?? '', projectId: q.projectId, contactId: q.id })
+  for (const q of quiet) {
+    const sent = q.at ? dayOf(q.at) : null
+    steps.push({
+      kind: 'reply',
+      key: `reply-${q.id}`,
+      title: short(`Antwoordde ${q.organization}?`, 44),
+      sub: byId.get(q.projectId)?.name ?? '',
+      projectId: q.projectId,
+      contactId: q.id,
+      why: sent ? `Je mailde ze ${dayLabel(sent)}. Al ${daysBetween(sent, today)} dagen niets gehoord: kijk even in je inbox.` : undefined,
+    })
+  }
 
   // A money date within a week (a renewal, a tax return, a decision he set a day for): the nearest one.
   const due = upcoming(await loadMoney(db, ownerId), today, 7)[0]
@@ -207,7 +222,16 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
   const built = [...work.entries()].filter(([id, msgs]) => msgs.length && !madeSince.has(id) && byId.get(id) && !marketingOff(byId.get(id)!)).sort((a, b) => b[1].length - a[1].length)
   for (const [id, msgs] of built) {
     const p = byId.get(id)!
-    steps.push({ kind: 'build', key: `build-${id}-${today}`, title: 'Deel wat je bouwde', sub: `${p.name} · ${msgs.length} ${msgs.length === 1 ? 'commit' : 'commits'}`, projectId: id, platform: preferredPlatform(socialsOf(p.links)), note: buildNote(p.name, msgs) })
+    steps.push({
+      kind: 'build',
+      key: `build-${id}-${today}`,
+      title: 'Laat zien wat je bouwde',
+      sub: `${p.name} · ${msgs.length} ${msgs.length === 1 ? 'wijziging' : 'wijzigingen'}`,
+      projectId: id,
+      platform: preferredPlatform(socialsOf(p.links)),
+      note: buildNote(p.name, msgs),
+      work: msgs.slice(0, 3),
+    })
   }
 
   // Instagram linked but not connected, and no follower count this week: one quick question.
@@ -233,7 +257,7 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
     steps.push({ kind: 'seen', key: `seen-${p.id}-${month}`, title: 'Word je gevonden?', sub: p.name, projectId: p.id, month, questions: questionsForMonth(questions, month) })
   }
 
-  if (growth) steps.push({ kind: 'growth', key: `growth-${growth.projectId}-${growth.title}`, title: short(growth.title, 44), sub: growth.projectName, projectId: growth.projectId, href: growth.href, task: growth.task, options: growth.options })
+  if (growth) steps.push({ kind: 'growth', key: `growth-${growth.projectId}-${growth.title}`, title: short(growth.title, 44), sub: growth.projectName, projectId: growth.projectId, href: growth.href, task: growth.task, options: growth.options, why: growth.why })
   return steps
 }
 
@@ -281,7 +305,7 @@ export function orderNextSteps(pulses: Pulses, outcomes: Outcomes, growth: Growt
 /** The growth step that closes the day route: the first one of the least healthy project. */
 export function growthStep(ordered: NextStepGroup[]) {
   const first = ordered[0]?.projects[0]
-  return first ? { title: ordered[0].title, projectId: first.projectId, projectName: first.projectName, href: first.href, task: first.task ?? null, options: first.options } : null
+  return first ? { title: ordered[0].title, projectId: first.projectId, projectName: first.projectName, href: first.href, task: first.task ?? null, options: first.options, why: ordered[0].why } : null
 }
 
 /** The day's steps, as Vandaag and the lesson show them. */

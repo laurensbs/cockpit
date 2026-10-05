@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildNote, type DayStep, pickGivePlace, pickSteps, recentWork } from './today'
+import { buildNote, dayLine, type DayStep, pickGivePlace, pickSteps, recentWork } from './today'
 
 const call = (n: number): DayStep => ({ kind: 'call', key: `call-${n}`, title: `Bel ${n}`, sub: '', projectId: 'p', questId: `q${n}`, phone: null, contactId: null, hasEmail: false, draft: null })
 const growth: DayStep = { kind: 'growth', key: 'growth', title: 'Maak het groeimodel', sub: '', projectId: 'p', href: '/', task: 'model' }
@@ -48,5 +48,13 @@ describe('build in public', () => {
     expect(work).toHaveLength(2)
     expect(buildNote('Webstability', work)).toContain('Partneraccounts voor webdevelopers')
     expect(buildNote('Webstability', work)).not.toContain('Merge')
+  })
+})
+
+describe('dayLine', () => {
+  it('counts the day per kind, with a rough time', () => {
+    expect(dayLine([call(1), call(2), build])).toBe('2 telefoontjes en 1 post over wat je bouwde · ± 12 minuten')
+    expect(dayLine([build])).toBe('1 post over wat je bouwde · ± 2 minuten')
+    expect(dayLine([])).toBe('')
   })
 })

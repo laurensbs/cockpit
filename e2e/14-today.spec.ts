@@ -35,7 +35,7 @@ test('Vandaag is calm; the lesson takes him through the day one card at a time',
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bel Garage Test')
   await expect(page.getByRole('link', { name: '+34972000000' })).toHaveAttribute('href', 'tel:+34972000000')
   await shot(page, '21-les-bellen')
-  await page.getByRole('button', { name: 'Gebeld ✓' }).click()
+  await page.getByRole('button', { name: 'Gebeld', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Wilden ze informatie?')
   await page.getByRole('button', { name: 'Weet ik nog niet' }).click()
   await expect(page.locator('.lesson-foot')).toContainText('Prima')
@@ -109,7 +109,7 @@ test('"Help iemand": a place where his audience talks, value without a pitch, on
   await expect(page.getByText('Beantwoord een vraag over afspraken plannen.')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Open forum.example' })).toHaveAttribute('href', 'https://forum.example/werkplaats')
   await shot(page, '24-les-help-iemand')
-  await page.getByRole('button', { name: 'Gedaan ✓' }).click()
+  await page.getByRole('button', { name: 'Gedaan', exact: true }).click()
   await expect(page.locator('.lesson-foot.good')).toContainText('+15 XP')
 
   // Done for today: the next lesson does not ask again.
