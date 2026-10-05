@@ -312,10 +312,16 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
         <Bubble title={card.moneyKind === 'plan' ? 'Jouw besluit' : 'Let op'}>
           <p>
             {card.moneyKind === 'cost'
-              ? `Dit verlengt ${card.when}. Wil je het houden, dan hoef je niets te doen; anders zeg je het nu op.`
+              ? card.late
+                ? `Dit verlengde ${card.when}. Houd je het, dan tik je op Houden; wil je het niet meer, zeg het dan op.`
+                : `Dit verlengt ${card.when}. Wil je het houden, dan hoef je niets te doen; anders zeg je het nu op.`
               : card.moneyKind === 'plan'
-                ? `Je wilde hier ${card.when} over beslissen. Ja of nee: dan weet je coach waar hij mee rekent.`
-                : `Dit moet ${card.when} geregeld zijn.`}
+                ? card.late
+                  ? `Je wilde hier ${card.when} over beslissen. Ja of nee: dan weet je coach waar hij mee rekent.`
+                  : `Je wilt hier ${card.when} over beslissen. Ja of nee: dan weet je coach waar hij mee rekent.`
+                : card.late
+                  ? `Dit had ${card.when} geregeld moeten zijn. Gedaan? Vink het af.`
+                  : `Dit moet ${card.when} geregeld zijn.`}
           </p>
           <p className="small muted">Bedrag: {card.amount}</p>
         </Bubble>

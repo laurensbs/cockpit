@@ -113,7 +113,9 @@ export function MoneyRow({ item, today, projects, act }: { item: MoneyItem; toda
       const r = await moneyStep(item.id, action)
       setMessage(r.xp ? `${r.message} +${r.xp} XP` : r.message)
     })
-  const when = item.nextDate ? `${item.kind === 'cost' ? 'verlengt' : item.kind === 'plan' ? 'beslissen' : 'uiterlijk'} ${whenText(today, item.nextDate)} (${item.nextDate})` : null
+  const late = item.nextDate !== null && item.nextDate < today
+  const verb = item.kind === 'cost' ? (late ? 'verlengde' : 'verlengt') : item.kind === 'plan' ? 'beslissen' : late ? 'was' : 'uiterlijk'
+  const when = item.nextDate ? `${verb} ${whenText(today, item.nextDate)} (${item.nextDate})` : null
   return (
     <li className={`setup-step money-row ${item.status}`} aria-label={item.title}>
       <div className="grow stack-xs" style={{ minWidth: 0 }}>

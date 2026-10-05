@@ -159,7 +159,8 @@ export async function maybeMoneyRound(db: Db, ownerId: string, now = new Date())
   if (weekdayOf(today) > 5 || hourOf(now) < 7) return 'not-now'
   const last = await getSetting(db, ownerId, 'money_round')
   const [{ n }] = await db.select({ n: count() }).from(s.moneyItem).where(eq(s.moneyItem.ownerId, ownerId))
-  if (last && (n > 0 ? daysBetween(last, today) < 30 : last === today)) return 'done-already'
+  // Once a month; while nothing is known yet, again after three days (not every day: it costs his usage).
+  if (last && daysBetween(last, today) < (n > 0 ? 30 : 3)) return 'done-already'
   await setSetting(db, ownerId, 'money_round', today)
   const ticket = createTicket({ task: 'money', projectId: null, options: {} })
   if ((await runHeadless(launchPrompt(ticket), { read: true })).started) return 'started'
