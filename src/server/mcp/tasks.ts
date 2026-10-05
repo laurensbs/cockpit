@@ -24,6 +24,7 @@ import {
   modelTask,
   contentTask,
   dealMailTask,
+  reviewTask,
 } from '@/lib/ai/prompts'
 import { CHANNEL_LABELS, CONTENT_CHANNELS, PLAYBOOKS } from '@/lib/ai/playbooks'
 import { CONTENT_WINDOW_DAYS, type WeekBody } from '@/lib/content-week'
@@ -33,10 +34,11 @@ import { LANGUAGES } from '@/lib/options'
 import { OPEN_STAGES } from '@/lib/pipeline-board'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { contentProjects } from '../content'
+import { reviewInput } from '../review'
 import { dataSummary } from '../outcome-state'
 import { loadPoints } from '../points'
 
-export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model', 'content'] as const
+export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model', 'content', 'review'] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 export const isTaskKind = (v: unknown): v is TaskKind => typeof v === 'string' && (TASK_KINDS as readonly string[]).includes(v)
 
@@ -56,10 +58,11 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   ask: 'Een vraag of opdracht van hem, in zijn eigen woorden',
   model: 'Groeimodel: één doelcijfer met een deadline en de trechter ernaartoe (een voorstel)',
   content: 'Contentweek voor alle projecten: posts, carrousels, video’s en forumantwoorden',
+  review: 'Weekreview: wat de week opleverde, en per project stoppen, doorgaan of beginnen',
 }
 
 /** Tasks about the whole portfolio rather than one project. */
-export const PORTFOLIO_TASKS: readonly TaskKind[] = ['weekly', 'content']
+export const PORTFOLIO_TASKS: readonly TaskKind[] = ['weekly', 'content', 'review']
 /** A portfolio task, or a question asked without a project. */
 export const isPortfolioTask = (task: string, hasProject: boolean) => (PORTFOLIO_TASKS as readonly string[]).includes(task) || (task === 'ask' && !hasProject)
 
@@ -267,6 +270,14 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
       body = weeklyTask(dayOf(new Date()))
       handBack = '`save_weekly` with { "weekly": { "headline", "focus": [ … ], "wins", "avoiding", "boss": { "title", "project", "why" } } }'
       break
+    case 'review': {
+      const input = await reviewInput(db, ownerId)
+      if (!input.projects.length) return { error: 'No active projects to review.' }
+      body = reviewTask(input)
+      handBack =
+        '`save_review` with { "review": { "headline", "wins": [ … ], "misses": [ … ], "numbers", "decisions": [ { "project", "kind": "stop" | "continue" | "start", "what", "why" } ], "lessons": [ { "project", "lesson" } ], "targetChanges": [ { "project", "target", "deadline", "why" } ] } }'
+      break
+    }
   }
   const text = [
     `<rules>\n${RULES}\n</rules>`,

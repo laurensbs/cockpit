@@ -125,7 +125,7 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
           <h2 id="lessons-title" className="row">
             <Icon name="idea" size={20} /> Lessen
           </h2>
-          <p className="tiny muted">Wat de experimenten opleverden. Claude leest dit bij elke klus voor {project.name}.</p>
+          <p className="tiny muted">Wat de experimenten en de weekreviews opleverden. Claude leest dit bij elke klus voor {project.name}.</p>
           <ul className="list" style={{ margin: 0 }}>
             {lessons.map((l) => {
               const b = l.body as LessonBody
@@ -133,7 +133,7 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
                 <li key={l.id} className="stack-xs">
                   <span className="row">
                     <strong>{l.title}</strong>
-                    <span className={`chip ${b.result === 'won' ? 'good' : 'bad'}`}>{b.result === 'won' ? 'Werkte' : 'Werkte niet'}</span>
+                    {b.source === 'review' ? <span className="chip">Weekreview</span> : <span className={`chip ${b.result === 'won' ? 'good' : 'bad'}`}>{b.result === 'won' ? 'Werkte' : 'Werkte niet'}</span>}
                     {b.metricKey && isMetricKey(b.metricKey) && b.actual != null ? (
                       <span className="tiny muted num">
                         {METRIC_DEFS[b.metricKey].label}: {b.baseline == null ? '–' : formatMetric(b.metricKey, b.baseline)} → {formatMetric(b.metricKey, b.actual)}

@@ -22,11 +22,13 @@ import {
   normalizePlan,
   normalizePosts,
   normalizeProfile,
+  normalizeReview,
   normalizeWeekly,
   type OpportunitiesWire,
   type PlanWire,
   type PostsWire,
   type ProfileWire,
+  type ReviewWire,
   type WeeklyWire,
 } from '@/lib/ai/schemas'
 import { CHANNEL_LABELS } from '@/lib/ai/playbooks'
@@ -172,6 +174,13 @@ export async function saveWeekly(db: Db, ownerId: string, wire: z.infer<typeof W
   const weekly = normalizeWeekly(wire)
   await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: null, kind: 'weekly', content: weekly, runId: SOURCE })
   return `Opgeslagen: de focus van deze week (“${weekly.headline}”), met ${weekly.focus.length} projecten en de boss “${weekly.boss.title}”. Hij ziet het op Vandaag.`
+}
+
+export async function saveReview(db: Db, ownerId: string, wire: z.infer<typeof ReviewWire>): Promise<string> {
+  const review = normalizeReview(wire)
+  if (!review.headline) return 'Niets opgeslagen: de review mist een headline.'
+  await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: null, kind: 'review', content: review, runId: SOURCE })
+  return `Opgeslagen: de weekreview (“${review.headline}”), met ${review.decisions.length} besluit${review.decisions.length === 1 ? '' : 'en'}${review.targetChanges.length ? ` en ${review.targetChanges.length} voorgestelde doelwijziging${review.targetChanges.length === 1 ? '' : 'en'}` : ''}. Hij ziet hem op Vandaag en kiest zelf wat hij overneemt.`
 }
 
 export async function saveArticles(db: Db, ownerId: string, project: { id: string; name: string }, input: { language: string }, wire: z.infer<typeof ArticlesWire>): Promise<string> {

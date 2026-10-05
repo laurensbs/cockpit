@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { planFixture, profileFixture } from './fixtures'
-import { clean, effortOf, normalizePlan, normalizeProfile, planFromJson, PlanWire, profileFromJson, ProfileWire } from './schemas'
+import { clean, effortOf, normalizePlan, normalizeProfile, normalizeReview, planFromJson, PlanWire, profileFromJson, ProfileWire, reviewFromJson } from './schemas'
 
 describe('wire schemas', () => {
   it('accept the fixtures, like they accept real answers', () => {
@@ -131,5 +131,35 @@ describe('measured experiments', () => {
     })
     expect(measured).toMatchObject({ metricKey: 'leads', targetValue: 10, days: 42 })
     expect(unknown).toMatchObject({ metricKey: null, targetValue: null, days: 14 })
+  })
+})
+
+describe('the weekly review', () => {
+  const wire = {
+    headline: '  Een week met de eerste deal  ',
+    wins: ['Bakkerij Jansen gewonnen (€149 per maand)', ''],
+    misses: ['Geen LinkedIn-post geplaatst'],
+    numbers: 'Bezoekers stegen van 120 naar 160 per week.',
+    decisions: [
+      { project: 'Webstability', kind: 'Doorgaan', what: 'Elke week twee LinkedIn-carrousels', why: 'Die brachten de meeste leads' },
+      { project: 'Rondje', kind: 'stoppen', what: 'Stop met losse Instagram-foto’s', why: 'Geen bereik' },
+      { project: 'Rondje', kind: 'misschien', what: 'Iets vaags', why: '' },
+      { project: 'Teampje', kind: 'start', what: 'Begin met één forumantwoord per week', why: 'Het lek zit bovenin' },
+    ],
+    lessons: [{ project: 'Webstability', lesson: 'Prijzen in een carrousel werken' }, { project: 'x', lesson: '' }],
+    targetChanges: [
+      { project: 'Webstability', target: 2500.456, deadline: '2026-12-31', why: 'Ligt voor' },
+      { project: 'Rondje', target: -5, deadline: '2026-12-31', why: '' },
+      { project: 'Rondje', target: 10, deadline: 'eind december', why: '' },
+    ],
+  }
+  it('keeps clear decisions in Dutch or English, and only sensible target changes', () => {
+    const r = normalizeReview(wire)
+    expect(r.headline).toBe('Een week met de eerste deal')
+    expect(r.wins).toEqual(['Bakkerij Jansen gewonnen (€149 per maand)'])
+    expect(r.decisions.map((d) => d.kind)).toEqual(['continue', 'stop', 'start'])
+    expect(r.lessons).toEqual([{ project: 'Webstability', lesson: 'Prijzen in een carrousel werken' }])
+    expect(r.targetChanges).toEqual([{ project: 'Webstability', target: 2500.46, deadline: '2026-12-31', why: 'Ligt voor' }])
+    expect(reviewFromJson({ headline: 'x' })).toBeNull()
   })
 })

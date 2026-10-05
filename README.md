@@ -17,7 +17,7 @@ Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedsch
 
 | Plek | Wat je er doet |
 |---|---|
-| **Vandaag** | **Klaarzetten** (wat er nog moet tot alles werkt), **Vraag Claude**, **Nu doen**: per project de stap die het meest oplevert, met één klik naar Claude Code; dan de focus van de week, je quests, en per project de gezondheid (0–100) |
+| **Vandaag** | **Klaarzetten** (wat er nog moet tot alles werkt), **Vraag Claude**, **Nu doen**: per project de stap die het meest oplevert, met één klik naar Claude Code; dan de **weekreview** (Claude kijkt terug op je cijfers, posts, deals en quests van de afgelopen zeven dagen en zegt per project wat je moet stoppen, doorzetten of beginnen; jij maakt er met één klik een quest van, bewaart een les voor elke volgende klus, of neemt een bijgesteld doel over), de focus van de week, je quests, en per project de gezondheid (0–100) |
 | **⌘K** | De opdrachtbalk: naar elke plek of elk project, elke Claude-klus voor elk project, of een vraag aan Claude |
 | **Zijbalk** | Je plekken, al je actieve projecten met hun kleur, en of Claude Code gekoppeld is |
 | **Projecten** | Per project: intake (vijf vragen), activiteit uit GitHub, repo’s, cijfers per maand, en of de site online is |
@@ -28,7 +28,7 @@ Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedsch
 | **Contacten** | Organisaties met hun wettelijke basis om te mailen; per contact een persoonlijke mail met twee opvolgmails, of in één keer voor alle nieuwe contacten; één keer goedkeuren en het gaat vanzelf. De pijplijn als **bord**: lead → gesprek → offerte → gewonnen of verloren, met de waarde per kolom en per deal de volgende stap (te laat is rood); een deal zet je met één knop een stap verder, ook op je telefoon. Een volgende stap die vandaag of eerder moet, wordt een quest, en **Mail voor de volgende stap** laat Claude één korte mail schrijven die je zelf stuurt. Elke stap telt mee in de trechter. Heeft een project geen Stripe of Mollie, dan kan **Gewonnen telt als omzet**: een maanddeal telt als MRR, een eenmalige als omzet op de dag dat je hem won |
 | **Experimenten** (onder Marketing) | Elk experiment meet een cijfer: waar het stond bij de start, waar het nu staat, en of het doel gehaald is. Bij het afronden stelt de cockpit voor of het werkte; jij beslist. Wat eruit kwam wordt een les die Claude bij elke volgende klus leest |
 | **LinkedIn** (op het brein) | Je kop, een about-tekst, met wie je moet connecten (met een bericht), een weekritme en posts met de knop “Post op LinkedIn” |
-| **Quests** | Quests van regels, van het plan, van de weekfocus of van jezelf; terugkerende quests; badges |
+| **Quests** | Quests van regels, van het plan, van de weekfocus en weekreview, of van jezelf; terugkerende quests; badges |
 | **GitHub** | **Alles binnenhalen**: al je repo’s, gegroepeerd tot projecten; of kies zelf wat waar hoort |
 | **Bedrijven** | Omzet, kosten en winst per maand, per bedrijf en in totaal; alles als CSV voor je boekhouder |
 

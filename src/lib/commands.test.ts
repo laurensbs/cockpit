@@ -17,12 +17,12 @@ describe('matches', () => {
 })
 
 describe('buildCommands', () => {
-  it('without a query: the places, the projects, the weekly focus and the content week, no question', () => {
+  it('without a query: the places, the projects, the weekly review, focus and content week, no question', () => {
     const list = buildCommands('', projects, null)
     expect(list.some((c) => c.kind === 'ask')).toBe(false)
     expect(list.filter((c) => c.group === 'Ga naar').map((c) => c.label)).toContain('Vandaag')
     expect(list.filter((c) => c.group === 'Projecten')).toHaveLength(3)
-    expect(list.filter((c) => c.group === 'Claude Code').map((c) => c.label)).toEqual(['Maak de focus van de week', 'Maak de contentweek'])
+    expect(list.filter((c) => c.group === 'Claude Code').map((c) => c.label)).toEqual(['Maak de weekreview', 'Maak de focus van de week', 'Maak de contentweek'])
   })
 
   it('on a project page: the jobs for that project are there right away', () => {

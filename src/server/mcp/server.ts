@@ -4,7 +4,7 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { ArticlesWire, ContentWeekWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
+import { ArticlesWire, ContentWeekWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, ReviewWire, WeeklyWire } from '@/lib/ai/schemas'
 import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
@@ -16,7 +16,7 @@ import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
 import { numbersReport } from './numbers'
 import { resolveProject, type ProjectRef } from './projects'
-import { saveArticles, saveClaudeMetrics, saveContentWeek, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
+import { saveArticles, saveClaudeMetrics, saveContentWeek, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveReview, saveWeekly } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isPortfolioTask, isTaskKind, PLATFORM_KEYS, PORTFOLIO_TASKS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
 
@@ -385,6 +385,16 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     'save_weekly',
     { title: 'Save the focus of the week', description: 'Stores this week’s focus for the whole portfolio, shown on the Vandaag page.', inputSchema: { weekly: WeeklyWire } },
     async ({ weekly }) => text(await saveWeekly(db, ownerId, weekly)),
+  )
+
+  server.registerTool(
+    'save_review',
+    {
+      title: 'Save the weekly review',
+      description: 'Stores the weekly review for the whole portfolio, shown on the Vandaag page: wins, misses, what the numbers say, and per project what to stop, continue or start. He turns decisions into quests and takes over target changes himself.',
+      inputSchema: { review: ReviewWire },
+    },
+    async ({ review }) => text(await saveReview(db, ownerId, review)),
   )
 
   server.registerTool(

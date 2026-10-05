@@ -166,6 +166,8 @@ export function outcomeHref(projectId: string, place: OutcomeStep['place']): str
 }
 
 export interface LessonBody {
+  /** 'experiment' (with a verdict and numbers) or 'review' (a lesson from the weekly review). */
+  source?: string
   result?: string
   learning?: string
   metricKey?: string | null
@@ -176,6 +178,7 @@ export interface LessonBody {
 
 /** One lesson in one line: what was tried, whether it worked, what the numbers did, what he learned. */
 export function lessonLine(title: string, body: LessonBody): string {
+  if (body.source === 'review') return `From the weekly review: ${body.learning ?? title}`
   const verdict = body.result === 'won' ? 'worked' : body.result === 'lost' ? 'did not work' : 'unclear'
   const numbers =
     body.metricKey && isMetricKey(body.metricKey) && body.actual != null

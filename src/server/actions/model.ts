@@ -2,22 +2,15 @@
 
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { getDb, type Db } from '@/db'
+import { getDb } from '@/db'
 import * as s from '@/db/schema'
-import { addDays, dayOf } from '@/lib/dates'
+import { dayOf } from '@/lib/dates'
 import { type GrowthModel, normalizeModel } from '@/lib/growth-model'
-import { METRIC_DEFS } from '@/lib/metrics'
-import { currentValue } from '@/lib/pace'
-import { dailySeries, loadPoints } from '../points'
+import { startingPoint } from '../points'
 import { actionOwner } from '../session'
 import { award } from '../xp'
 import type { FormState } from './types'
 
-/** Where the line to the target starts: the value now (the latest level, or a flow's last 30 days). */
-async function startingPoint(db: Db, ownerId: string, projectId: string, key: GrowthModel['northStar']['key'], today: string) {
-  const rows = await loadPoints(db, ownerId, addDays(today, -60), { projectIds: [projectId], keys: [key] })
-  return currentValue(METRIC_DEFS[key], dailySeries(rows, projectId, key), today)
-}
 
 const refresh = (projectId: string) => {
   revalidatePath(`/projects/${projectId}/numbers`)

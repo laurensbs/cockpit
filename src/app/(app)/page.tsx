@@ -7,6 +7,7 @@ import { AskClaude } from '@/components/AskClaude'
 import { PaceChip } from '@/components/GrowthCard'
 import { NextSteps, SetupChecklist, type NextStepGroup } from '@/components/NextSteps'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
+import { WeeklyReview } from '@/components/WeeklyReview'
 import { getDb } from '@/db'
 import { dayOf, greeting } from '@/lib/dates'
 import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
@@ -114,6 +115,7 @@ export default async function TodayPage() {
         </Link>
       ) : null}
 
+      {pulses.length ? <WeeklyReview db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}
       {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}
 
       <section className="card stack-s">

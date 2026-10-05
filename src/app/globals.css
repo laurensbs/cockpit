@@ -1731,6 +1731,25 @@ a.chip:hover {
   font-weight: 600;
 }
 
+/* ---------- the weekly review ---------- */
+.review-columns {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.review-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.review-list.plain {
+  list-style: none;
+  padding-left: 0;
+}
+.review-list li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- the pipeline board ---------- */
 .row.tight {
   gap: 0.35rem;

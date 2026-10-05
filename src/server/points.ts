@@ -3,7 +3,8 @@ import { and, eq, gte, inArray, sql } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, addMonths, dayOf, monthStart } from '@/lib/dates'
-import { isMetricKey, METRIC_DEFS, monthRollup, type Point, resolveDaily } from '@/lib/metrics'
+import { isMetricKey, METRIC_DEFS, type MetricKey, monthRollup, type Point, resolveDaily } from '@/lib/metrics'
+import { currentValue } from '@/lib/pace'
 
 export interface PointRow extends Point {
   projectId: string
@@ -87,4 +88,10 @@ export async function rebuildMonths(db: Db, ownerId: string, projectId: string, 
     .delete(s.metric)
     .where(and(eq(s.metric.ownerId, ownerId), eq(s.metric.projectId, projectId), inArray(s.metric.key, known), eq(s.metric.source, 'auto'), gte(s.metric.month, from)))
   await rollupMonths(db, ownerId, projectId, known, now)
+}
+
+/** Where the line to a target starts: the value now (the latest level, or a flow's last 30 days). */
+export async function startingPoint(db: Db, ownerId: string, projectId: string, key: MetricKey, today: string): Promise<number | null> {
+  const rows = await loadPoints(db, ownerId, addDays(today, -60), { projectIds: [projectId], keys: [key] })
+  return currentValue(METRIC_DEFS[key], dailySeries(rows, projectId, key), today)
 }

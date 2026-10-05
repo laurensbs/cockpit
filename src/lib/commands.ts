@@ -67,11 +67,15 @@ export function buildCommands(query: string, projects: CommandProject[], current
     .map<Command>((p) => ({ id: `project-${p.id}`, group: 'Projecten', label: p.name, kind: 'go', href: `/projects/${p.id}` }))
   // Jobs for the project he is on first; with a query, jobs of any project that match.
   const scope = q ? [...(current ? [current] : []), ...projects.filter((p) => p.id !== current?.id)] : current ? [current] : []
-  const jobs: Command[] = []
-  if (!q || matches(q, 'focus van de week weekfocus alle projecten')) jobs.push({ id: 'weekly', group: 'Claude Code', label: 'Maak de focus van de week', hint: 'alle projecten', kind: 'claude', task: 'weekly', projectId: null })
-  if (!q || matches(q, 'contentweek content posts reels instagram tiktok linkedin forums')) jobs.push({ id: 'content', group: 'Claude Code', label: 'Maak de contentweek', hint: 'alle projecten', kind: 'claude', task: 'content', projectId: null })
+  const portfolio: Command[] = []
+  if (!q || matches(q, 'weekreview review terugkijken vorige week stoppen doorgaan beginnen')) portfolio.push({ id: 'review', group: 'Claude Code', label: 'Maak de weekreview', hint: 'alle projecten', kind: 'claude', task: 'review', projectId: null })
+  if (!q || matches(q, 'focus van de week weekfocus alle projecten')) portfolio.push({ id: 'weekly', group: 'Claude Code', label: 'Maak de focus van de week', hint: 'alle projecten', kind: 'claude', task: 'weekly', projectId: null })
+  if (!q || matches(q, 'contentweek content posts reels instagram tiktok linkedin forums')) portfolio.push({ id: 'content', group: 'Claude Code', label: 'Maak de contentweek', hint: 'alle projecten', kind: 'claude', task: 'content', projectId: null })
+  const own: Command[] = []
   for (const p of scope)
     for (const job of PROJECT_JOBS)
-      if (!q || matches(q, job.label, p.name)) jobs.push({ id: `${job.task}-${JSON.stringify(job.options ?? {})}-${p.id}`, group: 'Claude Code', label: job.label, hint: p.name, kind: 'claude', task: job.task, projectId: p.id, options: job.options })
+      if (!q || matches(q, job.label, p.name)) own.push({ id: `${job.task}-${JSON.stringify(job.options ?? {})}-${p.id}`, group: 'Claude Code', label: job.label, hint: p.name, kind: 'claude', task: job.task, projectId: p.id, options: job.options })
+  // On a project page its own jobs come first; elsewhere the ones for all projects.
+  const jobs = current && !q ? [...own, ...portfolio] : [...portfolio, ...own]
   return [...places.slice(0, limit), ...projectRows.slice(0, limit), ...jobs.slice(0, limit), ...ask]
 }

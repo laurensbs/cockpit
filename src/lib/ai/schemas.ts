@@ -271,6 +271,67 @@ export const weeklyFromJson = (value: unknown): Weekly | null => {
   return r.success ? normalizeWeekly(r.data) : null
 }
 
+// ---------- the weekly review ----------
+
+export const REVIEW_DECISIONS = ['stop', 'continue', 'start'] as const
+export type ReviewDecisionKind = (typeof REVIEW_DECISIONS)[number]
+
+export const ReviewWire = z.object({
+  headline: str.describe('One sentence: how the week went'),
+  wins: z.array(str).describe('What went well, with the numbers or facts that show it (up to 5)'),
+  misses: z.array(str).describe('What did not happen or did not work, honestly and kindly (up to 5)'),
+  numbers: str.describe('What the numbers say, in 2–4 sentences: the trend per project that matters, and the funnel’s leak'),
+  decisions: z
+    .array(z.object({ project: str.describe('Exact project name'), kind: z.string().describe('stop, continue or start'), what: str.describe('Starts with a verb; small enough for one week'), why: str }))
+    .describe('Per project what to stop, continue or start (up to 9 in total)'),
+  lessons: z.array(z.object({ project: str, lesson: str })).describe('What this week taught, worth remembering in every next task (up to 5)'),
+  targetChanges: z
+    .array(z.object({ project: str, target: z.number(), deadline: str.describe('YYYY-MM-DD'), why: str }))
+    .describe('Only when a target is clearly out of reach or already beaten: a new target and deadline for the same number (up to 3)'),
+})
+
+export interface Review {
+  headline: string
+  wins: string[]
+  misses: string[]
+  numbers: string
+  decisions: { project: string; kind: ReviewDecisionKind; what: string; why: string }[]
+  lessons: { project: string; lesson: string }[]
+  targetChanges: { project: string; target: number; deadline: string; why: string }[]
+}
+
+const decisionKind = (v: string): ReviewDecisionKind | null => {
+  const k = v.trim().toLowerCase()
+  if (/^(stop|stoppen|quit)/.test(k)) return 'stop'
+  if (/^(continue|keep|doorgaan|blijven|houden)/.test(k)) return 'continue'
+  if (/^(start|begin|beginnen)/.test(k)) return 'start'
+  return null
+}
+
+export const normalizeReview = (w: z.infer<typeof ReviewWire>): Review => ({
+  headline: clean(w.headline, 200),
+  wins: list(w.wins, 5, 240),
+  misses: list(w.misses, 5, 240),
+  numbers: clean(w.numbers, 900),
+  decisions: w.decisions
+    .map((d) => ({ project: clean(d.project, 80), kind: decisionKind(d.kind), what: clean(d.what, 120), why: clean(d.why, 300) }))
+    .filter((d): d is Review['decisions'][number] => Boolean(d.kind && d.what && d.project))
+    .slice(0, 9),
+  lessons: w.lessons
+    .map((l) => ({ project: clean(l.project, 80), lesson: clean(l.lesson, 300) }))
+    .filter((l) => l.lesson)
+    .slice(0, 5),
+  targetChanges: w.targetChanges
+    .filter((c) => Number.isFinite(c.target) && c.target >= 0 && c.target <= 1e9 && /^\d{4}-\d{2}-\d{2}$/.test(c.deadline.trim()))
+    .map((c) => ({ project: clean(c.project, 80), target: Math.round(c.target * 100) / 100, deadline: c.deadline.trim(), why: clean(c.why, 300) }))
+    .slice(0, 3),
+})
+
+export const reviewFromJson = (value: unknown): Review | null => {
+  const r = ReviewWire.safeParse(value)
+  return r.success ? normalizeReview(r.data) : null
+}
+
 // ---------- organic growth ----------
 
 export const ArticlesWire = z.object({
