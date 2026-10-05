@@ -32,7 +32,7 @@ export default async function ProjectQuestsPage({ params }: { params: Promise<{ 
             ))}
           </ul>
         ) : (
-          <p className="muted small">Geen open quests voor {project.name}.</p>
+          <p className="muted small">Geen open taken voor {project.name}.</p>
         )}
       </section>
       <section className="card stack-m">
