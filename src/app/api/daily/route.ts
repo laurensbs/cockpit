@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/db'
-import { maybeAutopilot } from '@/server/autopilot'
+import { maybeAutopilot, maybeBuildPosts, maybeProspect } from '@/server/autopilot'
 import { healClaudeConnection } from '@/server/claude-heal'
 import { pullAll } from '@/server/connectors/run'
 import { dailyRound } from '@/server/game'
@@ -25,5 +25,7 @@ export async function POST(request: Request) {
   const numbers = await pullAll(db, owner.userId)
   await dailyRound(db, owner.userId)
   const autopilot = await maybeAutopilot(db, owner.userId)
-  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, autopilot })
+  const prospects = await maybeProspect(db, owner.userId)
+  const posts = await maybeBuildPosts(db, owner.userId)
+  return NextResponse.json({ ok: true, claude, github, sites, numbers: { pulled: numbers.pulled, failed: numbers.failed }, autopilot, prospects, posts })
 }

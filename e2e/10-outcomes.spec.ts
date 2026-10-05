@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { addDays, dayOf, weekStart } from '../src/lib/dates'
-import { mcpTool, newVisitor, shot, TOKEN } from './helpers'
+import { mcpTool, newVisitor, shot, TOKEN, openMore } from './helpers'
 
 // Webstability on the meter: numbers come in by themselves (Plausible and Stripe answer from fixtures),
 // Claude proposes a growth model through MCP, he accepts it, and the funnel's leak decides the next step.
@@ -121,6 +121,7 @@ test('Webstability: sources, a growth model from Claude, the pipeline, and the l
 
   // Vandaag: the leak decides the step, and the chip opens Claude Code with experiments aimed at it.
   await page.goto('/')
+  await openMore(page)
   const next = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Nu doen' }) })
   const row = next.locator('li').filter({ hasText: 'Meer bezoekers omzetten in leads' })
   await expect(row).toContainText('Daar lekt de trechter het meest')

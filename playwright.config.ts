@@ -45,6 +45,10 @@ export default defineConfig({
           COCKPIT_NO_GH: '1',
           // Stripe, Mollie and Plausible answer from fixtures, relative to today.
           COCKPIT_FAKE_CONNECTORS: '1',
+          // Prospectie: the business sites answer from fixtures (info@<site>, a phone number).
+          COCKPIT_FAKE_WEB: '1',
+          // Never read the STAND.md files of the machine the tests run on.
+          COCKPIT_NO_COMPASS: '1',
         },
       },
 })

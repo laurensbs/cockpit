@@ -13,6 +13,15 @@ describe('finalBody', () => {
     expect(finalBody(body, 'P.S. Het is gratis.', 'nl')).toBe(`${body}\n\nPS Het is gratis.`)
     expect(finalBody('Dear team. Unsubscribe: reply stop.', '', 'en')).toBe('Dear team. Unsubscribe: reply stop.')
   })
+
+  it('recognises the opt-out lines he writes himself, so a mail never ends on two', () => {
+    const nl = 'Hoi allemaal,\n\nMag ik het laten zien?\n\nGeen interesse? Zeg het gerust, dan stuur ik niets meer.'
+    const es = 'Hola:\n\n¿Os lo enseño?\n\nSi no os interesa, decídmelo y no os escribo más.'
+    expect(finalBody(nl, '', 'nl')).toBe(nl)
+    expect(finalBody(es, '', 'es')).toBe(es)
+    // "Laatste bericht" alone is no way out yet: the line still goes on.
+    expect(finalBody('Laatste berichtje hierover.', '', 'nl')).toContain('Liever geen mail meer')
+  })
 })
 
 describe('inSendWindow', () => {

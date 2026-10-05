@@ -142,6 +142,10 @@ img {
 .stack-xs > * + * {
   margin-top: 0.35rem;
 }
+/* A stack is lines under each other, also when its children are inline (a name, then its details). */
+.stack-xs > :where(span, strong, a) {
+  display: block;
+}
 .stack-s > * + * {
   margin-top: 0.6rem;
 }
@@ -1720,4 +1724,290 @@ a.chip:hover {
 .deal-late {
   color: var(--bad);
   font-weight: 600;
+}
+
+/* ---------- Vandaag: the day route (Duolingo-like: one step at a time, big buttons, little text) ---------- */
+.day-path {
+  border: 2px solid var(--accent-soft);
+}
+.day-ring {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex: none;
+}
+.day-ring .num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.day-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.day-step {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  border: 2px solid transparent;
+  border-bottom-width: 4px;
+  border-bottom-color: var(--sunken);
+}
+.day-step.now {
+  border-color: var(--accent);
+  border-bottom-color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.day-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 1.35rem;
+  box-shadow: inset 0 -3px 0 var(--sunken);
+}
+.day-step:not(.now) .day-actions .button:not(.ghost) {
+  min-height: 36px;
+}
+.day-actions {
+  flex: none;
+  justify-content: flex-end;
+}
+@media (max-width: 560px) {
+  .day-step {
+    flex-wrap: wrap;
+  }
+  .day-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* "Meer" on Vandaag: one quiet button that opens the rest. */
+details.more > summary {
+  list-style: none;
+  width: fit-content;
+  margin: 0 auto;
+  cursor: pointer;
+}
+details.more > summary::-webkit-details-marker {
+  display: none;
+}
+details.more[open] > summary {
+  margin-bottom: 1.2rem;
+}
+
+/* ---------- The day as a lesson (/dag): one card, big buttons, a green "goed zo" ---------- */
+.button.big {
+  min-height: 54px;
+  padding: 0.85rem 1.4rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-radius: var(--radius-m);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.22);
+  justify-content: center;
+}
+.button.big:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+.day-path .button.big {
+  width: 100%;
+}
+.day-preview {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.day-preview li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.day-icon.small {
+  width: 38px;
+  height: 38px;
+  font-size: 1.1rem;
+}
+.lesson {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 0 16px;
+  background: var(--bg, var(--surface-2));
+}
+html[data-shell='mac'] .lesson {
+  padding-top: 28px;
+}
+.lesson-top {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 0;
+}
+.lesson-close {
+  font-size: 1.3rem;
+  text-decoration: none;
+  color: var(--muted);
+  width: 36px;
+  text-align: center;
+}
+.lesson-bar {
+  flex: 1;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--sunken);
+  overflow: hidden;
+}
+.lesson-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--xp);
+  transition: width 0.4s ease;
+}
+.lesson-card {
+  align-self: center;
+  padding: 1rem 0 2rem;
+}
+.lesson-card h1 {
+  font-size: clamp(1.5rem, 4.5vw, 2.1rem);
+  line-height: 1.15;
+}
+.lesson-icon {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.12);
+}
+.lesson-phone {
+  display: inline-flex;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+.lesson-foot {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -16px;
+  padding: 1rem 16px calc(1rem + env(safe-area-inset-bottom));
+  border-top: 2px solid var(--sunken);
+  background: var(--surface);
+}
+.lesson-foot.good {
+  background: var(--xp-soft);
+  border-top-color: var(--xp);
+  color: #1f3a05;
+}
+.lesson-foot.bad {
+  background: #fde8e8;
+  color: #7a1212;
+}
+.lesson-actions,
+.lesson-feedback {
+  display: grid;
+  gap: 0.6rem;
+}
+.lesson-actions .row > .button {
+  flex: 1;
+}
+.lesson-feedback strong {
+  font-size: 1.1rem;
+}
+.lesson-number {
+  font-size: 1.6rem;
+  font-weight: 800;
+  text-align: center;
+  min-height: 56px;
+}
+.lesson-checklist {
+  margin: 0;
+  padding-left: 1.3rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.lesson-checklist li.done {
+  color: var(--good);
+}
+.lesson-end {
+  align-self: center;
+  text-align: center;
+  justify-items: center;
+  display: grid;
+  padding: 3rem 0;
+}
+.lesson-flame {
+  font-size: 4.5rem;
+  animation: pop 0.5s ease-out;
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-flame {
+    animation: none;
+  }
+  .lesson-bar > span {
+    transition: none;
+  }
+}
+.post-image img {
+  width: min(100%, 300px);
+  height: auto;
+  border-radius: var(--radius-m);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+.post-image.placeholder {
+  width: min(100%, 300px);
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-m);
+  background: var(--sunken);
+}
+
+/* The sidebar's "Meer": quiet, one line. */
+.sidebar-more > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.sidebar-more > summary::-webkit-details-marker {
+  display: none;
+}
+.sidebar-more > summary::after {
+  content: ' ▾';
+}
+.sidebar-more[open] > summary::after {
+  content: ' ▴';
 }

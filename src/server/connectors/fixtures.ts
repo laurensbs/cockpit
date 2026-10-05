@@ -16,6 +16,16 @@ export const fixtureFetch: typeof fetch = async (input, init) => {
   const auth = new Headers(init?.headers).get('authorization') ?? ''
   if (auth.includes('bad')) return json({ error: { message: 'Invalid API Key provided: rk_bad_…' } }, 401)
 
+  if ((url.hostname === 'graph.facebook.com' || url.hostname === 'graph.instagram.com') && (url.searchParams.get('access_token') ?? '').includes('bad')) {
+    return json({ error: { message: 'Invalid OAuth access token' } }, 401)
+  }
+  if ((url.hostname === 'graph.facebook.com' || url.hostname === 'graph.instagram.com') && url.pathname.endsWith('/insights')) {
+    const values = days(28).map(({ day, i }) => ({ value: 300 + ((i * 37) % 120), end_time: `${addDays(day, 1)}T07:00:00+0000` }))
+    return json({ data: [{ name: 'reach', period: 'day', values }] })
+  }
+  if (url.hostname === 'graph.facebook.com' || url.hostname === 'graph.instagram.com') {
+    return json({ id: url.pathname.split('/').pop(), followers_count: 1234, media_count: 56 })
+  }
   if (url.hostname === 'api.stripe.com' && url.pathname === '/v1/charges') {
     const charges = days(120)
       .filter(({ i }) => i % 4 === 0)

@@ -154,7 +154,11 @@ export async function scheduleDraft(db: Db, ownerId: string, contentItemId: stri
   if (!contact) return { ok: false, message: 'Kies eerst voor wie deze mail is.' }
   if (item.projectId && contact.projectId !== item.projectId) return { ok: false, message: 'Dit contact hoort bij een ander project.' }
   if (!contact.email || !EMAIL.test(contact.email)) return { ok: false, message: `${contact.organization} heeft nog geen geldig e-mailadres.` }
-  if (STOP_STATUSES.includes(contact.status)) return { ok: false, message: `${contact.organization} heeft al geantwoord of nee gezegd.` }
+  if (STOP_STATUSES.includes(contact.status)) return { ok: false, message: `${contact.organization} heeft al geantwoord of nee gezegd, of je hebt nog geen ja gezegd.` }
+  // Cold mail to a business needs consent in Spain and the Netherlands: call first, mail when they ask.
+  if (contact.basis === 'business' && (await getSetting(db, ownerId, 'cold_mail_ok')) !== '1') {
+    return { ok: false, message: `Koude mail aan bedrijven staat uit. Bel ${contact.organization} eerst; vragen ze om info, tik dan op “Ze willen info”.` }
+  }
   const busy = await db
     .select({ id: s.emailJob.id })
     .from(s.emailJob)

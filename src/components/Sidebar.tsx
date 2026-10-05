@@ -4,10 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon, type IconName } from './Icon'
 
+// Three places up front; the rest is one tap away under "Meer" (and always in ⌘K).
 const PLACES: { href: string; label: string; icon: IconName }[] = [
   { href: '/', label: 'Vandaag', icon: 'today' },
   { href: '/projects', label: 'Projecten', icon: 'projects' },
   { href: '/studio', label: 'Marketing', icon: 'studio' },
+]
+const MORE: { href: string; label: string; icon: IconName }[] = [
   { href: '/quests', label: 'Quests', icon: 'quests' },
   { href: '/companies', label: 'Bedrijven', icon: 'companies' },
 ]
@@ -38,6 +41,15 @@ export function Sidebar({ projects, claude, version }: { projects: SidebarProjec
             <span>{p.label}</span>
           </Link>
         ))}
+        <details className="sidebar-more" open={MORE.some((p) => isActive(pathname, p.href)) || undefined}>
+          <summary>Meer</summary>
+          {MORE.map((p) => (
+            <Link key={p.href} href={p.href} aria-current={isActive(pathname, p.href) ? 'page' : undefined}>
+              <Icon name={p.icon} size={18} />
+              <span>{p.label}</span>
+            </Link>
+          ))}
+        </details>
       </div>
       {projects.length ? (
         <div className="sidebar-group sidebar-projects">

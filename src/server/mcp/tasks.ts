@@ -16,6 +16,7 @@ import {
   opportunitiesTask,
   planTask,
   PLATFORMS,
+  prospectTask,
   postsTask,
   profileTask,
   RULES,
@@ -30,7 +31,7 @@ import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context
 import { dataSummary } from '../outcome-state'
 import { loadPoints } from '../points'
 
-export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model'] as const
+export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'prospect', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model'] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 export const isTaskKind = (v: unknown): v is TaskKind => typeof v === 'string' && (TASK_KINDS as readonly string[]).includes(v)
 
@@ -43,6 +44,7 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   posts: 'Posts voor een platform',
   ideas: 'Ideeën',
   opportunities: 'Kansen zoeken op het web',
+  prospect: 'Bedrijven zoeken die passen, om te bellen of langs te gaan',
   seo: 'Zoekwoorden en een artikel (SEO)',
   experiments: 'Groei-experimenten',
   linkedin: 'LinkedIn-profiel en posts',
@@ -66,6 +68,7 @@ export const TaskOptions = z.object({
   contactId: z.string().trim().max(64).optional().describe('contact_mail: the contact (see list_contacts)'),
   question: z.string().trim().max(600).optional().describe('ask: his question or request, in his own words'),
   focus: z.enum(METRIC_KEYS).optional().describe('experiments: the metric the experiments must move (where the funnel leaks)'),
+  count: z.coerce.number().int().min(1).max(10).optional().describe('prospect: how many businesses to find'),
 })
 export type TaskOptions = z.infer<typeof TaskOptions>
 
@@ -160,6 +163,7 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
     case 'posts': {
       const platform = options.platform ?? 'instagram'
       body = postsTask(platform, language, project ? await pastTitles(db, project.id, 'social') : [])
+      if (options.note) extra = `What these posts must be about (his request): ${options.note}`
       handBack = `\`save_posts\` with { "project": ${quoted}, "platform": "${platform}", "language": "${language}", "posts": [ { "title", "format", "hook", "caption", "hashtags", "visualBrief", "bestTime" } ] }`
       break
     }
@@ -174,6 +178,18 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
       handBack = `\`save_opportunities\` with { "project": ${quoted}, "language": "${language}", "opportunities": [ { "name", "type", "url", "why", "howToApproach" } ] }`
       extra = 'Use your web search and web fetch tools to find and check these places; list only what you actually found.'
       break
+    case 'prospect': {
+      if (!project) return { error: 'prospect needs a project.' }
+      const known = (await db.select({ organization: s.contact.organization, website: s.contact.website }).from(s.contact).where(eq(s.contact.projectId, project.id)))
+        .map((c) => (c.website ? `${c.organization} (${c.website.replace(/^https?:\/\/(www\.)?/, '')})` : c.organization))
+        .slice(0, 300)
+      const [row] = await db.select({ perDay: s.project.prospectPerDay }).from(s.project).where(eq(s.project.id, project.id))
+      const count = options.count ?? (row?.perDay || 5)
+      body = prospectTask({ name, count, language, markets: project.markets, known })
+      handBack = `\`save_prospects\` with { "project": ${quoted}, "prospects": [ { "organization", "website", "city", "what", "howRequestsArrive", "observation", "fit", "why", "pitch", "channel" } ] }, and then \`save_emails\` per proposal as described`
+      extra = 'Use your web search and web fetch tools to find and check these businesses; list only what you actually found and opened.'
+      break
+    }
     case 'seo':
       body = seoTask(language, project?.markets ?? [], project?.siteUrl ?? null)
       handBack = `\`save_articles\` with { "project": ${quoted}, "language": "${language}", "keywords": [ { "keyword", "intent", "difficulty", "why" } ], "articles": [ { "title", "slug", "metaDescription", "keywords", "outline", "body" } ] }`

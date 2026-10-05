@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { mcpTool, newVisitor, shot } from './helpers'
+import { mcpTool, newVisitor, shot, openMore } from './helpers'
 
 // Runs after the others: Rondje and friends are in the cockpit, Claude Code is "connected" (the test
 // terminal records what would be opened instead of opening a window).
@@ -14,6 +14,7 @@ const lastTicket = () => launches().at(-1)!.command.match(/ticket ([a-f0-9]{8})/
 test('Vandaag: the next step per project, and a free question for Claude through a ticket', async ({ browser, request }) => {
   const { context, page } = await newVisitor(browser)
   await page.goto('/')
+  await openMore(page)
   const next = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Nu doen' }) })
   await expect(next.locator('.project-chip').first()).toBeVisible()
   await shot(page, '20-today-smart')

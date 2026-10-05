@@ -9,7 +9,6 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: '/projects', label: 'Projecten', icon: 'projects' },
   { href: '/studio', label: 'Marketing', icon: 'studio' },
   { href: '/quests', label: 'Quests', icon: 'quests' },
-  { href: '/companies', label: 'Bedrijven', icon: 'companies' },
 ]
 
 function isActive(pathname: string, href: string): boolean {

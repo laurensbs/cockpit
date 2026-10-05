@@ -57,6 +57,10 @@ export interface ContextInput {
   growth?: string | null
   /** What came out of earlier experiments, newest first. */
   lessons?: string[]
+  /** His social profiles for this project, by platform. */
+  socials?: Record<string, string>
+  /** Where the project stands, from his own STAND.md: phase, goal, open criteria and the file's start. */
+  compass?: { source: string; phase: string | null; goal: string | null; open: string[]; excerpt: string } | null
 }
 
 const line = (label: string, value: string | null | undefined) => (value && value.trim() ? `${label}: ${neutralize(value.trim())}\n` : '')
@@ -87,6 +91,15 @@ export function projectContext(c: ContextInput): string {
     out += '<numbers>\n'
     for (const m of [...c.metrics].sort((a, b) => a.month.localeCompare(b.month) || a.key.localeCompare(b.key))) out += `${m.month.slice(0, 7)} ${m.key}: ${m.value}\n`
     out += '</numbers>\n'
+  }
+  const socials = Object.entries(c.socials ?? {})
+  out += `<socials>\n${socials.length ? socials.map(([k, v]) => `${k}: ${neutralize(v)}`).join('\n') : 'none linked yet'}\n</socials>\n`
+  if (c.compass) {
+    out += `<compass source="${neutralize(c.compass.source)}">\nWhere the project stands, from his own STAND.md (his compass; respect its decisions):\n`
+    out += line('Phase', c.compass.phase)
+    out += line('Goal of this phase', c.compass.goal)
+    if (c.compass.open.length) out += `Open criteria for the next phase:\n${c.compass.open.map((o) => `- ${neutralize(o)}`).join('\n')}\n`
+    out += `${neutralize(c.compass.excerpt)}\n</compass>\n`
   }
   if (c.growth) out += `<growth>\n${neutralize(c.growth)}\n</growth>\n`
   if (c.lessons?.length) out += `<lessons>\nWhat earlier experiments taught him (build on what worked, do not repeat what did not):\n${c.lessons.map((l) => `- ${neutralize(l)}`).join('\n')}\n</lessons>\n`
@@ -196,6 +209,23 @@ ${DRAFT_RULES}`
 export function contactBatchTask(contacts: (ContactBrief & { id: string })[], language: string): string {
   return `Task: for each contact below, a personal email with two follow-ups, in ${lang(language)}. Save each contact's three drafts with its own save call before you start the next.
 ${contacts.map(contactBlock).join('\n')}
+${SEQUENCE_RULES}
+${DRAFT_RULES}`
+}
+
+/**
+ * Prospectie: businesses that fit, each checked on its own site, ready for a call or a visit. Cold mail
+ * to businesses needs consent in Spain (LSSI art. 21) and in the Netherlands (Tw 11.7), so the first
+ * step is a call; the mail is the information they ask for on the phone.
+ */
+export function prospectTask(input: { name: string; count: number; language: string; markets: string[]; known: string[] }): string {
+  return `Task: find ${input.count} businesses or organisations that fit ${input.name}, that he can call or visit, and check each one on its own website.
+Who: follow the intake (audience, markets, tone, red lines) and what the project offers.${input.markets.length ? ` Markets: ${input.markets.join(', ')}.` : ''} Mix towns and trades a little; not all of one kind. Small and owner-run beats big chains with a call centre. Never private persons.
+Skip everything in this list (he already has them, or said no to them): ${input.known.length ? input.known.join('; ') : '(none yet)'}.
+For each business, open their own website with web fetch and look at how a customer reaches them now (a form and what it asks, a phone number, WhatsApp, mail). Write one observation he can check himself in ten seconds, and say where ("kijk zelf: hun contactpagina"). Only what you saw yourself; leave out a business whose site you could not open.
+pitch: what he says when he calls, in their language (Spanish with "vosotros", Dutch with "je", Catalan sites in Spanish), two or three sentences: who he is in a few words, the observation, and one yes/no question such as whether he may show them in two minutes. No prices unless they ask.
+channel: "call" by default (calling a business about its work is allowed), "visit" when they have a shop or workshop he can walk into, "form" when they only have a form. Not "email": mail comes after they ask for it.
+Then save them all with save_prospects in one call. For every proposal in its result, write the information mail he sends when they say on the phone "stuur maar wat informatie": the first mail starts from the call, shows the project's example link if it has one, and ends with one small next step; plus the two follow-ups. Save each business's three drafts with save_emails (purpose "contact", the contactId from the result, in their language) before the next.
 ${SEQUENCE_RULES}
 ${DRAFT_RULES}`
 }

@@ -25,13 +25,14 @@ function StatusChip({ status }: { status: ServiceStatus }) {
 export default async function SettingsPage() {
   const owner = await requireOwner('/settings')
   const db = await getDb()
-  const [{ token, from }, stored, version, connectedAt, mail, autopilot] = await Promise.all([
+  const [{ token, from }, stored, version, connectedAt, mail, autopilot, coldMail] = await Promise.all([
     githubTokenSource(db, owner.userId),
     getSetting(db, owner.userId, 'github_token'),
     claudeVersion(),
     getSetting(db, owner.userId, 'claude_connected'),
     mailConfig(db, owner.userId),
     getSetting(db, owner.userId, 'autopilot_weekly'),
+    getSetting(db, owner.userId, 'cold_mail_ok'),
   ])
   const github = githubStatus(token)
   const appToken = expectedToken() ?? ''
@@ -80,7 +81,7 @@ export default async function SettingsPage() {
             De app koppelt Claude Code vanzelf zodra hij het vindt, en opnieuw als het adres van de cockpit verandert. De knop hieronder doet hetzelfde met de hand.
           </p>
         ) : null}
-        {version ? <AutopilotToggle on={autopilot === '1'} /> : null}
+        {version ? <AutopilotToggle on={autopilot !== '0'} /> : null}
         {version ? (
           <ConnectClaudeButton connectedAt={connectedAt} />
         ) : (
@@ -123,7 +124,7 @@ export default async function SettingsPage() {
           ermee instemden. Elke mail heeft een afmeldregel. Het wachtwoord blijft op deze computer; gebruik waar het kan een app-wachtwoord.
         </p>
         <MailSettingsForm
-          values={{ host: mail.host, port: mail.port, secure: mail.secure, user: mail.user, hasPass: Boolean(mail.pass), fromName: mail.fromName, fromEmail: mail.fromEmail, cap: mail.cap, enabled: mail.enabled }}
+          values={{ host: mail.host, port: mail.port, secure: mail.secure, user: mail.user, hasPass: Boolean(mail.pass), fromName: mail.fromName, fromEmail: mail.fromEmail, cap: mail.cap, enabled: mail.enabled, coldMail: coldMail === '1' }}
         />
       </section>
 

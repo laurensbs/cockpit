@@ -5,6 +5,8 @@ import * as s from '@/db/schema'
 import { portfolioContext, projectContext, type ContextInput, type PortfolioInput } from '@/lib/ai/prompts'
 import { profileFromJson, type Profile } from '@/lib/ai/schemas'
 import { addMonths, dayOf, monthStart } from '@/lib/dates'
+import { socialsOf } from '@/lib/socials'
+import { readCompass } from '../compass'
 import { bottleneckLine, growthText, lessonLine, type LessonBody, outcomeStates, paceLine } from '../outcome-state'
 
 export interface JobContext {
@@ -90,6 +92,8 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
       disliked: rated.filter((r) => r.rating < 0).map((r) => r.title),
       growth: outcome ? growthText(outcome) : null,
       lessons: lessons.map((l) => lessonLine(l.title, l.body as LessonBody)),
+      socials: socialsOf(project.links) as Record<string, string>,
+      compass: readCompass(project),
     },
   }
 }

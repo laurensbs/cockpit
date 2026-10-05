@@ -29,6 +29,8 @@ test('approved mails go out on their own, within the cap, and an answer stops th
   await mail.getByLabel('Adres afzender').fill('laurens@rondje.test')
   await mail.getByLabel('Maximaal per dag').fill('2')
   await mail.getByText('Automatisch versturen', { exact: true }).click()
+  // These test contacts are business addresses: the test says yes to cold mail, which is off by default.
+  await mail.getByText('Ook koude mail aan bedrijven', { exact: true }).click()
   await mail.getByRole('button', { name: 'Bewaren' }).click()
   await expect(mail.getByRole('status')).toContainText('Automatisch versturen staat aan')
   await mail.getByRole('button', { name: 'Stuur een testmail naar mezelf' }).click()

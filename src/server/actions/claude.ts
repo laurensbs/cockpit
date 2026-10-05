@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { expectedToken } from '@/lib/local'
-import { connectClaudeCode, launchPrompt, mcpUrl, openTerminal } from '../claude'
+import { connectClaudeCode, launchPrompt, mcpUrl, openTerminal, runHeadless } from '../claude'
 import { isTaskKind, TaskOptions } from '../mcp/tasks'
 import { createTicket } from '../mcp/tickets'
 import { actionOwner } from '../session'
@@ -58,9 +58,32 @@ export async function connectClaude(): Promise<{ ok: boolean; message: string }>
   return result
 }
 
-/** The autopilot: on Monday morning Claude Code makes the weekly focus by itself. */
+/** The autopilot: on Monday morning the weekly focus, and on working days a post about what he built. */
 export async function setAutopilot(on: boolean): Promise<void> {
   const owner = await actionOwner()
-  await setSetting(await getDb(), owner.userId, 'autopilot_weekly', on ? '1' : null)
+  await setSetting(await getDb(), owner.userId, 'autopilot_weekly', on ? '1' : '0')
   revalidatePath('/settings')
+}
+
+/** Tasks that need to search or read the web. */
+const WEB_TASKS = new Set(['opportunities', 'seo', 'prospect'])
+
+/**
+ * The day route's buttons: Claude does the task in the background, without a terminal window; the
+ * result appears on the page when it lands. For a layperson that is one tap and nothing to watch.
+ */
+export async function runInBackground(task: string, projectId: string, options: Record<string, unknown> = {}): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  if (!isTaskKind(task) || task === 'ask') return { ok: false, message: 'Onbekende taak.' }
+  const parsed = TaskOptions.safeParse(options)
+  if (!parsed.success) return { ok: false, message: 'Die keuzes kloppen niet.' }
+  const db = await getDb()
+  const [project] = await db
+    .select({ id: s.project.id })
+    .from(s.project)
+    .where(and(eq(s.project.id, String(projectId)), eq(s.project.ownerId, owner.userId)))
+  if (!project) return { ok: false, message: 'Dit project bestaat niet.' }
+  const ticket = createTicket({ task, projectId: project.id, options: parsed.data })
+  const { started } = await runHeadless(launchPrompt(ticket), { web: WEB_TASKS.has(task) })
+  return started ? { ok: true, message: 'Claude is ermee bezig. Het verschijnt hier vanzelf.' } : { ok: false, message: 'Claude Code kon niet starten.' }
 }

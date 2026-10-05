@@ -8,12 +8,12 @@ import { ArticlesWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, Opp
 import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
-import { LANGUAGES } from '@/lib/options'
+import { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
 import { resolveProject, type ProjectRef } from './projects'
-import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
+import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveIntake, saveLinkedin, saveProspects, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
 
@@ -174,6 +174,70 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
       const brief = await buildBrief(db, ownerId, kind, projectId, options)
       return 'error' in brief ? fail(brief.error) : text(brief.text)
     },
+  )
+
+  server.registerTool(
+    'save_intake',
+    {
+      title: 'Fill in or update the intake',
+      description:
+        'Writes the intake of a project from what you know of it: its CLAUDE.md, STAND.md, VISIE.md, README and code. Only facts and decisions he made himself; never invent goals or numbers (the goal and north star come from his own documents, or say "voorstel"). Only the fields you send change. Plain Dutch, short sentences.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        oneLiner: z.string().max(200).optional().describe('What it is and for whom, one line'),
+        what: z.string().max(2000).optional().describe('What it does, the offer and price if decided, where it stands'),
+        audience: z.string().max(1000).optional(),
+        goal: z.string().max(600).optional().describe('Only goals and deadlines he decided, with the date'),
+        tone: z.string().max(300).optional(),
+        northStar: z.string().max(200).optional(),
+        redLines: z.string().max(1000).optional().describe('What must never happen or be pitched'),
+        siteUrl: z.string().max(300).optional(),
+        localPath: z.string().max(400).optional().describe('Absolute path of the local code folder; Claude Code starts there'),
+        languages: z.array(z.enum(LANGUAGES)).max(LANGUAGES.length).optional(),
+        markets: z.array(z.enum(MARKETS)).max(MARKETS.length).optional(),
+        stage: z.enum(STAGES).optional(),
+        prospectPerDay: z.number().int().min(0).max(10).optional().describe('Prospectie: how many businesses you look for each working day (0 = off); never for a project with marketing off'),
+      },
+    },
+    async ({ project, ...intake }) =>
+      withProject(project, async (p) => {
+        const result = await saveIntake(db, ownerId, p, intake)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
+  )
+
+  server.registerTool(
+    'save_prospects',
+    {
+      title: 'Save businesses you found (prospects)',
+      description:
+        'Stores 1–10 businesses or organisations that fit the project, each checked on its own website. Each becomes a proposal he says yes or no to; known ones are skipped. Never private persons. The cockpit reads their public phone and address itself; you only hear whether it found them. Afterwards write, per proposal, the info mail he sends when they ask for information on the phone (save_emails, purpose "contact", contactId from this result).',
+      inputSchema: {
+        project: PROJECT_ARG,
+        prospects: z
+          .array(
+            z.object({
+              organization: z.string().trim().min(1).max(120),
+              website: z.string().trim().min(4).max(300).describe('Their own site, as you checked it'),
+              city: z.string().max(80).optional(),
+              what: z.string().max(300).optional().describe('What they do, in one line'),
+              howRequestsArrive: z.string().max(300).optional().describe('How a customer reaches them now, as you saw it on their site'),
+              observation: z.string().trim().min(10).max(400).describe('One concrete thing he can check himself on their site, and where ("kijk zelf: hun contactpagina")'),
+              fit: z.number().int().min(1).max(5).optional().describe('How well they fit, 1–5'),
+              why: z.string().max(300).optional(),
+              pitch: z.string().max(600).optional().describe('What he says when he calls: two or three sentences in their language, starting from the observation, ending with one yes/no question'),
+              channel: z.enum(['call', 'visit', 'form', 'email']).optional().describe('The best first step; call or visit unless they asked for mail'),
+            }),
+          )
+          .min(1)
+          .max(10),
+      },
+    },
+    async ({ project, prospects }) =>
+      withProject(project, async (p) => {
+        const result = await saveProspects(db, ownerId, p, prospects)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
   )
 
   server.registerTool(

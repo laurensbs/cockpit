@@ -66,6 +66,8 @@ export const project = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
     // The growth model he accepted: one target number with a deadline, and the funnel that leads to it.
     growthModel: jsonb('growth_model').$type<GrowthModel>(),
+    // How many businesses Claude looks for on its own each working day (0 = off).
+    prospectPerDay: integer('prospect_per_day').notNull().default(0),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -139,6 +141,17 @@ export const contact = pgTable(
     dealPeriod: text('deal_period'),
     nextStep: text('next_step').notNull().default(''),
     nextStepOn: date('next_step_on'),
+    // Where the contact came from (manual, import, prospect) and, for one Claude found, what it saw
+    // on their own site, how well they fit (1–5), how to reach them, and where the address was found.
+    source: text('source').notNull().default('manual'),
+    observation: text('observation').notNull().default(''),
+    fit: integer('fit'),
+    channel: text('channel').notNull().default(''),
+    emailSource: text('email_source'),
+    // Their public business phone and town (call or visit first), and what Claude would say on the phone.
+    phone: text('phone'),
+    city: text('city').notNull().default(''),
+    pitch: text('pitch').notNull().default(''),
     createdAt: createdAt(),
   },
   (t) => [index('contact_project_idx').on(t.projectId)],

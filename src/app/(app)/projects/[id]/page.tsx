@@ -10,6 +10,7 @@ import { MetricForm } from '@/components/MetricForm'
 import { NextSteps } from '@/components/NextSteps'
 import { ProjectTabs } from '@/components/ProjectTabs'
 import { RepoList } from '@/components/RepoList'
+import { Socials } from '@/components/Socials'
 import { StageSelect } from '@/components/StageSelect'
 import { SyncButton } from '@/components/SyncButton'
 import { getDb } from '@/db'
@@ -19,8 +20,10 @@ import { addMonths, dayOf, monthLabel, monthStart } from '@/lib/dates'
 import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
 import { LANGUAGE_LABELS, METRIC_KEYS, METRIC_LABELS } from '@/lib/options'
 import { ago, formatEuro, formatNumber } from '@/lib/time'
+import { socialsOf } from '@/lib/socials'
 import { hostOf } from '@/lib/urls'
 import { claudeBlocked } from '@/server/claude-status'
+import { readCompass } from '@/server/compass'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { outcomeHref, outcomeStates } from '@/server/outcome-state'
 import { metricsSince } from '@/server/queries'
@@ -55,6 +58,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const repos = await db.select().from(s.repo).where(eq(s.repo.projectId, id)).orderBy(desc(s.repo.pushedAt))
 
   const now = new Date()
+  const compass = readCompass(project)
   const today = dayOf(now)
   const thisMonth = monthStart(today)
   const months = [addMonths(thisMonth, -2), addMonths(thisMonth, -1), thisMonth]
@@ -90,6 +94,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               </Link>
             ) : null}
             <h1>{project.name}</h1>
+            {compass?.phase ? (
+              <span className="chip accent" title={`Uit ${compass.source}${compass.goal ? `: ${compass.goal}` : ''}`} style={{ width: 'fit-content' }}>
+                Fase {compass.phase}
+              </span>
+            ) : null}
             {project.oneLiner ? <p className="lede">{project.oneLiner}</p> : null}
           </div>
           <div className="row">
@@ -115,6 +124,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             )}
           </span>
         ) : null}
+        <Socials projectId={project.id} linked={socialsOf(project.links)} />
         <ProjectTabs projectId={project.id} active="overview" />
       </header>
 

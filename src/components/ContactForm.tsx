@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { CONTACT_BASIS_LABELS } from '@/lib/options'
 import { useForm } from '@/lib/use-form'
 import { saveContact } from '@/server/actions/contacts'
@@ -7,8 +8,13 @@ import { initialFormState } from '@/server/actions/types'
 
 export function ContactForm({ projectId }: { projectId: string }) {
   const { state, pending, onSubmit } = useForm(saveContact, initialFormState)
+  // Empty again after a contact went in, so the next one never starts from the last one's details.
+  const form = useRef<HTMLFormElement>(null)
+  useEffect(() => {
+    if (state.ok) form.current?.reset()
+  }, [state])
   return (
-    <form className="stack-m" onSubmit={onSubmit}>
+    <form ref={form} className="stack-m" onSubmit={onSubmit}>
       <input type="hidden" name="projectId" value={projectId} />
       <div className="grid tight">
         <label className="field">

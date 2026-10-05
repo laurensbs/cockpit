@@ -5,18 +5,20 @@ import { QuestItem } from '@/components/QuestItem'
 import { Sparkline } from '@/components/Sparkline'
 import { AskClaude } from '@/components/AskClaude'
 import { PaceChip } from '@/components/GrowthCard'
-import { NextSteps, SetupChecklist, type NextStepGroup } from '@/components/NextSteps'
+import { NextSteps, SetupChecklist } from '@/components/NextSteps'
+import { DayPath } from '@/components/DayPath'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
-import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
+import { pickSteps } from '@/lib/today'
 import { claudeBlocked } from '@/server/claude-status'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
-import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
-import { outcomeHref, outcomeStates } from '@/server/outcome-state'
+import { growthStates } from '@/server/growth-state'
+import { outcomeStates } from '@/server/outcome-state'
 import { questViews } from '@/server/quest-views'
 import { requireOwner } from '@/server/session'
 import { setupSteps } from '@/server/setup'
+import { dayCandidates, dayProgress, growthStep, orderNextSteps } from '@/server/today'
 
 const TREND = { up: { icon: '▲', label: 'meer dan vorige week', color: 'var(--good)' }, down: { icon: '▼', label: 'minder dan vorige week', color: 'var(--bad)' }, flat: { icon: '●', label: 'gelijk aan vorige week', color: 'var(--faint)' } }
 
@@ -34,30 +36,13 @@ export default async function TodayPage() {
   ])
   const setup = await setupSteps(db, owner.userId, pulses.length)
   const setupLeft = setup.some((step) => !step.done && !step.optional)
-  // One step per project, the least healthy project first: that is where attention pays off most. What
-  // the numbers say (the leak, a missing model or missing numbers) comes before the usual marketing
-  // steps. The same step for several projects becomes one row.
-  const groups: (NextStepGroup & { fromNumbers: boolean })[] = []
-  for (const p of pulses) {
-    const fromNumbers = outcomes.get(p.id)?.step
-    const [first] = nextActions(growth.get(p.id) ?? EMPTY_GROWTH)
-    const step = fromNumbers
-      ? { key: fromNumbers.key, title: fromNumbers.title, why: fromNumbers.why, href: outcomeHref(p.id, fromNumbers.place), task: fromNumbers.task, options: fromNumbers.options }
-      : first
-        ? { key: first.key, title: first.title, why: first.why, href: actionHref(p.id, first.tab), task: ACTION_TASKS[first.key] ?? null, options: undefined }
-        : null
-    if (!step) continue
-    const item = { projectId: p.id, projectName: p.name, color: p.color, href: step.href, task: step.task, options: step.options }
-    // The same step with the same reason groups; a step with this project's numbers in its reason stands alone.
-    const same = groups.find((g) => g.title === step.title && g.why === step.why)
-    if (same) same.projects.push(item)
-    else groups.push({ key: `${step.key}-${groups.length}`, title: step.title, why: step.why, projects: [item], fromNumbers: Boolean(fromNumbers) })
-  }
-  // What the numbers ask for comes first; the order within stays least healthy first.
-  const ordered = [...groups.filter((g) => g.fromNumbers), ...groups.filter((g) => !g.fromNumbers)]
+  const ordered = orderNextSteps(pulses, outcomes, growth)
   const now = quests.filter((q) => q.bucket === 'overdue' || q.bucket === 'today' || q.kind === 'boss').slice(0, 5)
   const shown = now.length >= 3 ? now : [...now, ...quests.filter((q) => !now.includes(q))].slice(0, 3)
   const { level, actionStreak, buildStreak } = stats
+  // The day route: the first growth step of the least healthy project closes the list.
+  const daySteps = pickSteps(await dayCandidates(db, owner.userId, growthStep(ordered)), new Set(), 8)
+  const progress = await dayProgress(db, owner.userId)
 
   return (
     <div className="stack-l">
@@ -97,75 +82,81 @@ export default async function TodayPage() {
 
       {setupLeft ? <SetupChecklist steps={setup} /> : null}
 
-      <AskClaude projects={pulses.map((p) => ({ id: p.id, name: p.name }))} disabledReason={blocked} />
+      <DayPath steps={daySteps} done={progress.done} goal={progress.goal} />
 
-      {pulses.length ? <NextSteps groups={ordered.slice(0, 5).map((g) => ({ key: g.key, title: g.title, why: g.why, projects: g.projects }))} disabledReason={blocked} /> : null}
+      {/* Everything else stays quiet behind one button: the day route is the page. */}
+      <details className="more stack-l">
+        <summary className="button secondary">Meer</summary>
+        <AskClaude projects={pulses.map((p) => ({ id: p.id, name: p.name }))} disabledReason={blocked} />
 
-      {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}
+        {pulses.length ? <NextSteps groups={ordered.slice(0, 5).map((g) => ({ key: g.key, title: g.title, why: g.why, projects: g.projects }))} disabledReason={blocked} /> : null}
 
-      <section className="card stack-s">
-        <div className="row between">
-          <h2>Quests</h2>
-          <Link href="/quests" className="button ghost small">
-            Alle quests <Icon name="arrow" size={16} />
-          </Link>
-        </div>
-        {shown.length ? (
-          <ul className="list" style={{ margin: 0 }}>
-            {shown.map((q) => (
-              <QuestItem key={q.id} quest={q} />
-            ))}
-          </ul>
-        ) : (
-          <p className="empty">
-            Geen open quests. <Link href="/quests">Zet er een op</Link>
-            {pulses.length ? null : (
-              <>
-                {' '}
-                of <Link href="/projects">voeg je projecten toe</Link>
-              </>
-            )}
-            .
-          </p>
-        )}
-      </section>
+        {pulses.length ? <WeeklyFocus db={db} ownerId={owner.userId} disabledReason={blocked} /> : null}
 
-      {pulses.length ? (
         <section className="card stack-s">
-          <h2>Projecten</h2>
-          <p className="tiny muted">De minst gezonde bovenaan: daar levert aandacht het meest op.</p>
-          <ul className="list">
-            {pulses.map((p) => (
-              <li key={p.id}>
-                <Link href={`/projects/${p.id}`} className="row nowrap pulse">
-                  <HealthRing score={p.health.score} />
-                  <span className="grow stack-xs" style={{ minWidth: 0 }}>
-                    <span className="row nowrap">
-                      <span className="dot" style={{ background: p.color }} />
-                      <strong style={{ overflowWrap: 'anywhere' }}>{p.name}</strong>
-                      <span title={TREND[p.trend].label} style={{ color: TREND[p.trend].color, fontSize: '0.7rem' }}>
-                        {TREND[p.trend].icon}
+          <div className="row between">
+            <h2>Quests</h2>
+            <Link href="/quests" className="button ghost small">
+              Alle quests <Icon name="arrow" size={16} />
+            </Link>
+          </div>
+          {shown.length ? (
+            <ul className="list" style={{ margin: 0 }}>
+              {shown.map((q) => (
+                <QuestItem key={q.id} quest={q} />
+              ))}
+            </ul>
+          ) : (
+            <p className="empty">
+              Geen open quests. <Link href="/quests">Zet er een op</Link>
+              {pulses.length ? null : (
+                <>
+                  {' '}
+                  of <Link href="/projects">voeg je projecten toe</Link>
+                </>
+              )}
+              .
+            </p>
+          )}
+        </section>
+
+        {pulses.length ? (
+          <section className="card stack-s">
+            <h2>Projecten</h2>
+            <p className="tiny muted">De minst gezonde bovenaan: daar levert aandacht het meest op.</p>
+            <ul className="list">
+              {pulses.map((p) => (
+                <li key={p.id}>
+                  <Link href={`/projects/${p.id}`} className="row nowrap pulse">
+                    <HealthRing score={p.health.score} />
+                    <span className="grow stack-xs" style={{ minWidth: 0 }}>
+                      <span className="row nowrap">
+                        <span className="dot" style={{ background: p.color }} />
+                        <strong style={{ overflowWrap: 'anywhere' }}>{p.name}</strong>
+                        <span title={TREND[p.trend].label} style={{ color: TREND[p.trend].color, fontSize: '0.7rem' }}>
+                          {TREND[p.trend].icon}
+                        </span>
+                        {p.pace ? <PaceChip status={p.pace} /> : null}
                       </span>
-                      {p.pace ? <PaceChip status={p.pace} /> : null}
+                      <span className="tiny muted">{p.health.tips[0] ?? 'Loopt goed'}</span>
                     </span>
-                    <span className="tiny muted">{p.health.tips[0] ?? 'Loopt goed'}</span>
-                  </span>
-                  <span style={{ width: 84, flex: 'none' }}>
-                    <Sparkline values={p.spark} height={22} label="Activiteit, 14 dagen" />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <section className="notice row between">
-          <span>Zet je projecten erin: dan komen er quests, plannen en concepten.</span>
-          <Link href="/projects" className="button primary small">
-            Projecten toevoegen
-          </Link>
-        </section>
-      )}
+                    <span style={{ width: 84, flex: 'none' }}>
+                      <Sparkline values={p.spark} height={22} label="Activiteit, 14 dagen" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <section className="notice row between">
+            <span>Zet je projecten erin: dan komen er quests, plannen en concepten.</span>
+            <Link href="/projects" className="button primary small">
+              Projecten toevoegen
+            </Link>
+          </section>
+        )}
+      </details>
     </div>
   )
 }

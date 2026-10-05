@@ -66,7 +66,7 @@ const quoteWin = (value: string) => `"${value.replace(/"/g, '')}"`
 export async function openTerminal(prompt: string, cwd: string | null): Promise<LaunchOutcome> {
   const command = `claude ${CLAUDE_ARGS} "${cleanPrompt(prompt)}"`
   const wanted = cwd?.trim().replace(/^~(?=$|[/\\])/, homedir()) ?? null
-  const dir = wanted && existsSync(wanted) ? wanted : homedir()
+  const dir = wanted && existsSync(/*turbopackIgnore: true*/ wanted) ? wanted : homedir()
   const fake = fakeTerminal()
   if (fake) {
     record(fake, { command, cwd: dir })
@@ -132,8 +132,10 @@ export async function connectClaudeCode(token: string): Promise<{ ok: boolean; m
  * Runs Claude Code without a window (`claude -p`), on his own account, with only the cockpit's tools
  * allowed. Used by the autopilot; the result comes back through MCP like any other task.
  */
-export async function runHeadless(prompt: string): Promise<{ started: boolean; command: string }> {
-  const command = `claude -p "${cleanPrompt(prompt)}" ${CLAUDE_ARGS}`
+export async function runHeadless(prompt: string, { web = false }: { web?: boolean } = {}): Promise<{ started: boolean; command: string }> {
+  // Prospectie needs to search and read websites; it still gets no tool to send, post or write files.
+  const tools = web ? '--allowedTools mcp__cockpit WebSearch WebFetch' : CLAUDE_ARGS
+  const command = `claude -p "${cleanPrompt(prompt)}" ${tools}`
   const fake = fakeTerminal()
   if (fake) {
     record(fake, { command, headless: true })

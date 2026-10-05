@@ -11,6 +11,7 @@ export function ContactStatus({ contactId, status }: { contactId: string; status
   return (
     <span className="row nowrap">
       <select
+        key={status}
         className="select"
         aria-label="Status"
         defaultValue={status}

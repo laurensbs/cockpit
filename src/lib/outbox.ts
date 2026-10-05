@@ -15,13 +15,15 @@ export const FOLLOWUP_GAPS = [4, 7] as const
 const OPT_OUT_LINES: Record<string, string> = {
   nl: 'Liever geen mail meer hierover? Laat het even weten, dan stop ik.',
   en: 'Rather not hear from me about this again? Just let me know and I will stop.',
-  es: '¿Prefieres no recibir más correos sobre esto? Dímelo y paro.',
+  es: '¿Preferís no recibir más correos sobre esto? Decídmelo y paro.',
   fr: 'Vous préférez ne plus recevoir de message à ce sujet ? Dites-le-moi et j’arrête.',
   de: 'Lieber keine weiteren E-Mails dazu? Sag einfach Bescheid, dann höre ich auf.',
 }
 
+// Also the way he writes it himself: "Geen interesse? Zeg het gerust, dan stuur ik niets meer." and
+// "Si no os interesa, decídmelo y no os escribo más." Without these a mail would end on two opt-outs.
 const OPT_OUT_PATTERN =
-  /geen (mail|e-mail|berichten) meer|afmelden|uitschrijven|unsubscribe|not hear from me|no more (emails|mails)|no recibir|darte de baja|ne plus recevoir|désinscri|keine (weiteren )?(e-?mails|nachrichten)|abmelden/i
+  /geen (mail|e-mail|berichten) meer|(stuur|mail) ik (je |jullie )?niets meer|afmelden|uitschrijven|unsubscribe|not hear from me|no more (emails|mails)|no recibir|no (os|te|le|les) (escribo|escribiré) más|darte de baja|ne plus recevoir|désinscri|keine (weiteren )?(e-?mails|nachrichten)|abmelden/i
 
 /** The mail as it goes out: the body, the PS, and an opt-out line when the text has none of its own. */
 export function finalBody(body: string, ps: string, language: string): string {
