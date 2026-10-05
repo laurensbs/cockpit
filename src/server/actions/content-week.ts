@@ -164,3 +164,10 @@ export async function saveBrandAndRhythm(_prev: FormState, form: FormData): Prom
   const issues = brandIssues(brand)
   return { ok: true, message: issues.length ? `Bewaard. Let op: ${issues.join(' ')}` : 'Bewaard. Nog niet goedgekeurde beelden worden opnieuw getekend.' }
 }
+
+/** The page saw pictures still waiting (after a restart, say): draw them now. */
+export async function drawPending(): Promise<void> {
+  const owner = await actionOwner()
+  await renderPending(await getDb(), owner.userId)
+}
+

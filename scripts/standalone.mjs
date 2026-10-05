@@ -12,6 +12,13 @@ if (!existsSync('.next/standalone/server.js')) {
   console.error('Run `next build` first: .next/standalone is missing.')
   process.exit(1)
 }
+// When the tracer loses track it copies the whole project, earlier builds included (gigabytes, and
+// the app would contain itself). Stop before that ships.
+const strays = ['release', 'src', 'e2e', 'shots', 'test-results', 'media'].filter((d) => existsSync(join('.next/standalone', d)))
+if (strays.length) {
+  console.error(`The traced server contains project folders it never needs: ${strays.join(', ')}. Some server code reads files by a dynamic path; see outputFileTracingExcludes in next.config.ts.`)
+  process.exit(1)
+}
 rmSync(out, { recursive: true, force: true })
 cpSync('.next/standalone', out, { recursive: true })
 cpSync('.next/static', `${out}/.next/static`, { recursive: true })
