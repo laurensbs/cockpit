@@ -20,7 +20,8 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
   await page.getByRole('navigation', { name: 'Project' }).getByRole('link', { name: 'Rondje' }).click()
   await expect(page.getByText('Alles voor de groei van Rondje')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Nu doen voor Rondje' })).toBeVisible()
-  await page.getByRole('link', { name: 'Concepten' }).click()
+  const sections = page.getByRole('navigation', { name: 'Onderdeel' })
+  await sections.getByRole('link', { name: 'Mails' }).click()
 
   // A generator button opens Claude Code with the choices made here.
   await page.getByRole('button', { name: /Schrijf mails/ }).click()
@@ -33,19 +34,20 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
   await mail.getByRole('button', { name: 'Verstuurd' }).click()
   await expect(page.locator('.toast')).toContainText('+10 XP')
 
-  // Posts: plan one for tomorrow, see it in the calendar, mark it posted.
+  // Posts: plan one for tomorrow, see it under Gepland, mark it posted.
+  await sections.getByRole('link', { name: 'Posts' }).click()
   const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date(Date.now() + 86_400_000))
   const post = page.locator('article').filter({ hasText: 'Dit is Bram. Hij wacht op jou.' })
   await post.getByLabel('Datum om te posten').fill(tomorrow)
   await shot(page, '09-studio')
-  await page.getByRole('link', { name: 'Kalender' }).click()
+  await page.reload()
   const planned = page.locator('.calendar article').filter({ hasText: 'Dit is Bram. Hij wacht op jou.' })
   await expect(planned).toBeVisible()
   await planned.getByRole('button', { name: 'Gepost' }).click()
   await expect(page.locator('.toast')).toContainText('+15 XP')
 
   // Idea lab: ideas on an impact/effort matrix; one becomes a quest, one gets a thumbs up.
-  await page.getByRole('link', { name: 'Idee-lab' }).click()
+  await sections.getByRole('link', { name: 'Ideeën' }).click()
   await expect(page.getByText('Ruil een rondje tegen koffie')).toBeVisible()
   await expect(page.getByRole('img', { name: 'Ideeën op impact en moeite' })).toBeVisible()
   const idea = page.locator('article').filter({ hasText: 'Ruil een rondje tegen koffie' })
@@ -55,7 +57,7 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
   await expect(idea.getByRole('button', { name: 'Goed idee' })).toHaveAttribute('aria-pressed', 'true')
 
   // Opportunities from the web: only real web links are clickable; one goes to the contacts.
-  await page.getByRole('link', { name: 'Kansen' }).click()
+  await page.getByRole('navigation', { name: 'Ideeën' }).getByRole('link', { name: 'Plekken' }).click()
   await expect(page.getByText('Dierenopvang Voorbeeld')).toBeVisible()
   await expect(page.getByRole('link', { name: 'example.org' })).toHaveAttribute('href', 'https://example.org/opvang')
   await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0)

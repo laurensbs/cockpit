@@ -52,7 +52,7 @@ export function StudioGenerator({ kind, projectId, languages, disabledReason }: 
     emails: 'Schrijf mails',
     posts: 'Maak 5 posts',
     ideas: 'Bedenk 6 ideeën',
-    opportunities: 'Zoek kansen op het web',
+    opportunities: 'Zoek plekken waar je klanten zijn',
     seo: 'Zoekwoorden en een artikel',
     experiments: 'Bedenk 5 groei-experimenten',
   }

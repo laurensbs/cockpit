@@ -31,7 +31,8 @@ test('organic growth: articles, a growth experiment and LinkedIn, from Claude Co
   await expect(page.locator('.toast')).toContainText('+15 XP')
 
   // Experiments: highest ICE first; start one, finish it with what was learned, and earn XP.
-  await page.getByRole('link', { name: 'Experimenten' }).click()
+  await page.getByRole('navigation', { name: 'Onderdeel' }).getByRole('link', { name: 'Ideeën' }).click()
+  await page.getByRole('navigation', { name: 'Ideeën' }).getByRole('link', { name: 'Experimenten' }).click()
   const backlog = page.getByRole('region', { name: 'Klaar om te starten' })
   await expect(backlog.locator('article').first()).toContainText('Flyer met QR bij de bieb van de universiteit')
   await backlog.locator('article').first().getByRole('button', { name: 'Start dit experiment' }).click()

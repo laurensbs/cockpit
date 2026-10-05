@@ -42,14 +42,28 @@ type Tab = (typeof TABS)[number]['key']
 
 const KINDS: Record<Tab, string[]> = {
   hub: ['social', 'email', 'article', 'experiment'],
-  drafts: ['email', 'social'],
+  drafts: ['social'],
   mails: ['email'],
   articles: ['article'],
   experiments: ['experiment'],
-  calendar: ['email', 'social'],
+  calendar: ['social'],
   ideas: ['idea'],
   opportunities: ['opportunity'],
 }
+
+// Five places in view; the older tabs (drafts, calendar, experiments, opportunities) stay as addresses inside them.
+const SECTIONS: { key: string; label: string; tab: Tab; tabs: Tab[] }[] = [
+  { key: 'hub', label: 'Overzicht', tab: 'hub', tabs: ['hub'] },
+  { key: 'posts', label: 'Posts', tab: 'drafts', tabs: ['drafts', 'calendar'] },
+  { key: 'mails', label: 'Mails', tab: 'mails', tabs: ['mails'] },
+  { key: 'articles', label: 'Artikelen', tab: 'articles', tabs: ['articles'] },
+  { key: 'ideas', label: 'Ideeën', tab: 'ideas', tabs: ['ideas', 'opportunities', 'experiments'] },
+]
+const IDEA_PARTS: { tab: Tab; label: string }[] = [
+  { tab: 'ideas', label: 'Nieuwe ideeën' },
+  { tab: 'opportunities', label: 'Plekken' },
+  { tab: 'experiments', label: 'Experimenten' },
+]
 
 type Row = typeof s.contentItem.$inferSelect & { projectName: string | null }
 const b = (row: Row) => row.body as Record<string, unknown>
@@ -120,6 +134,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
 
   const emails = rows.filter((r) => r.kind === 'email')
   const posts = rows.filter((r) => r.kind === 'social')
+  const plannedSoon = posts.filter((r) => r.plannedFor && r.plannedFor >= today && r.plannedFor <= addDays(today, 13))
   const ideas = rows.filter((r) => r.kind === 'idea')
   const opportunities = rows.filter((r) => r.kind === 'opportunity')
   const articles = rows.filter((r) => r.kind === 'article')
@@ -313,35 +328,52 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
         ))}
       </nav>
       <nav className="segmented" aria-label="Onderdeel" style={{ overflowX: 'auto', maxWidth: '100%' }}>
-        {TABS.map((t) => (
-          <Link key={t.key} href={href({ tab: t.key })} aria-current={t.key === tab ? 'page' : undefined}>
-            {t.label}
+        {SECTIONS.map((sec) => (
+          <Link key={sec.key} href={href({ tab: sec.tab })} aria-current={sec.tabs.includes(tab) ? 'page' : undefined}>
+            {sec.label}
           </Link>
         ))}
       </nav>
+      {tab === 'ideas' || tab === 'opportunities' || tab === 'experiments' ? (
+        <nav className="row" aria-label="Ideeën">
+          {IDEA_PARTS.map((part) => (
+            <Link key={part.tab} href={href({ tab: part.tab })} className={`chip${part.tab === tab ? ' accent' : ''}`} aria-current={part.tab === tab ? 'page' : undefined}>
+              {part.label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
 
       {hub}
 
-      {tab === 'drafts' ? (
+      {tab === 'drafts' || tab === 'calendar' ? (
         <>
-          <div className="grid">
-            {generatorFor('emails')}
-            {generatorFor('posts')}
-          </div>
-          {emails.length || posts.length ? (
-            <div className="grid">
-              {emails.map(emailCard)}
-              {posts.map(postCard)}
-            </div>
-          ) : (
-            <p className="empty">Nog geen concepten voor {current.name}.</p>
-          )}
+          {generatorFor('posts')}
+          {plannedSoon.length ? (
+            <section className="card stack-s">
+              <h2>Gepland, komende twee weken</h2>
+              <div className="calendar">
+                {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((day) => {
+                  const planned = plannedSoon.filter((r) => r.plannedFor === day)
+                  return planned.length ? (
+                    <div key={day} className={`day${day === today ? ' today' : ''}`}>
+                      <span className="day-label small">{day === today ? 'vandaag' : dayLabel(day)}</span>
+                      <div className="stack-s">{planned.map(postCard)}</div>
+                    </div>
+                  ) : null
+                })}
+              </div>
+            </section>
+          ) : null}
+          {posts.length ? <div className="grid">{posts.filter((r) => !plannedSoon.includes(r)).map(postCard)}</div> : <p className="empty">Nog geen posts voor {current.name}.</p>}
         </>
       ) : null}
 
       {tab === 'mails' ? (
         <>
+          {generatorFor('emails')}
           <MailBanner status={status} />
+          {emails.length ? <div className="grid">{emails.map(emailCard)}</div> : null}
           <section className="card stack-s">
             <div className="row between">
               <h2>Wachtrij en verzonden</h2>
@@ -399,28 +431,6 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
         </>
       ) : null}
 
-      {tab === 'calendar' ? (
-        <section className="card stack-s">
-          <h2>Komende twee weken</h2>
-          {rows.some((r) => r.plannedFor && r.plannedFor >= today && r.plannedFor <= addDays(today, 13)) ? (
-            <div className="calendar">
-              {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((day) => {
-                const planned = rows.filter((r) => r.plannedFor === day)
-                return (
-                  <div key={day} className={`day${day === today ? ' today' : ''}${planned.length ? '' : ' empty-day'}`}>
-                    <span className="day-label small">{day === today ? 'vandaag' : dayLabel(day)}</span>
-                    <div className="stack-s">{planned.length ? planned.map((r) => (r.kind === 'social' ? postCard(r) : emailCard(r))) : <span className="tiny faint">—</span>}</div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="empty">Nog niets gepland voor de komende twee weken.</p>
-          )}
-          <p className="tiny muted">Plan een post vanaf zijn kaart in Concepten (veld “Plan”).</p>
-        </section>
-      ) : null}
-
       {tab === 'ideas' ? (
         <>
           {generatorFor('ideas')}
@@ -472,14 +482,14 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
               ))}
             </div>
           ) : (
-            <p className="empty">Nog geen kansen gezocht voor {current.name}.</p>
+            <p className="empty">Nog geen plekken gezocht voor {current.name}: fora, groepen en verenigingen waar je klanten al praten.</p>
           )}
         </>
       ) : null}
 
       {tab !== 'hub' && tab !== 'mails' ? (
         <Link href={href({ archived: showArchived ? undefined : '1' })} className="tiny muted" style={{ alignSelf: 'start' }}>
-          {showArchived ? '← Terug naar de concepten' : 'Gearchiveerd bekijken'}
+          {showArchived ? '← Terug' : 'Gearchiveerd bekijken'}
         </Link>
       ) : null}
     </div>
