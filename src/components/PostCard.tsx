@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { isPillar, PILLAR_LABEL } from '@/lib/ai/craft'
 import { shareUrl } from '@/lib/share'
 import { planContent } from '@/server/actions/content'
 import { ContentActions } from './ContentActions'
@@ -22,6 +23,10 @@ export interface PostView {
   plannedFor: string | null
   rating: number
   projectName: string | null
+  /** What it is for, what the viewer gets, and the detail only he can say (from the craft rules). */
+  pillar?: string | null
+  value?: string
+  proof?: string
 }
 
 /** Meta's own planner (Instagram and Facebook): it posts at the time he picks; the cockpit never posts itself. */
@@ -40,10 +45,17 @@ export function PostCard({ post }: { post: PostView }) {
         <span className="row" style={{ gap: '0.35rem' }}>
           <PlatformBadge platform={post.platform} label={PLATFORM_LABELS[post.platform]} />
           <span className="chip">{post.format}</span>
+          {post.pillar && isPillar(post.pillar) ? <span className="chip accent">{PILLAR_LABEL[post.pillar]}</span> : null}
         </span>
         {post.projectName ? <span className="tiny faint">{post.projectName}</span> : null}
       </div>
       <p className="draft-subject">{post.hook}</p>
+      {post.value ? (
+        <p className="tiny muted">
+          <strong>Waarom dit werkt:</strong> {post.value}
+          {post.proof ? ` · Echt van jou: ${post.proof}` : ''}
+        </p>
+      ) : null}
       <p className="prewrap small">{post.caption}</p>
       {post.hashtags.length ? <p className="small" style={{ color: 'var(--accent-ink)' }}>{post.hashtags.join(' ')}</p> : null}
       <p className="tiny muted">

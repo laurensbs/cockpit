@@ -166,7 +166,7 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
     .limit(30)
   const post = posts.find((p) => p.plannedFor && p.plannedFor <= today) ?? posts.find((p) => !p.plannedFor)
   if (post) {
-    const body = post.body as { hook?: string; caption?: string; hashtags?: string[] }
+    const body = post.body as { hook?: string; caption?: string; hashtags?: string[]; value?: string; proof?: string }
     const project = post.projectId ? byId.get(post.projectId) : undefined
     const platform = post.channel || 'linkedin'
     const socials = project ? socialsOf(project.links) : {}
@@ -184,6 +184,8 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
       profile: socials[platform as keyof typeof socials] ?? null,
       color: company?.color ?? '#5a48f5',
       projectName: project?.name ?? '',
+      value: body.value ?? '',
+      proof: body.proof ?? '',
     })
   }
 

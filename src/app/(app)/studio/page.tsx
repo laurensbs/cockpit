@@ -9,6 +9,7 @@ import { IdeaCard, OpportunityCard } from '@/components/IdeaCard'
 import { IdeaMatrix } from '@/components/IdeaMatrix'
 import { MailBanner, OutboxList } from '@/components/Outbox'
 import { PostCard } from '@/components/PostCard'
+import { SeoPlan, type SeoPlanView } from '@/components/SeoPlan'
 import { StudioGenerator } from '@/components/StudioGenerator'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
@@ -120,6 +121,20 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const ideas = rows.filter((r) => r.kind === 'idea')
   const opportunities = rows.filter((r) => r.kind === 'opportunity')
   const articles = rows.filter((r) => r.kind === 'article')
+  // The newest search plan for this project: keywords, the questions to track and the fixes for the site.
+  const [seoBrief] =
+    tab === 'articles'
+      ? await db
+          .select({ content: s.brief.content, createdAt: s.brief.createdAt })
+          .from(s.brief)
+          .where(and(eq(s.brief.projectId, current.id), eq(s.brief.kind, 'seo')))
+          .orderBy(desc(s.brief.createdAt))
+          .limit(1)
+      : []
+  const seoContent = (seoBrief?.content ?? {}) as { keywords?: SeoPlanView['keywords']; questions?: string[]; siteFixes?: string[] }
+  const seoPlan: SeoPlanView | null = seoBrief
+    ? { keywords: seoContent.keywords ?? [], questions: seoContent.questions ?? [], siteFixes: seoContent.siteFixes ?? [], made: dayLabel(dayOf(seoBrief.createdAt)) }
+    : null
   const experiments = rows.filter((r) => r.kind === 'experiment')
   const now = new Date()
   const today = dayOf(now)
@@ -165,6 +180,9 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
         plannedFor: r.plannedFor,
         rating: r.rating,
         projectName: null,
+        pillar: str(b(r).pillar) || null,
+        value: str(b(r).value),
+        proof: str(b(r).proof),
       }}
     />
   )
@@ -352,6 +370,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       {tab === 'articles' ? (
         <>
           {generatorFor('seo')}
+          {seoPlan ? <SeoPlan plan={seoPlan} /> : null}
           {articles.length ? (
             <div className="grid">
               {articles.map((r) => (

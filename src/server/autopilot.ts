@@ -139,7 +139,7 @@ export async function maybePlanWeek(db: Db, ownerId: string, now = new Date()): 
       .where(and(eq(s.contentItem.projectId, p.id), eq(s.contentItem.kind, 'social'), eq(s.contentItem.status, 'planned'), gte(s.contentItem.plannedFor, today)))
     if (n >= 2) continue
     const platform = socials.instagram ? 'instagram' : preferredPlatform(socials)
-    const note = `Plan de week: drie posts voor ${p.name}, elk op een andere dag in de komende zeven dagen. Mix: één die helpt of leert, één achter de schermen (wat er gebouwd is), één met een vraag aan de doelgroep. Echt, geen reclame.`.slice(0, 300)
+    const note = `Plan de week: drie posts voor ${p.name}, elk op een andere dag in de komende zeven dagen: één teach (één bruikbare les voor de doelgroep), één behind (wat er deze week gebouwd is, met een echt detail), één community (een echte vraag uit hun wereld). Elk het opslaan of doorsturen waard; geen reclame.`.slice(0, 300)
     // Claim the week first, so a second round that starts at the same time skips this project.
     await setSetting(db, ownerId, key, week)
     const ticket = createTicket({ task: 'posts', projectId: p.id, options: { platform, note } })

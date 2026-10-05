@@ -370,8 +370,12 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
 
   server.registerTool(
     'save_posts',
-    { title: 'Save social posts', description: 'Stores posts for one platform; he plans and posts them himself.', inputSchema: { project: PROJECT_ARG, platform: z.enum(PLATFORM_KEYS), language: z.enum(LANGUAGES), posts: PostsWire.shape.posts } },
-    async ({ project, platform, language, posts }) => withProject(project, async (p) => text(await savePosts(db, ownerId, p, { platform, language }, { posts }))),
+    { title: 'Save social posts', description: 'Stores posts for one platform; he plans and posts them himself. The cockpit refuses posts with hype, clichés, a long hook or a repeat of an earlier post, and says why: rewrite those and send them again.', inputSchema: { project: PROJECT_ARG, platform: z.enum(PLATFORM_KEYS), language: z.enum(LANGUAGES), posts: PostsWire.shape.posts } },
+    async ({ project, platform, language, posts }) =>
+      withProject(project, async (p) => {
+        const result = await savePosts(db, ownerId, p, { platform, language }, { posts })
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
   )
 
   server.registerTool(
@@ -394,10 +398,11 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     'save_articles',
     {
       title: 'Save keywords and articles',
-      description: 'Stores the keyword plan and the articles (one written in full, in markdown) for a project.',
-      inputSchema: { project: PROJECT_ARG, language: z.enum(LANGUAGES), keywords: ArticlesWire.shape.keywords, articles: ArticlesWire.shape.articles },
+      description:
+        'Stores the keyword plan, the articles (one written in full, in markdown), the questions customers really ask (to check every month in Google, ChatGPT and Perplexity) and the fixes you saw on his site. An article with hype, or a thin written-out one, is refused with the reason: rewrite it and send it again.',
+      inputSchema: { project: PROJECT_ARG, language: z.enum(LANGUAGES), keywords: ArticlesWire.shape.keywords, articles: ArticlesWire.shape.articles, questions: ArticlesWire.shape.questions, siteFixes: ArticlesWire.shape.siteFixes },
     },
-    async ({ project, language, keywords, articles }) => withProject(project, async (p) => text(await saveArticles(db, ownerId, p, { language }, { keywords, articles }))),
+    async ({ project, language, keywords, articles, questions, siteFixes }) => withProject(project, async (p) => text(await saveArticles(db, ownerId, p, { language }, { keywords, articles, questions, siteFixes }))),
   )
 
   server.registerTool(

@@ -17,7 +17,7 @@ export type DayStep =
   | (Base & { kind: 'give'; itemId: string; url: string; how: string })
   | (Base & { kind: 'setup'; setupKey: string; status: 'todo' | 'unknown'; why: string; steps: string[]; cost: string | null })
   | (Base & { kind: 'money'; itemId: string; moneyKind: 'cost' | 'deadline' | 'plan'; amount: string; when: string; late: boolean; note: string })
-  | (Base & { kind: 'post'; itemId: string; platform: string; text: string; hook: string; profile: string | null; color: string; projectName: string })
+  | (Base & { kind: 'post'; itemId: string; platform: string; text: string; hook: string; profile: string | null; color: string; projectName: string; value: string; proof: string })
   | (Base & { kind: 'checkin'; platform: 'instagram' })
   | (Base & { kind: 'build'; platform: string; note: string })
   | (Base & { kind: 'growth'; href: string; task: string | null; options?: Record<string, unknown> })

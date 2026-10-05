@@ -351,6 +351,12 @@ function PostBody({ card }: { card: Extract<LessonCard, { kind: 'post' }> }) {
   const open = share ?? card.profile ?? PLATFORM_HOME[card.platform] ?? null
   return (
     <div className="stack-s">
+      {card.value ? (
+        <p className="small">
+          <strong>Waarom deze post:</strong> {card.value}
+          {card.proof ? <span className="muted"> · Echt van jou: {card.proof}</span> : null}
+        </p>
+      ) : null}
       <PostImage hook={card.hook} project={card.projectName} color={card.color} onSaved={() => setSaved(true)} />
       <ol className="lesson-checklist">
         <li className={saved ? 'done' : ''}>

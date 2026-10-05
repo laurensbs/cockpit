@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gte } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
@@ -8,6 +8,7 @@ import { normalizeModel } from '@/lib/growth-model'
 import { normalizePoints } from '@/lib/metrics'
 import type { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
 import { prospectKey } from '@/lib/prospect'
+import { articleProblems, postProblems, specificTags } from '@/lib/ai/craft'
 import { hideContactDetails } from '@/lib/redact'
 import { normalizeUrl } from '@/lib/urls'
 import {
@@ -131,11 +132,25 @@ export async function saveEmails(
   return `Opgeslagen: ${n} mailconcept${n === 1 ? '' : 'en'} voor ${project.name}. Hij vindt ze in de Studio.`
 }
 
-export async function savePosts(db: Db, ownerId: string, project: { id: string; name: string }, input: { platform: string; language: string }, wire: z.infer<typeof PostsWire>): Promise<string> {
+export async function savePosts(db: Db, ownerId: string, project: { id: string; name: string }, input: { platform: string; language: string }, wire: z.infer<typeof PostsWire>): Promise<{ ok: boolean; text: string }> {
   // A planned day counts when it is within the coming month; otherwise the post stays a draft without a day.
   const today = dayOf(new Date())
   const inWindow = (day: string | null) => (day && day >= today && day <= addDays(today, 31) ? day : null)
-  const posts = normalizePosts(wire)
+  // The gate: clichés, hype, long hooks and repeats of the last three months never reach his day.
+  const earlier = (
+    await db
+      .select({ body: s.contentItem.body })
+      .from(s.contentItem)
+      .where(and(eq(s.contentItem.projectId, project.id), eq(s.contentItem.kind, 'social'), gte(s.contentItem.createdAt, new Date(Date.now() - 90 * 86_400_000))))
+  ).map((r) => String((r.body as { hook?: string }).hook ?? ''))
+  const refused: string[] = []
+  const dropped = new Set<string>()
+  const posts = normalizePosts(wire).filter((p) => {
+    const problems = postProblems(p, earlier)
+    if (problems.length) refused.push(`"${p.title}": ${problems.join('; ')}`)
+    else earlier.push(p.hook)
+    return !problems.length
+  })
   const n = await insertDrafts(
     db,
     ownerId,
@@ -143,17 +158,20 @@ export async function savePosts(db: Db, ownerId: string, project: { id: string; 
     'social',
     input.platform,
     input.language,
-    // Instagram takes at most five hashtags per post (since December 2025).
-    posts.map(({ title, plannedFor, ...body }) => ({
-      title,
-      body: input.platform === 'instagram' ? { ...body, hashtags: body.hashtags.slice(0, 5) } : body,
-      plannedFor: inWindow(plannedFor),
-    })),
+    posts.map(({ title, plannedFor, ...body }) => {
+      const { kept, dropped: generic } = specificTags(body.hashtags)
+      generic.forEach((g) => dropped.add(g))
+      // Instagram takes at most five hashtags per post (since December 2025).
+      return { title, body: { ...body, hashtags: input.platform === 'instagram' ? kept.slice(0, 5) : kept }, plannedFor: inWindow(plannedFor) }
+    }),
   )
   const planned = posts.filter((p) => inWindow(p.plannedFor)).length
-  return n
-    ? `Opgeslagen: ${n} post${n === 1 ? '' : 's'} voor ${input.platform} (${project.name})${planned ? `, ${planned} ingepland in de kalender` : ''}. Op de dag zelf staat de post in zijn dagles; posten doet hij zelf (of hij plant hem in Meta).`
-    : 'Niets opgeslagen: er zaten geen posts in.'
+  const parts: string[] = []
+  if (n) parts.push(`Opgeslagen: ${n} post${n === 1 ? '' : 's'} voor ${input.platform} (${project.name})${planned ? `, ${planned} ingepland in de kalender` : ''}. Op de dag zelf staat de post in zijn dagles; posten doet hij zelf (of hij plant hem in Meta).`)
+  if (dropped.size) parts.push(`Generic hashtags left out: ${[...dropped].join(' ')}.`)
+  if (refused.length) parts.push(`Not saved, rewrite these and send them again with save_posts: ${refused.join(' | ')}`)
+  if (!n && !refused.length) parts.push('Niets opgeslagen: er zaten geen posts in.')
+  return { ok: n > 0, text: parts.join('\n') }
 }
 
 export async function saveIdeas(db: Db, ownerId: string, project: { id: string; name: string }, input: { mode: string }, wire: z.infer<typeof IdeasWire>): Promise<string> {
@@ -193,8 +211,11 @@ export async function saveWeekly(db: Db, ownerId: string, wire: z.infer<typeof W
 }
 
 export async function saveArticles(db: Db, ownerId: string, project: { id: string; name: string }, input: { language: string }, wire: z.infer<typeof ArticlesWire>): Promise<string> {
-  const { keywords, articles } = normalizeArticles(wire)
-  if (keywords.length) await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: project.id, kind: 'seo', content: { keywords }, runId: SOURCE })
+  const { keywords, articles: all, questions, siteFixes } = normalizeArticles(wire)
+  // The gate: an article with hype, or a written-out one that is thin, goes back to be rewritten.
+  const refused = all.map((a) => ({ a, problems: articleProblems(a) })).filter((x) => x.problems.length)
+  const articles = all.filter((a) => !refused.some((r) => r.a === a))
+  if (keywords.length || questions.length || siteFixes.length) await db.insert(s.brief).values({ id: crypto.randomUUID(), ownerId, projectId: project.id, kind: 'seo', content: { keywords, questions, siteFixes }, runId: SOURCE })
   const n = await insertDrafts(
     db,
     ownerId,
@@ -205,7 +226,8 @@ export async function saveArticles(db: Db, ownerId: string, project: { id: strin
     articles.map(({ title, ...body }) => ({ title, body })),
   )
   const full = articles.filter((a) => a.markdown).length
-  return `Opgeslagen: ${keywords.length} zoekwoorden en ${n} artikel${n === 1 ? '' : 'en'} voor ${project.name}${full ? ` (${full} helemaal uitgeschreven)` : ''}. Hij vindt ze onder Marketing → Artikelen.`
+  const saved = `Opgeslagen: ${keywords.length} zoekwoorden, ${questions.length} klantvragen, ${siteFixes.length} verbeterpunten voor de site en ${n} artikel${n === 1 ? '' : 'en'} voor ${project.name}${full ? ` (${full} helemaal uitgeschreven)` : ''}. Hij vindt ze onder Marketing → Artikelen.`
+  return refused.length ? `${saved}\nNot saved, rewrite and send again with save_articles: ${refused.map((r) => `"${r.a.title}": ${r.problems.join('; ')}`).join(' | ')}` : saved
 }
 
 export async function saveExperiments(db: Db, ownerId: string, project: { id: string; name: string }, wire: z.infer<typeof ExperimentsWire>): Promise<string> {

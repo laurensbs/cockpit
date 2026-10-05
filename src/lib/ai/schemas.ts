@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isPillar, type PostPillar } from './craft'
 import { experimentDays } from '../experiments'
 import { isMetricKey } from '../metrics'
 
@@ -149,7 +150,22 @@ export function planFromJson(value: unknown): Plan | null {
 
 export const EmailsWire = z.object({ drafts: z.array(z.object({ title: str, subject: str, body: str, ps: str })) })
 export const PostsWire = z.object({
-  posts: z.array(z.object({ title: str, format: str, hook: str, caption: str, hashtags: z.array(str), visualBrief: str, bestTime: str, plannedFor: str.optional() })),
+  posts: z.array(
+    z.object({
+      title: str,
+      format: str,
+      hook: str,
+      caption: str,
+      hashtags: z.array(str),
+      visualBrief: str,
+      bestTime: str,
+      plannedFor: str.optional(),
+      pillar: str.optional().describe('teach, behind, proof, community or offer'),
+      value: str.optional().describe('What the viewer gets from it, in one sentence: why they would save or send it'),
+      proof: str.optional().describe('The detail only he can say, and where it comes from (his recent work, numbers, lessons)'),
+      cta: str.optional().describe('The one thing the viewer is asked to do: save, send, comment a word, DM, visit'),
+    }),
+  ),
 })
 export const IdeasWire = z.object({
   ideas: z.array(z.object({ title: str, category: str, why: str, firstStep: str, impact: z.number(), effort: z.number(), cost: str, wildness: z.number() })),
@@ -172,6 +188,13 @@ export interface PostDraft {
   bestTime: string
   /** The day to post it (YYYY-MM-DD), when Claude planned it. */
   plannedFor: string | null
+  /** What it is for: teach, behind, proof, community or offer. */
+  pillar: PostPillar | null
+  /** What the viewer gets from it: why they would save or send it. */
+  value: string
+  /** The detail only he can say, and where it comes from. */
+  proof: string
+  cta: string
 }
 export interface Idea {
   title: string
@@ -216,6 +239,10 @@ export const normalizePosts = (w: z.infer<typeof PostsWire>): PostDraft[] =>
     visualBrief: clean(p.visualBrief, 600),
     bestTime: clean(p.bestTime, 80),
     plannedFor: /^\d{4}-\d{2}-\d{2}$/.test(p.plannedFor ?? '') ? p.plannedFor! : null,
+    pillar: isPillar(p.pillar) ? p.pillar : null,
+    value: clean(p.value ?? '', 200),
+    proof: clean(p.proof ?? '', 200),
+    cta: clean(p.cta ?? '', 120),
   }))
 
 export const normalizeIdeas = (w: z.infer<typeof IdeasWire>): Idea[] =>
@@ -279,6 +306,8 @@ export const weeklyFromJson = (value: unknown): Weekly | null => {
 export const ArticlesWire = z.object({
   keywords: z.array(z.object({ keyword: str, intent: str, difficulty: str, why: str })),
   articles: z.array(z.object({ title: str, slug: str, metaDescription: str, keywords: z.array(str), outline: z.array(str), body: str })),
+  questions: z.array(str).optional().describe('15–25 questions his customers really ask, in their words: checked every month in Google, ChatGPT and Perplexity'),
+  siteFixes: z.array(str).optional().describe('Concrete fixes you saw on his own site (a missing price, a blocked bot, no address in the footer…), each one sentence'),
 })
 
 export interface KeywordIdea {
@@ -309,8 +338,10 @@ export function slugify(text: string): string {
   return slug || 'artikel'
 }
 
-export function normalizeArticles(w: z.infer<typeof ArticlesWire>): { keywords: KeywordIdea[]; articles: Article[] } {
+export function normalizeArticles(w: z.infer<typeof ArticlesWire>): { keywords: KeywordIdea[]; articles: Article[]; questions: string[]; siteFixes: string[] } {
   return {
+    questions: list(w.questions ?? [], 25, 200),
+    siteFixes: list(w.siteFixes ?? [], 10, 300),
     keywords: w.keywords.slice(0, 12).map((k) => ({ keyword: clean(k.keyword, 80), intent: clean(k.intent, 60), difficulty: effortOf(k.difficulty), why: clean(k.why, 300) })),
     articles: w.articles.slice(0, 5).map((a) => ({
       title: clean(a.title, 120),

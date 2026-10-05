@@ -1,3 +1,4 @@
+import { CONTENT_CRAFT, SEO_CRAFT } from './craft'
 import type { Profile } from './schemas'
 
 /**
@@ -263,10 +264,16 @@ export const PLATFORMS = {
 export type Platform = keyof typeof PLATFORMS
 
 export function postsTask(platform: Platform, language: string, pastTitles: string[]): string {
-  return `Task: five posts for ${PLATFORMS[platform]}, in ${lang(language)}, as JSON.
-- posts: each with a title (for him), format (for example carousel, reel, story, text post, thread), hook (the first line or the first two seconds), caption (ready to paste), hashtags (at most 5, specific to the topic and market; none for Discord), visualBrief (what to film or design, concretely), bestTime (day and time that suits the audience) and plannedFor: the day to post it (YYYY-MM-DD) within the coming seven days, spread over the week, at most one post per day, on days that suit the audience.
-- Mix the content pillars and formats; at least one post that is useful or fun without selling anything.
-- Never invent facts, numbers or testimonials; put what he must fill in in [square brackets]. Respect the red lines and the platform's rules.${pastTitles.length ? `\n- Do not repeat these earlier posts: ${pastTitles.map((t) => neutralize(t)).join('; ')}` : ''}`
+  return `Task: five posts for ${PLATFORMS[platform]}, in ${lang(language)}, as JSON. Each one worth saving or sending, each one his own.
+${CONTENT_CRAFT}
+First find the material, then write: what he built or shipped (<recent_work>), what the numbers and lessons say (<numbers>, <growth>, <lessons>), what his audience struggles with (the profile and intake), what is coming up in their world this week. Pick the five strongest angles from that, not from generic tips.
+- posts: each with
+  - title (for him), format (carousel, reel, story, text post, thread…), pillar (teach, behind, proof, community or offer; over the five mostly teach and behind, one community, at most one offer),
+  - hook (the first line or the first two seconds, under 120 characters), caption (ready to paste, in his voice), cta (the one thing the viewer does),
+  - value (one sentence: what the viewer gets, why they would save or send it), proof (the detail only he can say and where it comes from, e.g. "uit zijn PR van 4 okt: werkbon met foto"),
+  - hashtags (3–5 specific ones; none for Discord), visualBrief (what to film, screenshot or design, concretely; his own product or work on screen beats stock), bestTime (day and time that suits the audience),
+  - plannedFor: the day to post it (YYYY-MM-DD) within the coming seven days, spread over the week, at most one post per day.
+- Never invent facts, numbers, clients or testimonials; put what he must fill in in [square brackets]. Respect the red lines and the platform's rules.${pastTitles.length ? `\n- Earlier posts (do not repeat their angle): ${pastTitles.map((t) => neutralize(t)).join('; ')}` : ''}`
 }
 
 export const IDEA_MODES = {
@@ -398,10 +405,13 @@ Work it out with the cockpit's tools: read what you need (list_projects, get_pro
 // ---------- organic growth ----------
 
 export function seoTask(language: string, markets: string[], siteUrl: string | null): string {
-  return `Task: organic search for this project, in ${lang(language)}${markets.length ? `, for these markets: ${markets.join(', ')}` : ''}.${siteUrl ? ` The site is ${neutralize(siteUrl)}; look at it first.` : ''}
-Use web search (and web fetch) to see what his audience actually searches for and what already ranks. Do not invent search volumes; describe what you saw.
-- keywords: 6–10 topics or search phrases, each with intent (informational, comparing, wanting to act), difficulty ("low", "medium" or "high", your estimate from what ranks now) and why it fits.
-- articles: three article ideas, best first. Each with title, slug, metaDescription (under 155 characters), keywords and outline (the H2s). Write the FIRST one in full in body: 800–1200 words of markdown, practical and specific, with H2s, no invented facts, numbers or quotes, and one natural call to action for the project at the end. Leave body empty for the other two.
+  return `Task: organic search for this project, in ${lang(language)}${markets.length ? `, for these markets: ${markets.join(', ')}` : ''}: what to write, what to fix, and what to track.${siteUrl ? ` The site is ${neutralize(siteUrl)}: open it first (the home page, a service or price page, robots.txt and the sitemap).` : ''}
+${SEO_CRAFT}
+Use web search and web fetch to see what his audience actually searches for and what ranks now (open the top results for the main topics: what do they answer, what do they miss?). Never invent search volumes; describe what you saw.
+- keywords: 6–10 topics or search phrases in one or two clusters around his real services, each with intent (informational, comparing, wanting to act), difficulty ("low", "medium" or "high", from what ranks now) and why it fits (what the ranking pages miss that he can say).
+- articles: three, best first, each answering one real question better than what ranks now, with what only he can add (his examples, prices, screenshots, steps from his own work). Each with title, slug, metaDescription (under 155 characters), keywords and outline (the H2s). Write the FIRST one in full in body: 800–1200 words of markdown, practical and specific, at least three H2s, a short FAQ at the end with real customer questions, no invented facts, numbers or quotes, and one natural next step for the project. Leave body empty for the other two.
+- questions: 15–25 questions his customers really ask, in their words and language (from forums, "People also ask", reviews, the trade): he checks every month whether he is named for them in Google, ChatGPT and Perplexity.
+- siteFixes: up to 10 concrete fixes you saw on his own site, most important first, each one sentence (for example: no prices on the service page; the address is not in the footer; robots.txt blocks OAI-SearchBot; no Search Console or Bing sitemap; two pages target the same question). Only what you saw.
 - If you are working in the project's code folder and the site has a blog or content folder, you may offer to add the full article there as a file; ask him first and never commit or push.`
 }
 
