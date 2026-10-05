@@ -1441,8 +1441,17 @@ a.card:active {
   animation: shimmer 1.6s linear infinite;
   opacity: 1;
 }
+/* A long task name wraps inside the button instead of running out of its card on a phone. */
+.ai-button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  padding-block: 0.55rem;
+}
 .ai-cost {
   opacity: 0.75;
+  white-space: nowrap;
 }
 
 .brain-quote {

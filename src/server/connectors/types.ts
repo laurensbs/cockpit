@@ -6,6 +6,8 @@ export type Fetch = typeof fetch
 export interface PullContext {
   config: Record<string, string>
   secret: string
+  /** The owner's key shared by every project (the Google service account), or ''. */
+  shared: string
   /** The first day to pull ('YYYY-MM-DD'), and today. */
   from: string
   today: string
@@ -36,8 +38,12 @@ export interface ConnectorKind {
   /** What it delivers, for the form and for Claude. */
   delivers: MetricKey[]
   fields: ConnectorField[]
-  secret: { label: string; placeholder: string; hint: string } | null
+  secret: { label: string; placeholder: string; hint: string; optional?: boolean } | null
   checkSecret: (secret: string) => string | null
+  /** A key kept once for all projects, in the settings, and what to say while it is missing. */
+  shared?: { setting: string; missing: string }
+  /** Checks the filled-in fields before they are saved. */
+  checkConfig?: (config: Record<string, string>) => string | null
   /** Days to look back on the first pull, and on later pulls (to catch late data and refunds). */
   window: { first: number; again: number }
   pull: (ctx: PullContext) => Promise<{ points: PulledPoint[]; note?: string }>

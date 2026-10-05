@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { useForm } from '@/lib/use-form'
 import { deleteConnector, pullNow, saveConnector, testConnector } from '@/server/actions/numbers'
@@ -10,7 +11,9 @@ export interface ConnectorKindView {
   label: string
   delivers: string[]
   fields: { name: string; label: string; placeholder?: string; hint?: string; required: boolean; options?: { value: string; label: string }[] }[]
-  secret: { label: string; placeholder: string; hint: string } | null
+  secret: { label: string; placeholder: string; hint: string; optional?: boolean } | null
+  /** What has to be set up first (the Google service account), if anything. */
+  needs: string | null
 }
 
 export interface ConnectorView {
@@ -126,7 +129,16 @@ export function ConnectorForm({ projectId, kinds }: { projectId: string; kinds: 
           </label>
         ) : null}
       </div>
-      {current ? <p className="tiny muted">Levert: {current.delivers.join(', ')}. De sleutel blijft op deze computer en kan alleen lezen.</p> : null}
+      {current?.needs ? (
+        <p className="notice warn small">
+          {current.needs} <Link href="/settings#sources">Naar Instellingen</Link>
+        </p>
+      ) : null}
+      {current ? (
+        <p className="tiny muted">
+          Levert: {current.delivers.join(', ')}.{current.secret ? ' De sleutel blijft op deze computer en kan alleen lezen.' : ''}
+        </p>
+      ) : null}
       <div className="row">
         <button type="submit" className="button primary small" disabled={pending}>
           Koppelen

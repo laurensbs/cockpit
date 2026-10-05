@@ -11,10 +11,12 @@ describe('redactSecrets', () => {
       'AKIAABCDEFGHIJKLMNOP',
       'DATABASE_URL=postgres://user:hunter2@db.example.org/app',
       'stripe sk_live_abcdefghijkl123',
+      `mollie ${'access' + '_'}abcdefghijklmnopqrstuvwxyz0123456789`,
+      `google ${'ya29' + '.'}a0AfB_abcdefghijklmnopqrstuvwxyz`,
     ].join('\n')
     const out = redactSecrets(text)
-    expect(out).not.toMatch(/sk-ant|ghp_|github_pat_|AKIA|hunter2|sk_live/)
-    expect(out.split(REDACTED).length - 1).toBeGreaterThanOrEqual(6)
+    expect(out).not.toMatch(/sk-ant|ghp_|github_pat_|AKIA|hunter2|sk_live|access_|ya29/)
+    expect(out.split(REDACTED).length - 1).toBeGreaterThanOrEqual(8)
   })
 
   it('blanks private keys and secret assignments, but keeps empty examples', () => {

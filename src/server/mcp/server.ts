@@ -12,6 +12,7 @@ import { LANGUAGES } from '@/lib/options'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
 import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
+import { numbersReport } from './numbers'
 import { resolveProject, type ProjectRef } from './projects'
 import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
@@ -247,6 +248,26 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     'save_linkedin',
     { title: 'Save a LinkedIn plan', description: 'Stores his LinkedIn headline, about text, people to connect with, routine and post drafts for a project.', inputSchema: { project: PROJECT_ARG, linkedin: LinkedinWire } },
     async ({ project, linkedin }) => withProject(project, async (p) => text(await saveLinkedin(db, ownerId, p, linkedin))),
+  )
+
+  server.registerTool(
+    'get_numbers',
+    {
+      title: 'The numbers of a project',
+      description:
+        'The numbers of one project per week (visitors, leads, revenue, MRR, members, …): where each comes from, the weekly values, the latest value, the pace towards the target and which sources work. Read this before you advise on growth or record numbers.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        key: z.enum(METRIC_KEYS).optional().describe('Only this metric'),
+        weeks: z.number().int().min(1).max(26).optional().describe('How many weeks, default 8'),
+      },
+    },
+    async ({ project, key, weeks }) =>
+      withProject(project, async (p) => {
+        const report = await numbersReport(db, ownerId, p, { key, weeks: weeks ?? 8 })
+        if (!report.metrics.length) return text(`No numbers for ${p.name}${key ? ` (${key})` : ''} yet. He connects sources under Cijfers, or types numbers in.`)
+        return text(JSON.stringify(report, null, 1))
+      }),
   )
 
   server.registerTool(

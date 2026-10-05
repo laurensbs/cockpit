@@ -10,6 +10,9 @@ const PATTERNS: RegExp[] = [
   /\bxox[abpr]-[A-Za-z0-9-]{10,}/g,
   /\b(?:re|rk|sk|pk)_(?:live|test)_[A-Za-z0-9]{10,}/g,
   /\bAIza[0-9A-Za-z_-]{30,}/g,
+  // Mollie keys and organisation tokens, and Google access tokens.
+  /\b(?:live|test|access)_[A-Za-z0-9]{25,}/g,
+  /\bya29\.[A-Za-z0-9_-]{20,}/g,
   // Connection strings with a password in them.
   /\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:[^\s@]+@[^\s]+/gi,
 ]

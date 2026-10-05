@@ -4,11 +4,18 @@ import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/Icon'
 import { MailSettingsForm } from '@/components/MailSettingsForm'
 import { SettingsForm } from '@/components/SettingsForm'
+import { GoogleAccountForm, PullAllButton } from '@/components/SourceSettings'
 import { UpdateNowButton } from '@/components/UpdateNowButton'
+import { asc, eq } from 'drizzle-orm'
+import Link from 'next/link'
 import { dbDir, dbMode, getDb } from '@/db'
+import * as s from '@/db/schema'
 import { expectedToken } from '@/lib/local'
 import { claudeInstallCommand } from '@/lib/terminal'
+import { ago } from '@/lib/time'
 import { claudeVersion, connectCommand, desktopConfig, mcpUrl } from '@/server/claude'
+import { connectorKind } from '@/server/connectors'
+import { googleAccountEmail } from '@/server/connectors/google'
 import { mailConfig } from '@/server/outbox'
 import { requireOwner } from '@/server/session'
 import { getSetting, githubTokenSource } from '@/server/settings'
@@ -25,14 +32,23 @@ function StatusChip({ status }: { status: ServiceStatus }) {
 export default async function SettingsPage() {
   const owner = await requireOwner('/settings')
   const db = await getDb()
-  const [{ token, from }, stored, version, connectedAt, mail, autopilot] = await Promise.all([
+  const [{ token, from }, stored, version, connectedAt, mail, autopilot, googleEmail, sources] = await Promise.all([
     githubTokenSource(db, owner.userId),
     getSetting(db, owner.userId, 'github_token'),
     claudeVersion(),
     getSetting(db, owner.userId, 'claude_connected'),
     mailConfig(db, owner.userId),
     getSetting(db, owner.userId, 'autopilot_weekly'),
+    googleAccountEmail(db, owner.userId),
+    db
+      .select({ id: s.connector.id, kind: s.connector.kind, lastOkAt: s.connector.lastOkAt, lastError: s.connector.lastError, projectId: s.project.id, project: s.project.name })
+      .from(s.connector)
+      .innerJoin(s.project, eq(s.project.id, s.connector.projectId))
+      .where(eq(s.connector.ownerId, owner.userId))
+      .orderBy(asc(s.project.name), asc(s.connector.kind)),
   ])
+  const now = new Date()
+  const failing = sources.filter((c) => c.lastError).length
   const github = githubStatus(token)
   const appToken = expectedToken() ?? ''
   const steps = [
@@ -125,6 +141,55 @@ export default async function SettingsPage() {
         <MailSettingsForm
           values={{ host: mail.host, port: mail.port, secure: mail.secure, user: mail.user, hasPass: Boolean(mail.pass), fromName: mail.fromName, fromEmail: mail.fromEmail, cap: mail.cap, enabled: mail.enabled }}
         />
+      </section>
+
+      <section className="card stack-m" id="sources">
+        <div className="row between">
+          <h2 className="row">
+            <Icon name="chart" /> Bronnen
+          </h2>
+          {sources.length ? <span className={`chip ${failing ? 'bad' : 'good'}`}>{failing ? `${failing} met een fout` : `${sources.length} gekoppeld`}</span> : <span className="chip">Nog geen</span>}
+        </div>
+        <p className="muted small">
+          De cijfers die de cockpit elke dag zelf ophaalt: bezoek, zoekverkeer, betalingen, je Discord en je eigen apps. Je koppelt een bron per project, onder
+          Cijfers. Elke sleutel kan alleen lezen en blijft op deze computer; de cockpit bewaart alleen tellingen, geen klantgegevens.
+        </p>
+        {sources.length ? (
+          <ul className="list" style={{ margin: 0 }}>
+            {sources.map((c) => (
+              <li key={c.id} className="row between">
+                <span className="row">
+                  <Link href={`/projects/${c.projectId}/numbers`}>
+                    <strong>{c.project}</strong>
+                  </Link>
+                  <span>{connectorKind(c.kind)?.label ?? c.kind}</span>
+                </span>
+                {c.lastError ? (
+                  <span className="tiny" style={{ color: 'var(--bad)' }}>
+                    {c.lastError}
+                  </span>
+                ) : c.lastOkAt ? (
+                  <span className="tiny muted">opgehaald {ago(c.lastOkAt, now)}</span>
+                ) : (
+                  <span className="tiny muted">nog niet opgehaald</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {sources.length ? <PullAllButton /> : null}
+        <div className="stack-s">
+          <div className="row between">
+            <span className="label">Google-service-account</span>
+            {googleEmail ? <span className="chip good">Ingesteld</span> : <span className="chip">Niet ingesteld</span>}
+          </div>
+          <p className="tiny muted">
+            Eén account voor Google Analytics 4 en Search Console, voor al je projecten. Google Cloud Console → IAM → Serviceaccounts → Account maken → Sleutels →
+            Sleutel toevoegen → JSON. Zet in dat project de Google Analytics Data API en de Google Search Console API aan. Geef het e-mailadres van het account daarna
+            leesrechten: in GA4 als Kijker, in Search Console als beperkte gebruiker.
+          </p>
+          <GoogleAccountForm email={googleEmail} />
+        </div>
       </section>
 
       <section className="card stack-m" id="you">

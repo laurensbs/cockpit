@@ -16,6 +16,7 @@ import { bucketWeeks, formatMetric, isMetricKey, lastWeeks, METRIC_DEFS, METRIC_
 import { ago } from '@/lib/time'
 import { claudeBlocked } from '@/server/claude-status'
 import { CONNECTOR_KINDS } from '@/server/connectors'
+import { googleAccountEmail } from '@/server/connectors/google'
 import { type LessonBody, outcomeStates } from '@/server/outcome-state'
 import { dailySeries, loadPoints } from '@/server/points'
 import { requireOwner } from '@/server/session'
@@ -34,7 +35,7 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
   const now = new Date()
   const today = dayOf(now)
   const weeks = lastWeeks(addDays(today, 7), 12)
-  const [states, rows, connectors, blocked, lessons] = await Promise.all([
+  const [states, rows, connectors, blocked, lessons, googleEmail] = await Promise.all([
     outcomeStates(db, owner.userId, now),
     loadPoints(db, owner.userId, addDays(weeks[0], -1), { projectIds: [id] }),
     db.select().from(s.connector).where(and(eq(s.connector.projectId, id), eq(s.connector.ownerId, owner.userId))),
@@ -45,6 +46,7 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
       .where(and(eq(s.contentItem.projectId, id), eq(s.contentItem.ownerId, owner.userId), eq(s.contentItem.kind, 'lesson')))
       .orderBy(desc(s.contentItem.createdAt))
       .limit(20),
+    googleAccountEmail(db, owner.userId),
   ])
   const state = states.get(id)
   const keys = METRIC_KEYS.filter((k) => rows.some((r) => r.key === k))
@@ -105,7 +107,14 @@ export default async function NumbersPage({ params }: { params: Promise<{ id: st
           <div style={{ marginTop: '0.8rem' }}>
             <ConnectorForm
               projectId={id}
-              kinds={CONNECTOR_KINDS.map((k) => ({ kind: k.kind, label: k.label, delivers: k.delivers.map((d) => METRIC_DEFS[d].label), fields: k.fields, secret: k.secret }))}
+              kinds={CONNECTOR_KINDS.map((k) => ({
+                kind: k.kind,
+                label: k.label,
+                delivers: k.delivers.map((d) => METRIC_DEFS[d].label),
+                fields: k.fields,
+                secret: k.secret,
+                needs: k.shared && !googleEmail ? k.shared.missing : null,
+              }))}
             />
           </div>
         </details>

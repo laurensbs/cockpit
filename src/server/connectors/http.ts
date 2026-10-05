@@ -11,7 +11,11 @@ export class ConnectorError extends Error {
   }
 }
 
+/** A problem with what he filled in; its message is meant for him. */
+export class ConnectorConfigError extends Error {}
+
 export function connectorErrorText(error: unknown): string {
+  if (error instanceof ConnectorConfigError) return error.message
   if (error instanceof ConnectorError) {
     if (error.status === 401 || error.status === 403) return 'De sleutel klopt niet of mag dit niet lezen.'
     if (error.status === 404) return 'Niet gevonden: kijk de instellingen na (site, profiel of property).'

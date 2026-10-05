@@ -21,7 +21,7 @@ Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedsch
 | **⌘K** | De opdrachtbalk: naar elke plek of elk project, elke Claude-klus voor elk project, of een vraag aan Claude |
 | **Zijbalk** | Je plekken, al je actieve projecten met hun kleur, en of Claude Code gekoppeld is |
 | **Projecten** | Per project: intake (vijf vragen), activiteit uit GitHub, repo’s, cijfers per maand, en of de site online is |
-| **Cijfers** (per project) | Het **groeimodel**: één doelcijfer met een deadline (bijvoorbeeld MRR naar €3.000 vóór februari) en de **trechter** ernaartoe (bezoekers → aanvragen → gesprekken → klanten). Claude stelt het voor, jij neemt het over. De cockpit ziet of je op schema ligt en **waar de trechter lekt**, en daar kiest “Nu doen” de klus voor. Cijfers komen vanzelf binnen uit **bronnen** (Plausible, Stripe, Mollie) met sleutels die alleen kunnen lezen, of vul je zelf in. Per week een tabel, met per cijfer de bron. En de **lessen** van afgeronde experimenten |
+| **Cijfers** (per project) | Het **groeimodel**: één doelcijfer met een deadline (bijvoorbeeld MRR naar €3.000 vóór februari) en de **trechter** ernaartoe (bezoekers → aanvragen → gesprekken → klanten). Claude stelt het voor, jij neemt het over. De cockpit ziet of je op schema ligt en **waar de trechter lekt**, en daar kiest “Nu doen” de klus voor. Cijfers komen vanzelf binnen uit **bronnen** (Plausible, Google Analytics 4, Search Console, Stripe, Mollie, Discord en je eigen apps) met sleutels die alleen kunnen lezen, of vul je zelf in. Per week een tabel, met per cijfer de bron. En de **lessen** van afgeronde experimenten |
 | **Marketingbrein** | Profiel (doelgroepen, kanalen, KPI’s, quick wins) en een plan voor 90 dagen; acties worden quests |
 | **Marketing** | Overzicht met de cijfers van deze week en “wat nu?” voor organische groei; concepten, mails (wachtrij en verzonden), SEO-artikelen, groei-experimenten met een bord, een kalender, het idee-lab en kansen van het web |
 | **Contacten** | Organisaties met hun wettelijke basis om te mailen; per contact een persoonlijke mail met twee opvolgmails, of in één keer voor alle nieuwe contacten; één keer goedkeuren en het gaat vanzelf. De pijplijn: antwoord → gesprek → offerte → gewonnen of verloren, met de waarde van de deal en de volgende stap; elke stap telt mee in de trechter |
@@ -56,8 +56,11 @@ Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* 
    - **Plausible:** een API-sleutel (Account → API keys), de site zoals hij in Plausible heet, en eventueel het doel dat een lead is (bijvoorbeeld *Contact*).
    - **Stripe:** alleen een **beperkte** sleutel (`rk_…`, Developers → API keys → Create restricted key) met Read op Charges, Subscriptions en Customers. Een geheime sleutel (`sk_…`) weigert de cockpit.
    - **Mollie:** alleen een **organisatietoken** (`access_…`) met payments.read en subscriptions.read, plus het profiel-ID (`pfl_…`). Een API-sleutel (`live_…`) weigert de cockpit.
+   - **Google Analytics 4 en Search Console:** één keer een service-account, onder Instellingen → *Bronnen*. In de Google Cloud Console: IAM → Serviceaccounts → Account maken → Sleutels → Sleutel toevoegen → JSON, en zet in dat project de *Google Analytics Data API* en de *Google Search Console API* aan. Plak de inhoud van het JSON-bestand in de cockpit (daarna toont hij alleen het e-mailadres). Geef dat e-mailadres leesrechten: in GA4 als *Kijker*, in Search Console als *beperkte* gebruiker. Per project vul je daarna het property-ID van GA4 in (met eventueel een sleutelgebeurtenis die als lead of aanmelding telt) of de Search Console-property (`sc-domain:jouwsite.nl`).
+   - **Discord:** een uitnodiging die niet verloopt. Geen sleutel nodig; de cockpit leest het aantal leden en wie er online is.
+   - **Eigen app:** een stats-adres (https) dat antwoordt met `{ "metrics": { "users": 412, "signups": 9 } }`, of met een `series` per dag. Elk cijfer uit de lijst van de cockpit mag; wat hij niet kent, noemt hij bij **Test**. Met een geheim gaat dat mee als `Authorization: Bearer …`.
 
-   De cockpit haalt de cijfers elke dag zelf op (en met **Nu ophalen**). Daarna: **Laat Claude een groeimodel voorstellen**, kijk het na en kies **Overnemen**.
+   De cockpit haalt de cijfers elke dag zelf op (en met **Nu ophalen**, of voor alles tegelijk onder Instellingen → *Bronnen*). Daarna: **Laat Claude een groeimodel voorstellen**, kijk het na en kies **Overnemen**.
 
 ## Automatische mails: de regels
 
@@ -74,7 +77,7 @@ Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* 
 - De cockpit **leest** GitHub; hij schrijft er nooit iets. Wat op een sleutel lijkt, wordt weggepoetst voordat het wordt opgeslagen of naar Claude gaat. Per repo kun je Claude uitzetten (bijvoorbeeld voor code van een klant).
 - Tekst uit repo’s en contacten gaat als gegevens naar Claude, nooit als instructie. Claude ziet de namen en je notities bij contacten, nooit hun e-mailadres.
 - Om te zien of er een nieuwe versie is, haalt de Mac-app elke zes uur `version.json` van de branch `downloads` op GitHub; hij stuurt daarbij niets mee.
-- Sleutels van bronnen (Plausible, Stripe, Mollie) staan alleen in de lokale database, kunnen alleen lezen, en komen nooit in de pagina, bij Claude of in een foutmelding. De cockpit bewaart alleen tellingen per dag, geen klantgegevens.
+- Sleutels van bronnen (Plausible, Stripe, Mollie, het Google-service-account, geheimen van je apps) staan alleen in de lokale database, kunnen alleen lezen, en komen nooit in de pagina, bij Claude of in een foutmelding. De cockpit bewaart alleen tellingen per dag, geen klantgegevens.
 - Claude legt alleen cijfers vast die jij hem gaf of die hij zelf las uit een bron die hij noemt; nooit schattingen. En hij zet nooit zelf je doelen: een groeimodel van Claude is een voorstel.
 - Claude krijgt geen gereedschap om te mailen of te posten. Hij schrijft concepten; versturen doet de cockpit pas nadat jij hebt goedgekeurd.
 - Het wachtwoord van je mailbox staat alleen in de lokale database op je computer. Gebruik een app-wachtwoord, dan kun je het altijd intrekken.

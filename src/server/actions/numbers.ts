@@ -6,8 +6,10 @@ import { z } from 'zod'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { dayOf } from '@/lib/dates'
+import { parseServiceAccount } from '@/lib/google-jwt'
 import { METRIC_KEYS, normalizePoints } from '@/lib/metrics'
 import { connectorKind, connectorSecretKey } from '../connectors'
+import { GOOGLE_ACCOUNT_SETTING } from '../connectors/google'
 import { pullAll, pullConnector } from '../connectors/run'
 import { rollupMonths, upsertPoints } from '../points'
 import { actionOwner } from '../session'
@@ -62,7 +64,7 @@ export async function savePoint(_prev: FormState, form: FormData): Promise<FormS
 }
 
 /**
- * Connects a source (Stripe, Mollie, Plausible) to a project. The key is checked (read-only keys only)
+ * Connects a source (Plausible, Google, Stripe, Mollie, Discord, an own app) to a project. The key is checked (read-only keys only)
  * and kept in the local settings; an empty key field keeps the key that is already there.
  */
 export async function saveConnector(_prev: FormState, form: FormData): Promise<FormState> {
@@ -78,8 +80,11 @@ export async function saveConnector(_prev: FormState, form: FormData): Promise<F
       .trim()
       .slice(0, 200)
     if (field.required && !value) return { ok: false, error: `Vul ${field.label.toLowerCase()} in.` }
+    if (field.options && value && !field.options.some((o) => o.value === value)) return { ok: false, error: `Kies ${field.label.toLowerCase()} uit de lijst.` }
     if (value) config[field.name] = value
   }
+  const configProblem = kind.checkConfig?.(config)
+  if (configProblem) return { ok: false, error: configProblem }
   const secret = String(form.get('secret') ?? '').trim()
   if (secret) {
     const problem = kind.checkSecret(secret)
@@ -90,7 +95,7 @@ export async function saveConnector(_prev: FormState, form: FormData): Promise<F
     .select({ id: s.connector.id })
     .from(s.connector)
     .where(and(eq(s.connector.projectId, projectId), eq(s.connector.kind, kind.kind)))
-  if (!existing && kind.secret && !secret) return { ok: false, error: `Vul ${kind.secret.label.toLowerCase()} in.` }
+  if (!existing && kind.secret && !kind.secret.optional && !secret) return { ok: false, error: `Vul ${kind.secret.label.toLowerCase()} in.` }
   const id = existing?.id ?? crypto.randomUUID()
   if (existing) await db.update(s.connector).set({ config, enabled: true, lastError: null }).where(eq(s.connector.id, id))
   else await db.insert(s.connector).values({ id, ownerId: owner.userId, projectId, kind: kind.kind, config })
@@ -133,11 +138,33 @@ export async function pullNow(projectId?: string): Promise<{ ok: boolean; messag
   const db = await getDb()
   const result = await pullAll(db, owner.userId, { projectId: projectId || undefined, force: true })
   if (projectId) refresh(projectId)
-  else revalidatePath('/')
+  else revalidatePath('/', 'layout')
   if (result.busy) return { ok: false, message: 'De cockpit haalt al cijfers op; probeer het zo nog eens.' }
   if (!result.pulled && !result.failed) return { ok: false, message: 'Er is nog geen bron gekoppeld.' }
   return {
     ok: result.failed === 0,
     message: `${result.pulled} bron${result.pulled === 1 ? '' : 'nen'} opgehaald, ${result.points} cijfers${result.failed ? `; ${result.failed} lukte niet (zie hieronder)` : ''}.`,
   }
+}
+
+/**
+ * The Google service account, once for all projects (GA4 and Search Console). Only the e-mail address
+ * ever comes back to a page; the key stays in the local settings.
+ */
+export async function saveGoogleAccount(_prev: FormState, form: FormData): Promise<FormState> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  if (form.get('remove') === '1') {
+    await setSetting(db, owner.userId, GOOGLE_ACCOUNT_SETTING, null)
+    revalidatePath('/', 'layout')
+    return { ok: true, message: 'Service-account verwijderd. GA4 en Search Console halen niets meer op tot je er een nieuw zet.' }
+  }
+  const text = String(form.get('account') ?? '').trim()
+  if (!text) return { ok: false, error: 'Plak de hele inhoud van het JSON-sleutelbestand.' }
+  if (text.length > 20_000) return { ok: false, error: 'Dat is te lang voor een sleutelbestand.' }
+  const account = parseServiceAccount(text)
+  if ('error' in account) return { ok: false, error: account.error }
+  await setSetting(db, owner.userId, GOOGLE_ACCOUNT_SETTING, JSON.stringify({ type: 'service_account', ...account }))
+  revalidatePath('/', 'layout')
+  return { ok: true, message: `Bewaard: ${account.client_email}. Geef dit adres leesrechten in GA4 en Search Console.` }
 }

@@ -8,7 +8,7 @@ import { rollupMonths, upsertPoints } from '../points'
 import { getSetting } from '../settings'
 import { fixturesAllowed } from '../status'
 import { fixtureFetch } from './fixtures'
-import { ConnectorError, connectorErrorText } from './http'
+import { ConnectorConfigError, ConnectorError, connectorErrorText } from './http'
 import { connectorKind, connectorSecretKey } from './index'
 
 type ConnectorRow = typeof s.connector.$inferSelect
@@ -38,11 +38,16 @@ export async function pullConnector(db: Db, ownerId: string, row: ConnectorRow, 
   const kind = connectorKind(row.kind)
   if (!kind) return { ok: false, points: 0, error: 'Onbekende bron.' }
   const secret = kind.secret ? await getSetting(db, ownerId, connectorSecretKey(row.id)) : ''
-  if (kind.secret && !secret) return { ok: false, points: 0, error: 'Er is nog geen sleutel ingesteld.' }
+  if (kind.secret && !kind.secret.optional && !secret) return { ok: false, points: 0, error: 'Er is nog geen sleutel ingesteld.' }
+  const shared = kind.shared ? await getSetting(db, ownerId, kind.shared.setting) : ''
+  if (kind.shared && !shared) {
+    if (!dryRun) await db.update(s.connector).set({ lastRunAt: now, lastError: kind.shared.missing }).where(eq(s.connector.id, row.id))
+    return { ok: false, points: 0, error: kind.shared.missing }
+  }
   const today = dayOf(now)
   const back = dryRun ? 7 : row.lastOkAt ? kind.window.again : kind.window.first
   try {
-    const pulled = await kind.pull({ config: row.config, secret: secret ?? '', from: addDays(today, -back), today, fetch: fetchFor() })
+    const pulled = await kind.pull({ config: row.config, secret: secret ?? '', shared: shared ?? '', from: addDays(today, -back), today, fetch: fetchFor() })
     const { ok, rejected } = normalizePoints(pulled.points, today)
     const note = [pulled.note, rejected.length ? `${rejected.length} cijfer(s) overgeslagen.` : ''].filter(Boolean).join(' ') || undefined
     if (!dryRun) {
@@ -52,7 +57,7 @@ export async function pullConnector(db: Db, ownerId: string, row: ConnectorRow, 
     }
     return { ok: true, points: ok.length, note }
   } catch (error) {
-    const message = error instanceof ConnectorError ? connectorErrorText(error) : (CONFIG_ERRORS[(error as Error)?.message] ?? connectorErrorText(error))
+    const message = error instanceof ConnectorError || error instanceof ConnectorConfigError ? connectorErrorText(error) : (CONFIG_ERRORS[(error as Error)?.message] ?? connectorErrorText(error))
     if (!dryRun) await db.update(s.connector).set({ lastRunAt: now, lastError: message }).where(eq(s.connector.id, row.id))
     return { ok: false, points: 0, error: message }
   }
