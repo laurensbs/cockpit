@@ -98,11 +98,9 @@ export function MoneyForm({ projects, item, onDone }: { projects: Project[]; ite
   )
 }
 
-const SOURCE = { jij: 'door jou', claude: 'volgens Claude' } as const
-
 /**
- * One line: what it is, what it costs, when it comes back. A date near or a proposal gets its two buttons;
- * the rest only "Aanpassen".
+ * One compact line: what it is, what it costs, when it comes back, and its buttons on the same line. The
+ * source note shows only when he opens it ("Aanpassen"), so a long list stays calm.
  */
 export function MoneyRow({ item, today, projects, act }: { item: MoneyItem; today: string; projects: Project[]; act?: boolean }) {
   const [pending, start] = useTransition()
@@ -119,16 +117,49 @@ export function MoneyRow({ item, today, projects, act }: { item: MoneyItem; toda
   return (
     <li className={`setup-step money-row ${item.status}`} aria-label={item.title}>
       <div className="grow stack-xs" style={{ minWidth: 0 }}>
-        <div className="row" style={{ gap: '0.4rem' }}>
-          <strong>{item.title}</strong>
-          <span className={`chip${item.kind === 'cost' || item.kind === 'plan' ? ' warn' : item.kind === 'income' ? ' good' : ''}`}>{amountText(item)}</span>
+        <div className="money-main">
+          <div className="stack-xs grow" style={{ minWidth: 0 }}>
+            <div className="row" style={{ gap: '0.4rem' }}>
+              <strong title={item.note || undefined}>{item.title}</strong>
+              <span className={`chip${item.kind === 'cost' || item.kind === 'plan' ? ' warn' : item.kind === 'income' ? ' good' : ''}`}>{amountText(item)}</span>
+            </div>
+            <span className="tiny muted">{[item.project ?? 'Je bedrijf', when, item.source === 'jij' ? 'door jou' : null].filter(Boolean).join(' · ')}</span>
+          </div>
+          <div className="row nowrap" style={{ gap: '0.3rem' }}>
+            {act && item.kind === 'plan' ? (
+              <>
+                <button type="button" className="button secondary small" disabled={pending} onClick={() => step('yes')}>
+                  Ja, doen
+                </button>
+                <button type="button" className="button ghost small" disabled={pending} onClick={() => step('stop')}>
+                  Nee
+                </button>
+              </>
+            ) : act ? (
+              <>
+                <button type="button" className="button secondary small" disabled={pending} onClick={() => step('done')}>
+                  <Check size={16} strokeWidth={3} aria-hidden="true" /> {item.kind === 'cost' ? 'Houden' : 'Geregeld'}
+                </button>
+                {item.kind === 'cost' ? (
+                  <button type="button" className="button ghost small" disabled={pending} onClick={() => step('stop')}>
+                    Opzeggen
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+            <button type="button" className="button ghost small" onClick={() => setEditing((e) => !e)} aria-expanded={editing}>
+              {editing ? 'Sluiten' : 'Aanpassen'}
+            </button>
+          </div>
         </div>
-        <span className="tiny muted">
-          {[item.project ?? 'Je bedrijf', when, SOURCE[item.source]].filter(Boolean).join(' · ')}
-        </span>
-        {item.note ? <span className="tiny muted">{item.note}</span> : null}
+        {message ? (
+          <span className="tiny muted" role="status">
+            {message}
+          </span>
+        ) : null}
         {editing ? (
           <div className="card sunken stack-s">
+            {item.note ? <p className="tiny muted">Bron: {item.note}{item.source === 'claude' ? ' (volgens Claude)' : ''}</p> : null}
             <MoneyForm projects={projects} item={item} onDone={() => setEditing(false)} />
             <div className="row">
               {item.status !== 'stopped' ? (
@@ -146,37 +177,6 @@ export function MoneyRow({ item, today, projects, act }: { item: MoneyItem; toda
             </div>
           </div>
         ) : null}
-        <div className="row" style={{ gap: '0.4rem' }}>
-          {act && item.kind === 'plan' ? (
-            <>
-              <button type="button" className="button secondary small" disabled={pending} onClick={() => step('yes')}>
-                Ja, doen
-              </button>
-              <button type="button" className="button ghost small" disabled={pending} onClick={() => step('stop')}>
-                Nee
-              </button>
-            </>
-          ) : act ? (
-            <>
-              <button type="button" className="button secondary small" disabled={pending} onClick={() => step('done')}>
-                <Check size={16} strokeWidth={3} aria-hidden="true" /> {item.kind === 'cost' ? 'Houden' : 'Geregeld'}
-              </button>
-              {item.kind === 'cost' ? (
-                <button type="button" className="button ghost small" disabled={pending} onClick={() => step('stop')}>
-                  Opzeggen
-                </button>
-              ) : null}
-            </>
-          ) : null}
-          <button type="button" className="button ghost small" onClick={() => setEditing((e) => !e)} aria-expanded={editing}>
-            {editing ? 'Sluiten' : 'Aanpassen'}
-          </button>
-          {message ? (
-            <span className="tiny muted" role="status">
-              {message}
-            </span>
-          ) : null}
-        </div>
       </div>
     </li>
   )

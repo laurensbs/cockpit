@@ -2998,3 +2998,15 @@ html[data-shell='mac'] .lesson {
   gap: 0.25rem;
   text-align: center;
 }
+
+/* A money line: what and how much on the left, its buttons on the same line on the right. */
+.money-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+}
+.money-row.setup-step {
+  padding: 0.5rem 0;
+}

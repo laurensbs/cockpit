@@ -13,6 +13,8 @@ export function GrowthCosts({ summary, idOf }: { summary: CostSummary; idOf: (na
           Uit de checklists van je projecten: ± {formatEuro(summary.firstYear)} het eerste jaar, daarna ± {formatEuro(summary.perYear)} per jaar.
         </p>
       </div>
+      <details className="stack-m">
+        <summary className="small">Bekijk wat het per project kost</summary>
       {summary.shared.length ? (
         <div className="stack-xs">
           <p className="eyebrow">Voor al je apps tegelijk</p>
@@ -66,6 +68,7 @@ export function GrowthCosts({ summary, idOf }: { summary: CostSummary; idOf: (na
           </ul>
         </div>
       ))}
+      </details>
     </section>
   )
 }

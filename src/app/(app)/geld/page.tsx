@@ -5,7 +5,7 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { costSummary } from '@/lib/costs'
 import { dayOf, monthStart } from '@/lib/dates'
-import { type MoneyItem, moneyPicture, upcoming } from '@/lib/finance'
+import { type MoneyItem, moneyPicture, perMonth, upcoming } from '@/lib/finance'
 import { moneyFor } from '@/lib/money'
 import { formatEuro } from '@/lib/time'
 import { latestMrr, loadMoney } from '@/server/finance'
@@ -37,9 +37,14 @@ export default async function MoneyPage() {
   const revenue = moneyFor(Object.values(metrics), monthStart(today))
   const soon = upcoming(items, today, 30)
   const soonIds = new Set(soon.map((i) => i.id))
-  const plans = items.filter((i) => i.kind === 'plan' && i.status === 'proposed' && !soonIds.has(i.id))
-  const costs = items.filter((i) => i.kind === 'cost' && i.status === 'active')
-  const income = items.filter((i) => (i.kind === 'income' || i.kind === 'price') && i.status === 'active')
+  // Decisions with an amount first, the biggest on top; the rest one tap away.
+  const plans = items
+    .filter((i) => i.kind === 'plan' && i.status === 'proposed' && !soonIds.has(i.id))
+    .sort((a, b) => (b.amount == null ? -1 : perMonth({ ...b, period: b.period === 'once' ? 'month' : b.period })) - (a.amount == null ? -1 : perMonth({ ...a, period: a.period === 'once' ? 'month' : a.period })))
+  const costs = items.filter((i) => i.kind === 'cost' && i.status === 'active' && i.period !== 'once')
+  const bought = items.filter((i) => i.kind === 'cost' && i.status === 'active' && i.period === 'once')
+  const income = items.filter((i) => i.kind === 'income' && i.status === 'active')
+  const prices = items.filter((i) => i.kind === 'price' && i.status === 'active')
   const dates = items.filter((i) => i.kind === 'deadline' && i.status === 'active' && !soonIds.has(i.id))
   const stopped = items.filter((i) => i.status === 'stopped')
   const list = projects.map((p) => ({ id: p.id, name: p.name }))
@@ -101,14 +106,24 @@ export default async function MoneyPage() {
             <p className="small muted">Uitgaven die nog niet gedaan zijn. Ja of nee, dan rekent je coach ermee.</p>
           </div>
           <ul className="setup-list">
-            {plans.map((i) => (
+            {plans.slice(0, 5).map((i) => (
               <MoneyRow key={i.id} item={i} today={today} projects={list} act />
             ))}
           </ul>
+          {plans.length > 5 ? (
+            <details>
+              <summary className="small">Nog {plans.length - 5} voorstellen</summary>
+              <ul className="setup-list">
+                {plans.slice(5).map((i) => (
+                  <MoneyRow key={i.id} item={i} today={today} projects={list} act />
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </section>
       ) : null}
 
-      {costs.length ? (
+      {costs.length || bought.length ? (
         <section className="card stack-m" aria-labelledby="money-costs">
           <h2 id="money-costs">Wat je nu betaalt</h2>
           {byProject(costs).map((g) => (
@@ -121,22 +136,46 @@ export default async function MoneyPage() {
               </ul>
             </div>
           ))}
-        </section>
-      ) : null}
-
-      {income.length ? (
-        <section className="card stack-m" aria-labelledby="money-income">
-          <h2 id="money-income">Je prijzen en wat binnenkomt</h2>
-          {byProject(income).map((g) => (
-            <div key={g.name} className="stack-xs">
-              <p className="eyebrow">{g.name}</p>
+          {bought.length ? (
+            <details>
+              <summary className="small">Eenmalig gekocht ({bought.length})</summary>
               <ul className="setup-list">
-                {g.items.map((i) => (
+                {bought.map((i) => (
                   <MoneyRow key={i.id} item={i} today={today} projects={list} />
                 ))}
               </ul>
-            </div>
-          ))}
+            </details>
+          ) : null}
+        </section>
+      ) : null}
+
+      {income.length || prices.length ? (
+        <section className="card stack-m" aria-labelledby="money-income">
+          <h2 id="money-income">Wat binnenkomt</h2>
+          {income.length ? (
+            <ul className="setup-list">
+              {income.map((i) => (
+                <MoneyRow key={i.id} item={i} today={today} projects={list} />
+              ))}
+            </ul>
+          ) : (
+            <p className="small muted">Nog niets. Je eerste klant telt.</p>
+          )}
+          {prices.length ? (
+            <details>
+              <summary className="small">Je prijzen ({prices.length})</summary>
+              {byProject(prices).map((g) => (
+                <div key={g.name} className="stack-xs" style={{ marginTop: '0.5rem' }}>
+                  <p className="eyebrow">{g.name}</p>
+                  <ul className="setup-list">
+                    {g.items.map((i) => (
+                      <MoneyRow key={i.id} item={i} today={today} projects={list} />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </details>
+          ) : null}
         </section>
       ) : null}
 
