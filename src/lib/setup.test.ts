@@ -6,7 +6,7 @@ const local = { web: true, app: false, paid: true, local: true }
 
 describe('setupProjectFrom', () => {
   it('reads from the intake what kind of business it is', () => {
-    expect(setupProjectFrom({ oneLiner: 'Een iPhone-puzzelgame, eenmalige aankoop', what: '', siteUrl: null, localPath: '/x' })).toMatchObject({ app: true, paid: true, local: false })
+    expect(setupProjectFrom({ oneLiner: 'Een iPhone-puzzelgame, eenmalige aankoop', what: '', siteUrl: null, localPath: '/x' })).toMatchObject({ web: false, app: true, paid: true, local: false })
     expect(setupProjectFrom({ oneLiner: 'Aanvraagformulieren voor servicebedrijven aan de Costa Brava, €69 per maand', what: '', siteUrl: 'https://x.example', localPath: null })).toMatchObject({ web: true, local: true, paid: true, app: false })
   })
 })

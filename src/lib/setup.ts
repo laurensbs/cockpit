@@ -233,7 +233,7 @@ export const setupItem = (key: string) => SETUP_ITEMS.find((i) => i.key === key)
 export function setupProjectFrom(project: { what: string; oneLiner: string; siteUrl: string | null; localPath: string | null }): SetupProject {
   const text = `${project.oneLiner} ${project.what}`.toLowerCase()
   return {
-    web: Boolean(project.siteUrl || project.localPath),
+    web: Boolean(project.siteUrl) || /\b(website|webapp|web-app|pwa|platform)\b/.test(text),
     app: /\b(iphone|ios|app store|android|testflight|game)\b|iphone-app|puzzelgame/.test(text),
     paid: /€|\bprijs\b|abonnement|per maand|eenmalig|betaal|stripe|pro\b|aankoop/.test(text),
     local: /servicebedrijv|garage|installateur|monteur|kapper|winkel|lokale|regio|costa brava|werkbon/.test(text),
