@@ -11,7 +11,7 @@ import { badgeStats, dailyRound, playerStats } from '@/server/game'
 import { questViews } from '@/server/quest-views'
 import { requireOwner } from '@/server/session'
 
-export const metadata = { title: 'Quests' }
+export const metadata = { title: 'Taken' }
 
 const COLUMNS: { key: QuestBucket; title: string }[] = [
   { key: 'overdue', title: 'Te laat' },
@@ -22,7 +22,7 @@ const COLUMNS: { key: QuestBucket; title: string }[] = [
 ]
 
 const KIND_LABELS: Record<string, string> = {
-  quest: 'Quest',
+  quest: 'Taak afgerond',
   post: 'Post geplaatst',
   email: 'Mail verstuurd',
   reply: 'Antwoord gekregen',
@@ -58,13 +58,13 @@ export default async function QuestsPage() {
     <div className="stack-l">
       <header className="row between">
         <div className="stack-xs">
-          <h1>Quests</h1>
+          <h1>Taken</h1>
           <p className="muted small num">
             Level {stats.level.level} · {stats.totalXp} XP · {open.length} open
           </p>
         </div>
         <a href="#nieuw" className="button primary small">
-          <Icon name="plus" size={16} /> Quest
+          <Icon name="plus" size={16} /> Taak
         </a>
       </header>
 
@@ -84,10 +84,10 @@ export default async function QuestsPage() {
           </section>
         )
       })}
-      {open.length ? null : <p className="empty">Alles gedaan. Zet een nieuwe quest op, of laat Claude er een paar maken.</p>}
+      {open.length ? null : <p className="empty">Alles gedaan. Zet een nieuwe taak op je lijst, of laat Claude er een paar maken.</p>}
 
       <section id="nieuw" className="card stack-m">
-        <h2>Nieuwe quest</h2>
+        <h2>Nieuwe taak</h2>
         <QuestForm projects={projects} />
       </section>
 

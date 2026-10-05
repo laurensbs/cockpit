@@ -13,7 +13,7 @@ export function QuestForm({ projects, projectId }: { projects: { id: string; nam
   return (
     <form className="stack-m" onSubmit={onSubmit}>
       <label className="field">
-        <span>Quest</span>
+        <span>Taak</span>
         <input className="input" name="title" required minLength={2} maxLength={160} placeholder="Bijv. btw-aangifte Q4, of 3 opvangen bellen" />
       </label>
       <label className="field">
@@ -64,12 +64,12 @@ export function QuestForm({ projects, projectId }: { projects: { id: string; nam
       <label className="check">
         <input type="checkbox" name="boss" checked={boss} onChange={(e) => setBoss(e.target.checked)} />
         <span>
-          <strong>Boss-quest</strong> <span className="small muted">— het grote ding van deze week, 250 XP</span>
+          <strong>Hoofdtaak van de week</strong> <span className="small muted">— het grote ding van deze week, 250 XP</span>
         </span>
       </label>
       <div className="row">
         <button type="submit" className="button primary" disabled={pending}>
-          Quest toevoegen
+          Taak toevoegen
         </button>
         {state.message ? (
           <span className="small muted" role="status">

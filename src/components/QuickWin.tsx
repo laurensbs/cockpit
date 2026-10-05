@@ -12,10 +12,10 @@ export function QuickWin({ briefId, index, text, accepted }: { briefId: string; 
         {text}
       </span>
       {added ? (
-        <span className="chip good">quest</span>
+        <span className="chip good">op je lijst</span>
       ) : (
         <button type="button" className="button ghost small" disabled={pending} onClick={() => start(async () => setAdded((await acceptQuickWin(briefId, index)).added))}>
-          + quest
+          Op mijn lijst
         </button>
       )}
     </li>

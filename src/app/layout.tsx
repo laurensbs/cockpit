@@ -7,7 +7,7 @@ import { fontVariables } from './fonts'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
-  description: 'Al je projecten en bedrijven op één plek: marketing, quests en XP.',
+  description: 'Claude zet je marketing klaar; jij zegt ja of nee.',
   applicationName: APP_NAME,
   icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
   robots: { index: false, follow: false },

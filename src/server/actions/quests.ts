@@ -129,9 +129,9 @@ export async function saveQuest(_prev: FormState, form: FormData): Promise<FormS
     dueOn: form.get('dueOn') ?? '',
     recurrence: form.get('recurrence') ?? 'none',
   })
-  if (!parsed.success) return { ok: false, error: 'Geef de quest een titel van minstens twee tekens.' }
+  if (!parsed.success) return { ok: false, error: 'Geef de taak een titel van minstens twee tekens.' }
   const q = parsed.data
-  if (q.recurrence !== 'none' && !q.dueOn) return { ok: false, error: 'Een terugkerende quest heeft een datum nodig.' }
+  if (q.recurrence !== 'none' && !q.dueOn) return { ok: false, error: 'Een terugkerende taak heeft een datum nodig.' }
   const db = await getDb()
   if (q.projectId) {
     const [project] = await db
@@ -153,5 +153,5 @@ export async function saveQuest(_prev: FormState, form: FormData): Promise<FormS
     dueOn: q.dueOn || null,
   })
   refresh(q.projectId || null)
-  return { ok: true, message: 'Quest staat erop.' }
+  return { ok: true, message: 'Staat op je lijst.' }
 }

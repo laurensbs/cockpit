@@ -124,9 +124,9 @@ export default async function TodayPage() {
 
         <section className="card stack-s">
           <div className="row between">
-            <h2>Quests</h2>
+            <h2>Taken</h2>
             <Link href="/quests" className="button ghost small">
-              Alle quests <Icon name="arrow" size={16} />
+              Alle taken <Icon name="arrow" size={16} />
             </Link>
           </div>
           {shown.length ? (
@@ -137,7 +137,7 @@ export default async function TodayPage() {
             </ul>
           ) : (
             <p className="empty">
-              Geen open quests. <Link href="/quests">Zet er een op</Link>
+              Geen open taken. <Link href="/quests">Zet er een op</Link>
               {pulses.length ? null : (
                 <>
                   {' '}
@@ -179,7 +179,7 @@ export default async function TodayPage() {
           </section>
         ) : (
           <section className="notice row between">
-            <span>Zet je projecten erin: dan komen er quests, plannen en concepten.</span>
+            <span>Zet je projecten erin: dan komen er taken, plannen en concepten.</span>
             <Link href="/projects" className="button primary small">
               Projecten toevoegen
             </Link>

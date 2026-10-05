@@ -8,7 +8,7 @@ const TABS: { key: ProjectTab; label: string; path: string }[] = [
   { key: 'brain', label: 'Plan', path: '/brain' },
   { key: 'studio', label: 'Marketing', path: 'studio' },
   { key: 'contacts', label: 'Contacten', path: '/contacts' },
-  { key: 'quests', label: 'Quests', path: '/quests' },
+  { key: 'quests', label: 'Taken', path: '/quests' },
 ]
 
 /** The parts of a project page. */

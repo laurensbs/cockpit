@@ -41,7 +41,7 @@ export function PlanActions({ briefId, plan, accepted }: { briefId: string; plan
                       <span className="chip">{a.channel}</span>
                       <span className="chip">{EFFORT_LABELS[a.effort]}</span>
                       <span className="chip xp num">+{a.xp} XP</span>
-                      {done.has(a.id) ? <span className="chip good">quest</span> : null}
+                      {done.has(a.id) ? <span className="chip good">op je lijst</span> : null}
                     </span>
                   </span>
                 </label>
@@ -59,11 +59,11 @@ export function PlanActions({ briefId, plan, accepted }: { briefId: string; plan
             start(async () => {
               const { added } = await acceptPlanActions(briefId, [...chosen])
               setChosen(new Set())
-              setMessage(`${added} quest${added === 1 ? '' : 's'} toegevoegd.`)
+              setMessage(`${added} ${added === 1 ? 'taak' : 'taken'} op je lijst gezet.`)
             })
           }
         >
-          <Icon name="quests" size={18} /> {chosen.size ? `${chosen.size} als quest zetten` : 'Kies acties voor je quests'}
+          <Icon name="quests" size={18} /> {chosen.size ? `${chosen.size} op mijn lijst zetten` : 'Kies acties voor je lijst'}
         </button>
         {message ? (
           <span className="small muted" role="status">

@@ -47,7 +47,7 @@ export async function WeeklyFocus({ db, ownerId, disabledReason }: { db: Db; own
         ))}
       </ol>
       <div className="card sunken stack-s">
-        <p className="eyebrow">Boss van de week</p>
+        <p className="eyebrow">Hoofdtaak van de week</p>
         <p style={{ fontWeight: 700 }}>
           {weekly.boss.title} <span className="muted small">· {weekly.boss.project}</span>
         </p>

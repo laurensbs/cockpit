@@ -13,7 +13,7 @@ export const PLACES: { href: string; label: string; icon: IconName; tone: Tone }
   { href: '/studio', label: 'Marketing', icon: 'studio', tone: 'violet' },
 ]
 export const MORE: { href: string; label: string; icon: IconName; tone: Tone }[] = [
-  { href: '/quests', label: 'Quests', icon: 'quests', tone: 'green' },
+  { href: '/quests', label: 'Taken', icon: 'quests', tone: 'green' },
   { href: '/companies', label: 'Bedrijven', icon: 'companies', tone: 'gold' },
   { href: '/geld', label: 'Geld', icon: 'coins', tone: 'teal' },
 ]

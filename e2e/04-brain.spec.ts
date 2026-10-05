@@ -43,8 +43,8 @@ test('Claude Code gets the brief through MCP and hands the profile and the plan 
   await expect(page.getByText('Rondje: het rondje dat je week beter maakt.')).toBeVisible()
   await expect(page.getByText(/Eerste stap:/).first()).toBeVisible()
   const win = page.locator('li').filter({ hasText: 'Mail drie opvangen' })
-  await win.getByRole('button', { name: '+ quest' }).click()
-  await expect(win.getByText('quest')).toBeVisible()
+  await win.getByRole('button', { name: 'Op mijn lijst' }).click()
+  await expect(win.getByText('op je lijst')).toBeVisible()
 
   // "Opnieuw" opens Claude Code with a ticket (the test terminal records the command instead).
   await page.getByRole('button', { name: /Opnieuw/ }).click()
@@ -66,8 +66,8 @@ test('Claude Code gets the brief through MCP and hands the profile and the plan 
   await shot(page, '08-brain')
   await page.getByRole('checkbox', { name: 'Mail vijf opvangen met de pitch' }).check()
   await page.getByRole('checkbox', { name: 'Organiseer een eerste groepswandeling' }).check()
-  await page.getByRole('button', { name: '2 als quest zetten' }).click()
-  await expect(page.getByText('2 quests toegevoegd.')).toBeVisible()
+  await page.getByRole('button', { name: '2 op mijn lijst zetten' }).click()
+  await expect(page.getByText('2 taken op je lijst gezet.')).toBeVisible()
 
   await page.goto('/quests')
   await expect(page.getByText('Mail vijf opvangen met de pitch')).toBeVisible()

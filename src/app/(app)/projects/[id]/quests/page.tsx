@@ -8,7 +8,7 @@ import * as s from '@/db/schema'
 import { questViews } from '@/server/quest-views'
 import { requireOwner } from '@/server/session'
 
-export const metadata = { title: 'Quests' }
+export const metadata = { title: 'Taken' }
 
 export default async function ProjectQuestsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -36,7 +36,7 @@ export default async function ProjectQuestsPage({ params }: { params: Promise<{ 
         )}
       </section>
       <section className="card stack-m">
-        <h2>Nieuwe quest</h2>
+        <h2>Nieuwe taak</h2>
         <QuestForm projects={[]} projectId={id} />
       </section>
       {closed.length ? (

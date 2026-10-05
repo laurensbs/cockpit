@@ -15,7 +15,7 @@ export const PLACES: { label: string; href: string; hint?: string }[] = [
   { label: 'Vandaag', href: '/' },
   { label: 'Projecten', href: '/projects' },
   { label: 'Marketing', href: '/studio', hint: 'concepten, mails, artikelen, experimenten' },
-  { label: 'Quests', href: '/quests' },
+  { label: 'Taken', href: '/quests' },
   { label: 'Geld', href: '/geld', hint: 'vaste lasten, prijzen, data om op te letten' },
   { label: 'Bedrijven', href: '/companies', hint: 'omzet, kosten, winst' },
   { label: 'GitHub', href: '/github', hint: 'alles binnenhalen' },

@@ -24,10 +24,10 @@ export function QuestFromContent({ id }: { id: string }) {
   const [pending, start] = useTransition()
   const [added, setAdded] = useState(false)
   return added ? (
-    <span className="chip good">quest</span>
+    <span className="chip good">op je lijst</span>
   ) : (
     <button type="button" className="button secondary small" disabled={pending} onClick={() => start(async () => setAdded((await contentToQuest(id)).added))}>
-      <Icon name="quests" size={16} /> Maak quest
+      <Icon name="quests" size={16} /> Op mijn lijst
     </button>
   )
 }

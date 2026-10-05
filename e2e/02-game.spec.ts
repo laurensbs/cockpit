@@ -8,11 +8,11 @@ test('quests give XP, a boss levels you up, recurring quests come back', async (
 
   // A quest of his own, done: XP and a streak.
   const form = page.locator('#nieuw')
-  await form.getByLabel('Quest', { exact: true }).fill('Btw-aangifte Q3 Webstability')
+  await form.getByLabel('Taak', { exact: true }).fill('Btw-aangifte Q3 Webstability')
   await form.getByLabel('Wanneer').fill(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date()))
   await form.getByLabel('Herhalen').selectOption('quarterly')
-  await form.getByRole('button', { name: 'Quest toevoegen' }).click()
-  await expect(page.getByText('Quest staat erop.')).toBeVisible()
+  await form.getByRole('button', { name: 'Taak toevoegen' }).click()
+  await expect(page.getByText('Staat op je lijst.')).toBeVisible()
   await page.getByRole('button', { name: 'Rond af: Btw-aangifte Q3 Webstability' }).click()
   // The first quest also unlocks a badge: a moment, not just a toast.
   await expect(page.getByRole('dialog', { name: 'Gefeliciteerd' })).toContainText('Eerste quest')
@@ -23,10 +23,10 @@ test('quests give XP, a boss levels you up, recurring quests come back', async (
   await expect(page.getByText('+25', { exact: true }).first()).toBeVisible()
 
   // A boss is worth 250 XP: with the first 25 that is level 2 (level 3 needs 300).
-  await form.getByLabel('Quest', { exact: true }).fill('Lanceer de RSPS-site')
-  await form.getByText('Boss-quest').click()
-  await form.getByRole('button', { name: 'Quest toevoegen' }).click()
-  await expect(page.getByText('Quest staat erop.')).toBeVisible()
+  await form.getByLabel('Taak', { exact: true }).fill('Lanceer de RSPS-site')
+  await form.getByText('Hoofdtaak van de week').click()
+  await form.getByRole('button', { name: 'Taak toevoegen' }).click()
+  await expect(page.getByText('Staat op je lijst.')).toBeVisible()
   await page.getByRole('button', { name: 'Rond af: Lanceer de RSPS-site' }).click()
   const party = page.getByRole('dialog', { name: 'Gefeliciteerd' })
   await expect(party).toContainText('Level up')

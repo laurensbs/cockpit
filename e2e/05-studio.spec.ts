@@ -49,8 +49,8 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
   await expect(page.getByText('Ruil een rondje tegen koffie')).toBeVisible()
   await expect(page.getByRole('img', { name: 'Ideeën op impact en moeite' })).toBeVisible()
   const idea = page.locator('article').filter({ hasText: 'Ruil een rondje tegen koffie' })
-  await idea.getByRole('button', { name: 'Maak quest' }).click()
-  await expect(idea.getByText('quest', { exact: true })).toBeVisible()
+  await idea.getByRole('button', { name: 'Op mijn lijst' }).click()
+  await expect(idea.getByText('op je lijst', { exact: true })).toBeVisible()
   await idea.getByRole('button', { name: 'Goed idee' }).click()
   await expect(idea.getByRole('button', { name: 'Goed idee' })).toHaveAttribute('aria-pressed', 'true')
 
