@@ -109,7 +109,7 @@ function Step({ projectId, step, open }: { projectId: string; step: SetupStepVie
 }
 
 /** "Klaar om te groeien": what this business still needs, the next step on top, the rest per theme. */
-export function SetupCard({ projectId, steps, next }: { projectId: string; steps: SetupStepView[]; next: string | null }) {
+export function SetupCard({ projectId, projectName, steps, next }: { projectId: string; projectName?: string; steps: SetupStepView[]; next: string | null }) {
   const [pending, start] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const done = steps.filter((s) => s.status === 'done').length
@@ -119,7 +119,7 @@ export function SetupCard({ projectId, steps, next }: { projectId: string; steps
     <section className="card stack-m" aria-labelledby="setup-title">
       <div className="row between nowrap">
         <div className="stack-xs">
-          <h2 id="setup-title">Klaar om te groeien</h2>
+          <h2 id="setup-title">{projectName ? `Checklist voor ${projectName}` : 'Checklist'}</h2>
           <span className="tiny muted">
             {done} van {steps.length} geregeld · Cockpit controleert dit elke dag zelf
           </span>
@@ -139,16 +139,23 @@ export function SetupCard({ projectId, steps, next }: { projectId: string; steps
           </ul>
         </div>
       ) : null}
-      {groups.map(({ g, items }) => (
-        <div key={g} className="stack-xs">
-          <p className="eyebrow">{SETUP_GROUPS[g]}</p>
-          <ul className="setup-list">
-            {items.map((s) => (
-              <Step key={s.key} projectId={projectId} step={s} />
-            ))}
-          </ul>
-        </div>
-      ))}
+      {groups.length ? (
+        <details className="stack-s">
+          <summary className="small">
+            Alle {steps.length} punten ({done} geregeld)
+          </summary>
+          {groups.map(({ g, items }) => (
+            <div key={g} className="stack-xs" style={{ marginTop: '0.6rem' }}>
+              <p className="eyebrow">{SETUP_GROUPS[g]}</p>
+              <ul className="setup-list">
+                {items.map((s) => (
+                  <Step key={s.key} projectId={projectId} step={s} />
+                ))}
+              </ul>
+            </div>
+          ))}
+        </details>
+      ) : null}
       <div className="row">
         <button
           type="button"

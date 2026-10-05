@@ -9,7 +9,7 @@ export function StageSelect({ projectId, stage }: { projectId: string; stage: st
   return (
     <select
       className="select"
-      aria-label="Fase"
+      aria-label="Status"
       defaultValue={stage}
       disabled={pending}
       style={{ width: 'auto', minHeight: 36, borderRadius: 999 }}

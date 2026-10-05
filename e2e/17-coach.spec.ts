@@ -39,7 +39,8 @@ test('Claude fills in the checklist and gives the best next step; he ticks it of
   // On the project page: the checklist with the step done, Trustpilot left out (not needed).
   await page.goto('/projects')
   await page.getByRole('link', { name: /Webstability/ }).first().click()
-  const setup = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Klaar om te groeien' }) })
+  const setup = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Checklist voor Webstability' }) })
+  await setup.getByText(/^Alle \d+ punten/).click()
   await expect(setup.getByRole('listitem', { name: 'Google Bedrijfsprofiel' }).getByLabel('Geregeld')).toBeVisible()
   await expect(setup.getByRole('listitem', { name: 'Trustpilot-profiel' })).toHaveCount(0)
   // He marks a step himself.

@@ -120,7 +120,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
             <div className="row project-actions">
-              <StageSelect projectId={project.id} stage={project.stage} />
               <Link href={`/projects/${project.id}/edit`} className="button secondary small">
                 <Icon name="edit" size={16} /> Bewerken
               </Link>
@@ -132,19 +131,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         <ProjectTabs projectId={project.id} active="overview" />
       </header>
 
-      {coach ? (
-        <CoachCard
-          coach={{ advice: coach.advice, projectId: project.id, projectName: project.name, when: ago(coach.at, now), stamp: coach.at.toISOString() }}
-          scope={{ projectId: project.id }}
-          disabledReason={blocked}
-        />
-      ) : null}
-
       {!intakeDone ? (
         <div className="notice row between">
-          <span>Vul de vijf vragen in: daar haalt de marketing zijn kennis uit.</span>
+          <span>Beantwoord de vijf vragen over {project.name}: daar haalt Claude alles uit.</span>
           <Link href={`/projects/${project.id}/edit`} className="button primary small">
-            Intake invullen
+            Vijf vragen invullen
           </Link>
         </div>
       ) : null}
@@ -152,11 +143,19 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       {outcome?.model && outcome.pace ? <GrowthCard projectId={project.id} model={outcome.model} pace={outcome.pace} spark={outcome.spark} sources={outcome.sources} /> : null}
       {outcome?.model && outcome.funnel ? <FunnelStrip stages={outcome.stages} funnel={outcome.funnel} /> : null}
 
+      {/* What now: the coach's one line, then the next steps from the numbers and the plan. */}
+      <CoachCard
+        coach={{ advice: coach?.advice ?? null, projectId: project.id, projectName: null, when: coach ? ago(coach.at, now) : null, stamp: coach ? coach.at.toISOString() : null }}
+        scope={{ projectId: project.id }}
+        disabledReason={blocked}
+        line
+      />
       <NextSteps groups={steps} disabledReason={blocked} project={project.name} />
 
       {setup.length ? (
         <SetupCard
           projectId={project.id}
+          projectName={project.name}
           next={nextSetupStep(setup)?.item.key ?? null}
           steps={setup.map((v) => ({ key: v.item.key, group: v.item.group, title: v.item.title, why: v.item.why, steps: v.item.steps, who: v.item.who, cost: v.item.cost, legal: Boolean(v.item.legal), status: v.status, source: v.source, note: v.note }))}
         />
@@ -168,7 +167,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       <details className="more stack-l">
         <summary className="button secondary">Meer over {project.name}</summary>
       <section className="card stack-m">
-        <h2>Intake</h2>
+        <div className="row between">
+          <h2>De vijf vragen</h2>
+          <StageSelect projectId={project.id} stage={project.stage} />
+        </div>
         <div className="grid">
           <Fact label="Wat het doet" value={project.what} empty="Nog niet ingevuld" />
           <Fact label="Voor wie" value={project.audience} empty="Nog niet ingevuld" />

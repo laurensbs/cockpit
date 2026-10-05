@@ -19,9 +19,10 @@ test('Vandaag: the next step per project, and a free question for Claude through
   await expect(next.locator('.project-chip').first()).toBeVisible()
   await shot(page, '20-today-smart')
 
-  // He asks about one project; the question travels in the ticket, never in the terminal command.
+  // He asks about one project, on its page; the question travels in the ticket, never in the terminal command.
+  await page.goto('/projects')
+  await page.getByRole('link', { name: /Rondje/ }).first().click()
   await page.getByLabel('Je vraag of opdracht').fill('Waar haal ik de eerste 100 wandelaars vandaan?')
-  await page.getByLabel('Over', { exact: true }).selectOption({ label: 'Rondje' })
   await page.getByRole('button', { name: 'Vraag het Claude' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Claude werkt eraan' })).toBeVisible()
   expect(launches().at(-1)!.command).not.toContain('wandelaars')
