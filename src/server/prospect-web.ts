@@ -47,7 +47,7 @@ export async function isPublicUrl(raw: string): Promise<boolean> {
   }
 }
 
-async function getPage(url: string): Promise<string | null> {
+export async function getPage(url: string): Promise<string | null> {
   if (!(await isPublicUrl(url))) return null
   try {
     const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' } })

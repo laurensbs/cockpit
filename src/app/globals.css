@@ -2136,6 +2136,65 @@ a.card.tile:hover {
   opacity: 0.6;
 }
 
+/* The growth checklist: a round mark per step, the open ones with their cost and the how. */
+.setup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.setup-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+}
+.setup-list > .setup-step + .setup-step {
+  border-top: 2px solid var(--line);
+}
+.setup-step.done strong {
+  color: var(--muted);
+}
+.setup-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+  border-radius: 50%;
+}
+.setup-mark.done {
+  background: var(--green);
+  color: #ffffff;
+  box-shadow: 0 3px 0 var(--green-edge);
+}
+.setup-mark.todo {
+  background: var(--flame-soft);
+  color: var(--flame-edge);
+}
+.setup-mark.unknown {
+  background: var(--sunken);
+  color: var(--faint);
+}
+.setup-next {
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-m);
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: var(--accent-soft);
+}
+.setup-how {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.2rem;
+}
+.setup-count {
+  font: 900 1.4rem/1 var(--font-display);
+  color: var(--green-edge);
+}
+
 /* Pages arrive softly. */
 .main > * {
   animation: page-in 0.22s ease-out;

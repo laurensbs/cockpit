@@ -5,17 +5,23 @@ import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { ArticlesWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
+import { CoachWire } from '@/lib/coach'
 import { addDays, dayOf } from '@/lib/dates'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
 import { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
+import { SETUP_ITEMS } from '@/lib/setup'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
+import { saveCoach } from '../coach'
 import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
+import { saveSetupRows } from '../setup-check'
 import { resolveProject, type ProjectRef } from './projects'
 import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveIntake, saveLinkedin, saveProspects, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly, updateProspect } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
+
+const SETUP_KEYS = SETUP_ITEMS.map((i) => i.key) as [string, ...string[]]
 
 const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] })
 const fail = (t: string) => ({ content: [{ type: 'text' as const, text: t }], isError: true })
@@ -164,7 +170,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         kind = found.task
         projectId = found.projectId
         options = { ...found.options, ...options }
-      } else if (kind && kind !== 'weekly' && !(kind === 'ask' && !project)) {
+      } else if (kind && kind !== 'weekly' && kind !== 'coach' && !(kind === 'ask' && !project)) {
         if (!project) return fail('Which project? Pass project (see list_projects).')
         const found = await resolveProject(db, ownerId, project)
         if ('error' in found) return fail(found.error)
@@ -204,6 +210,42 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
       withProject(project, async (p) => {
         const result = await saveIntake(db, ownerId, p, intake)
         return result.ok ? text(result.text) : fail(result.text)
+      }),
+  )
+
+  server.registerTool(
+    'save_coach',
+    {
+      title: 'Save the best next step (the coach)',
+      description:
+        'One concrete best next step for a project (or across everything when project is left out): title (starts with a verb), why (two plain Dutch sentences: what it brings him), steps (1–5, concrete, in order), who does it (jij, claude or samen), cost (an amount or "gratis") and setupKey when it is a step of the checklist. He sees it on Vandaag and on the project page. Money, accounts, publishing and contacting people stay his decision.',
+      inputSchema: { project: z.string().optional().describe('Exact name or id; leave out for advice across all projects'), ...CoachWire.shape },
+    },
+    async ({ project, ...advice }) => {
+      const setupKey = advice.setupKey && SETUP_KEYS.includes(advice.setupKey) ? advice.setupKey : undefined
+      if (!project) return text(await saveCoach(db, ownerId, null, { ...advice, setupKey }))
+      return withProject(project, async (p) => text(await saveCoach(db, ownerId, p, { ...advice, setupKey })))
+    },
+  )
+
+  server.registerTool(
+    'save_checklist',
+    {
+      title: 'Say what a project has arranged (domain, mail, Google Business Profile, reviews, keys, app stores)',
+      description:
+        'The growth checklist per project (see <setup> in get_project). Set a step from what his own documents say (STAND.md, CLAUDE.md, the code): "done" when it is arranged, "todo" when it is needed and not done, "na" when it does not fit this project (for example no Google Business Profile for a game), with a short note in Dutch (what you saw, where). He and the cockpit\'s own checks overrule you. Only what you send changes.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        items: z
+          .array(z.object({ key: z.enum(SETUP_KEYS), status: z.enum(['done', 'todo', 'na', 'unknown']), note: z.string().trim().max(300).optional() }))
+          .min(1)
+          .max(SETUP_KEYS.length),
+      },
+    },
+    async ({ project, items }) =>
+      withProject(project, async (p) => {
+        await saveSetupRows(db, ownerId, p.id, items.map((i) => ({ key: i.key, source: 'claude', status: i.status, note: i.note ?? '' })))
+        return text(`Checklist van ${p.name} bijgewerkt (${items.length} ${items.length === 1 ? 'stap' : 'stappen'}). Hij ziet het op de projectpagina.`)
       }),
   )
 

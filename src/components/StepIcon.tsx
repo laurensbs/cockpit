@@ -1,7 +1,7 @@
 // One look per kind of step, everywhere: the same icon and colour on the path, in the lesson and at the
 // end, so he recognises a step before he reads it.
 
-import { Building2, HandHeart, Hammer, Megaphone, MessageCircle, Phone, Rocket, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Building2, ClipboardCheck, HandHeart, Hammer, Megaphone, MessageCircle, Phone, Rocket, TrendingUp, type LucideIcon } from 'lucide-react'
 import type { DayStep } from '@/lib/today'
 
 export type StepKind = DayStep['kind'] | 'prospect'
@@ -13,6 +13,7 @@ export const STEP_LOOK: Record<StepKind, { icon: LucideIcon; tone: Tone }> = {
   prospect: { icon: Building2, tone: 'violet' },
   reply: { icon: MessageCircle, tone: 'green' },
   give: { icon: HandHeart, tone: 'pink' },
+  setup: { icon: ClipboardCheck, tone: 'lime' },
   checkin: { icon: TrendingUp, tone: 'gold' },
   post: { icon: Megaphone, tone: 'orange' },
   build: { icon: Hammer, tone: 'teal' },

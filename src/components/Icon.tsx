@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Building2,
   CalendarDays,
+  Coins,
   ChartColumn,
   Check,
   Copy,
@@ -78,6 +79,7 @@ const ICONS = {
   edit: Pencil,
   close: X,
   cpu: Cpu,
+  coins: Coins,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof ICONS

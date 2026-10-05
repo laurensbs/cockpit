@@ -12,6 +12,7 @@ import { runInBackground } from '@/server/actions/claude'
 import { setContactStatus } from '@/server/actions/contacts'
 import { gaveValue, markContentDone } from '@/server/actions/content'
 import { saveFollowers } from '@/server/actions/numbers'
+import { setSetupStatus } from '@/server/actions/setup'
 import { acceptProspect, prospectWantsInfo, skipProspect } from '@/server/actions/prospects'
 import { completeQuest } from '@/server/actions/quests'
 import { Logo } from './Logo'
@@ -36,6 +37,7 @@ const KIND_LABEL: Record<LessonCard['kind'], string> = {
   prospect: 'Nieuw bedrijf',
   reply: 'Antwoord?',
   give: 'Help iemand',
+  setup: 'Regelen',
   checkin: 'Je cijfers',
   post: 'Posten',
   build: 'Bouwen in het openbaar',
@@ -269,6 +271,25 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
       <Bubble title="Claude">
         <p>Een antwoord is goud: daarmee telt het mee in je trechter.</p>
       </Bubble>
+    )
+  if (card.kind === 'setup')
+    return (
+      <div className="stack-m">
+        <Bubble title="Waarom">
+          <p>{card.why}</p>
+          {card.cost ? <p className="small muted">Kosten: {card.cost}</p> : null}
+        </Bubble>
+        {card.status === 'todo' ? (
+          <div className="card sunken stack-xs">
+            <p className="eyebrow">Zo doe je het</p>
+            <ol className="small setup-how">
+              {card.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+      </div>
     )
   if (card.kind === 'give')
     return (
@@ -510,6 +531,59 @@ function Actions({
         >
           Bewaar
         </button>
+      </div>
+    )
+
+  if (card.kind === 'setup')
+    return (
+      <div className="lesson-actions">
+        <button
+          type="button"
+          className={big}
+          disabled={pending || !card.projectId}
+          onClick={() =>
+            run(async () => {
+              const r = await setSetupStatus(card.projectId!, card.setupKey, 'done')
+              return { tone: r.ok ? 'good' : 'bad', text: r.ok ? 'Geregeld!' : 'Dat lukte niet.', xp: r.xp }
+            })
+          }
+        >
+          {card.status === 'unknown' ? 'Ja, geregeld' : 'Gedaan ✓'}
+        </button>
+        <div className="row">
+          {card.status === 'unknown' ? (
+            <button
+              type="button"
+              className={second}
+              disabled={pending || !card.projectId}
+              onClick={() =>
+                run(async () => {
+                  await setSetupStatus(card.projectId!, card.setupKey, 'todo')
+                  return { tone: 'neutral', text: 'Genoteerd: dat komt in je stappen.', xp: 0 }
+                })
+              }
+            >
+              Nog niet
+            </button>
+          ) : (
+            <button type="button" className={second} onClick={() => later()}>
+              Later
+            </button>
+          )}
+          <button
+            type="button"
+            className="button ghost big"
+            disabled={pending || !card.projectId}
+            onClick={() =>
+              run(async () => {
+                await setSetupStatus(card.projectId!, card.setupKey, 'na')
+                return { tone: 'neutral', text: 'Niet nodig: weg van je lijst.', xp: 0 }
+              })
+            }
+          >
+            Niet nodig
+          </button>
+        </div>
       </div>
     )
 

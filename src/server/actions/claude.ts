@@ -108,3 +108,17 @@ export async function retryBackgroundToday(): Promise<{ ok: boolean; message: st
   const started = (weekly === 'started' ? 1 : 0) + prospects.started.length + posts.length
   return { ok: true, message: started ? `Claude is opnieuw begonnen (${started} ${started === 1 ? 'klus' : 'klussen'}).` : 'Er stond vandaag niets meer klaar om te doen.' }
 }
+
+/**
+ * "Ik weet het even niet": Claude looks across all his projects in the background and names the one
+ * thing to do now; the coach card shows it when it lands.
+ */
+export async function askCoach(): Promise<{ ok: boolean; message: string }> {
+  await actionOwner()
+  if ((await claudeLoggedIn()) === false) return { ok: false, message: 'Claude Code is nog niet ingelogd. Typ in Terminal claude en dan /login.' }
+  const ticket = createTicket({ task: 'coach', projectId: null, options: {} })
+  const { started } = await runHeadless(launchPrompt(ticket))
+  return started
+    ? { ok: true, message: 'Claude kijkt naar al je projecten. Over een paar minuten staat hier wat nu het belangrijkst is.' }
+    : { ok: false, message: 'Claude Code kon niet starten.' }
+}

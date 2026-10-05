@@ -4,6 +4,8 @@ import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayOf } from '@/lib/dates'
 import { ACTION_KINDS } from '@/lib/game'
+import { costOf } from '@/lib/costs'
+import { nextSetupStep } from '@/lib/setup'
 import { preferredPlatform, socialsOf } from '@/lib/socials'
 import { buildNote, DAY_GOAL, type DayStep, pickGivePlace, pickSteps, recentPulls, recentWork } from '@/lib/today'
 import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
@@ -11,6 +13,7 @@ import type { NextStepGroup } from '@/components/NextSteps'
 import { projectPulses } from './game'
 import { EMPTY_GROWTH, growthStates } from './growth-state'
 import { outcomeHref, outcomeStates } from './outcome-state'
+import { loadSetup } from './setup-check'
 import { award } from './xp'
 
 const PLATFORM_LABEL: Record<string, string> = { linkedin: 'LinkedIn', instagram: 'Instagram', x: 'X', tiktok: 'TikTok', discord: 'Discord' }
@@ -57,6 +60,26 @@ export async function dayCandidates(db: Db, ownerId: string, growth: { title: st
     .orderBy(s.contact.lastContactAt)
     .limit(3)
   for (const q of quiet) steps.push({ kind: 'reply', key: `reply-${q.id}`, title: short(`Antwoordde ${q.organization}?`, 44), sub: byId.get(q.projectId)?.name ?? '', projectId: q.projectId, contactId: q.id })
+
+  // One thing to arrange from a project's growth checklist (a Business Profile, a domain, live keys…):
+  // the most useful open step of the project that needs it most, asked or explained in the lesson.
+  for (const p of projects.filter((x) => !marketingOff(x))) {
+    const next = nextSetupStep(await loadSetup(db, p))
+    if (!next || next.item.who === 'claude') continue
+    const ask = next.status === 'unknown'
+    steps.push({
+      kind: 'setup',
+      key: `setup-${p.id}-${next.item.key}`,
+      title: short(ask ? `Al geregeld: ${next.item.title.charAt(0).toLowerCase()}${next.item.title.slice(1)}?` : next.item.title, 52),
+      sub: p.name,
+      projectId: p.id,
+      setupKey: next.item.key,
+      status: ask ? 'unknown' : 'todo',
+      why: next.item.why,
+      steps: next.item.steps,
+      cost: costOf(next.item.cost)?.text ?? null,
+    })
+  }
 
   // One bit of value in a place where his audience talks (an answer, a tip; no pitch), once a day.
   const given = await db

@@ -6,9 +6,11 @@ import { portfolioContext, projectContext, type ContextInput, type PortfolioInpu
 import { profileFromJson, type Profile } from '@/lib/ai/schemas'
 import { addMonths, dayOf, monthStart } from '@/lib/dates'
 import { workLines } from '@/lib/github-work'
+import { setupLines } from '@/lib/setup'
 import { socialsOf } from '@/lib/socials'
 import { readCompass } from '../compass'
 import { bottleneckLine, growthText, lessonLine, type LessonBody, outcomeStates, paceLine } from '../outcome-state'
+import { loadSetup } from '../setup-check'
 
 export interface JobContext {
   ownerId: string
@@ -95,6 +97,7 @@ export async function loadJobContext(db: Db, ownerId: string, projectId: string)
       lessons: lessons.map((l) => lessonLine(l.title, l.body as LessonBody)),
       socials: socialsOf(project.links) as Record<string, string>,
       compass: readCompass(project),
+      setup: setupLines(await loadSetup(db, project)),
     },
   }
 }

@@ -15,6 +15,7 @@ export const PLACES: { href: string; label: string; icon: IconName; tone: Tone }
 export const MORE: { href: string; label: string; icon: IconName; tone: Tone }[] = [
   { href: '/quests', label: 'Quests', icon: 'quests', tone: 'green' },
   { href: '/companies', label: 'Bedrijven', icon: 'companies', tone: 'gold' },
+  { href: '/kosten', label: 'Kosten', icon: 'coins', tone: 'teal' },
 ]
 
 function Place({ place, active }: { place: (typeof PLACES)[number]; active: boolean }) {

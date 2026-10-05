@@ -19,6 +19,7 @@ import {
   PLATFORMS,
   prospectTask,
   refreshTask,
+  coachTask,
   postsTask,
   profileTask,
   RULES,
@@ -34,7 +35,7 @@ import { dataSummary } from '../outcome-state'
 import { learningFor } from '../learning'
 import { loadPoints } from '../points'
 
-export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'prospect', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model', 'refresh'] as const
+export const TASK_KINDS = ['profile', 'plan', 'emails', 'contact_mail', 'contact_mails', 'posts', 'ideas', 'opportunities', 'prospect', 'seo', 'experiments', 'linkedin', 'weekly', 'ask', 'model', 'refresh', 'coach'] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 export const isTaskKind = (v: unknown): v is TaskKind => typeof v === 'string' && (TASK_KINDS as readonly string[]).includes(v)
 
@@ -55,6 +56,7 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   ask: 'Een vraag of opdracht van hem, in zijn eigen woorden',
   model: 'Groeimodel: één doelcijfer met een deadline en de trechter ernaartoe (een voorstel)',
   refresh: 'Kennis bijwerken: wat er nieuw is (naam, aanbod, fase) in de intake zetten',
+  coach: 'Coach: het ene ding dat nu het meeste oplevert',
 }
 
 export const EMAIL_PURPOSE_KEYS = Object.keys(EMAIL_PURPOSES) as [keyof typeof EMAIL_PURPOSES]
@@ -112,7 +114,7 @@ export interface Brief {
  * never as instructions), the task, and how to hand the result back with a tool.
  */
 export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projectId: string | null, options: TaskOptions): Promise<Brief | { error: string }> {
-  const portfolio = task === 'weekly' || (task === 'ask' && !projectId)
+  const portfolio = task === 'weekly' || task === 'coach' || (task === 'ask' && !projectId)
   const ctx = portfolio ? await loadPortfolioContext(db, ownerId) : projectId ? await loadJobContext(db, ownerId, projectId) : null
   if (!ctx) return { error: portfolio ? 'The portfolio could not be loaded.' : 'This task needs a project.' }
   const project = ctx.project
@@ -245,11 +247,15 @@ export async function buildBrief(db: Db, ownerId: string, task: TaskKind, projec
     case 'refresh':
       if (!project) return { error: 'refresh needs a project.' }
       body = refreshTask(name)
-      handBack = `\`save_intake\` with { "project": ${quoted}, …only the fields that changed… }, or no tool at all when nothing changed`
+      handBack = `\`save_intake\` with { "project": ${quoted}, …only the fields that changed… } (or not, when nothing changed), and then \`save_coach\` with { "project": ${quoted}, "title", "why", "steps": [ … ], "who", "cost", "setupKey" }`
       break
     case 'ask':
       if (!options.question) return { error: 'ask needs his question (question).' }
       body = askTask(options.question, project ? name : 'his projects')
+      break
+    case 'coach':
+      body = coachTask(dayOf(new Date()))
+      handBack = '`save_coach` with { "project": "<exact name>", "title", "why", "steps": [ … ], "who", "cost", "setupKey" }'
       break
     case 'weekly':
       body = weeklyTask(dayOf(new Date()))

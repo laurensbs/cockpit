@@ -8,13 +8,16 @@ import { AskClaude } from '@/components/AskClaude'
 import { PaceChip } from '@/components/GrowthCard'
 import { NextSteps, SetupChecklist } from '@/components/NextSteps'
 import { ClaudeLoggedOut } from '@/components/ClaudeLoggedOut'
+import { CoachCard } from '@/components/CoachCard'
 import { DayPath } from '@/components/DayPath'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
 import { WeekScoreCard } from '@/components/WeekScoreCard'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
+import { ago } from '@/lib/time'
 import { pickSteps } from '@/lib/today'
 import { headlessProblem } from '@/server/claude'
+import { latestCoach } from '@/server/coach'
 import { claudeBlocked } from '@/server/claude-status'
 import { dailyRound, playerStats, projectPulses } from '@/server/game'
 import { growthStates } from '@/server/growth-state'
@@ -49,6 +52,7 @@ export default async function TodayPage() {
   const daySteps = pickSteps(await dayCandidates(db, owner.userId, growthStep(ordered)), new Set(), 8)
   const progress = await dayProgress(db, owner.userId)
   const week = await loadWeekScore(db, owner.userId)
+  const coach = await latestCoach(db, owner.userId)
 
   const left = Math.max(0, progress.goal - progress.done)
   const name = owner.name ? owner.name.split(' ')[0] : null
@@ -68,6 +72,11 @@ export default async function TodayPage() {
       <DayPath steps={daySteps} done={progress.done} goal={progress.goal} />
 
       <aside className="today-rail" aria-label="Je voortgang">
+        <CoachCard
+          coach={{ advice: coach?.advice ?? null, projectId: coach?.projectId ?? null, projectName: coach?.projectName ?? null, when: coach ? ago(coach.at) : null, stamp: coach ? coach.at.toISOString() : null }}
+          scope={null}
+          disabledReason={blocked}
+        />
         <section className="card rail-card">
           <span className="disc tone-orange" style={{ width: 56, height: 56 }} aria-hidden="true">
             <Flame size={28} strokeWidth={2.5} fill={actionStreak.today ? 'currentColor' : 'none'} />

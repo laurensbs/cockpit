@@ -340,6 +340,28 @@ export const emailJob = pgTable(
 )
 
 /** One value per key: the owner's name, the GitHub token, what is connected. */
+/**
+ * What a business still needs to grow (an own domain, a Google Business Profile, reviews, live keys, the
+ * App Store…), per project. One row per source: what the cockpit checked itself ("auto"), what Claude
+ * read in his documents ("claude"), and what he ticked off himself ("jij", which always wins).
+ */
+export const setupItem = pgTable(
+  'setup_item',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    source: text('source').notNull(),
+    status: text('status').notNull(),
+    note: text('note').notNull().default(''),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('setup_item_project_key_source_idx').on(t.projectId, t.key, t.source)],
+)
+
 export const setting = pgTable(
   'setting',
   {
