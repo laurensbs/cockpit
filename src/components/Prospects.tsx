@@ -1,14 +1,13 @@
 'use client'
 
-import { CalendarClock, Mail, Phone, Star } from 'lucide-react'
+import { CalendarClock, Star } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
+import { NO_REASONS, YES_VERB } from '@/lib/prospect'
 import { acceptProspect, prospectNow, prospectWantsInfo, setProspecting, skipProspect, writeAllMails } from '@/server/actions/prospects'
-import { Logo } from './Logo'
+import { ProspectFacts } from './ProspectFacts'
 import { StepDisc } from './StepIcon'
 
-const REASONS = ['past niet', 'klopt niet wat Claude zag', 'te groot', 'te ver weg', 'anders'] as const
-const VERB: Record<string, string> = { call: 'Ja, ik bel ze', visit: 'Ja, ik ga langs', form: 'Ja, ik vul hun formulier in', email: 'Ja, ik bel ze' }
 
 /** Refreshes the page when something new lands, for a while after Claude started looking. */
 function useWatch(active: boolean) {
@@ -164,34 +163,7 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
         </p>
       ) : null}
       {p.note ? <p className="small muted">{p.note}</p> : null}
-      <div className="bubble-row">
-        <span className="bubble-who" aria-hidden="true">
-          <Logo />
-        </span>
-        <div className="bubble small">
-          <p className="bubble-title">Wat Claude zag</p>
-          <p>{p.observation}</p>
-          {p.website ? (
-            <a href={p.website} target="_blank" rel="noreferrer" className="tiny">
-              Kijk zelf op hun site
-            </a>
-          ) : null}
-        </div>
-      </div>
-      {p.pitch ? (
-        <div className="card sunken stack-xs">
-          <p className="eyebrow">Zo kun je openen</p>
-          <p className="small">“{p.pitch}”</p>
-        </div>
-      ) : null}
-      <div className="row" style={{ gap: '0.4rem' }}>
-        <span className={`chip ${p.hasPhone ? 'good' : ''}`}>
-          <Phone size={13} strokeWidth={2.5} aria-hidden="true" /> {p.hasPhone ? 'Telefoonnummer gevonden' : 'Geen telefoonnummer gevonden'}
-        </span>
-        <span className={`chip ${p.hasEmail ? 'good' : ''}`}>
-          <Mail size={13} strokeWidth={2.5} aria-hidden="true" /> {p.hasEmail ? 'algemeen mailadres gevonden' : 'geen mailadres gevonden'}
-        </span>
-      </div>
+      <ProspectFacts observation={p.observation} website={p.website} pitch={p.pitch} found={{ phone: p.hasPhone, email: p.hasEmail }} small />
       {p.draft ? (
         <details>
           <summary className="small">De infomail die Claude klaarzette (gaat pas als ze om info vragen)</summary>
@@ -212,7 +184,7 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
         <div className="stack-xs">
           <span className="small">Waarom niet? Dan zoekt Claude beter.</span>
           <div className="row wrap">
-            {REASONS.map((r) => (
+            {NO_REASONS.map((r) => (
               <button
                 key={r}
                 type="button"
@@ -243,7 +215,7 @@ export function ProspectCard({ p, decided, onDecided }: { p: ProspectView; decid
               })
             }
           >
-            {VERB[p.channel] ?? VERB.call}
+            {YES_VERB[p.channel] ?? YES_VERB.call}
           </button>
           <button type="button" className="button secondary big" disabled={pending} onClick={() => setAsking(true)}>
             Nee

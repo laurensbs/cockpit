@@ -76,7 +76,7 @@ test('he says yes (a call on his quests) or no (never again), and the mail goes 
   await expect(page.getByRole('heading', { name: /Voorstellen van Claude \(2\)/ })).toBeVisible()
   const garage = page.getByRole('listitem', { name: 'Voorstel: Garage Test' })
   await expect(garage.getByText('Hun afspraakknop vraagt geen merk')).toBeVisible()
-  await expect(garage.getByText('Telefoonnummer gevonden')).toBeVisible()
+  await expect(garage.getByText('Telefoon gevonden')).toBeVisible()
   await garage.getByText('De infomail die Claude klaarzette').click()
   await expect(garage.getByText('Lo que hablamos por teléfono')).toBeVisible()
 

@@ -117,3 +117,9 @@ export function prospectRank(p: { fit: number | null; hasPhone: boolean; channel
 export function byProspectRank<T extends { fit: number | null; hasPhone: boolean; channel: string; createdAt: Date }>(a: T, b: T): number {
   return prospectRank(b) - prospectRank(a) || a.createdAt.getTime() - b.createdAt.getTime()
 }
+
+/** Why he says no to a proposal; Claude searches better from it. */
+export const NO_REASONS = ['past niet', 'klopt niet wat Claude zag', 'te groot', 'te ver weg', 'anders'] as const
+
+/** What a yes means, by how to reach them. */
+export const YES_VERB: Record<string, string> = { call: 'Ja, ik bel ze', visit: 'Ja, ik ga langs', form: 'Ja, ik vul hun formulier in', email: 'Ja, ik bel ze' }

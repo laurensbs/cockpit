@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { chime } from '@/lib/chime'
 import { lessonLearned } from '@/lib/learning'
+import { NO_REASONS, YES_VERB } from '@/lib/prospect'
 import { MEASURE_LABEL, MEASURES, type WeekScore } from '@/lib/week-score'
 import { shareUrl } from '@/lib/share'
 import { searchLinks } from '@/lib/visibility'
@@ -19,7 +20,8 @@ import { saveFollowers } from '@/server/actions/numbers'
 import { setSetupStatus } from '@/server/actions/setup'
 import { acceptProspect, prospectWantsInfo, skipProspect } from '@/server/actions/prospects'
 import { completeQuest } from '@/server/actions/quests'
-import { Logo } from './Logo'
+import { Bubble } from './Bubble'
+import { ProspectFacts } from './ProspectFacts'
 import { STEP_LOOK, StepDisc } from './StepIcon'
 import { META_PLANNER } from './PostCard'
 import { PostImage } from './PostImage'
@@ -28,7 +30,6 @@ type Feedback = { tone: 'good' | 'neutral' | 'bad'; text: string; xp: number }
 type Phase = 'act' | 'ask-info' | 'reasons'
 
 const PLATFORM: Record<string, string> = { instagram: 'Instagram', linkedin: 'LinkedIn', x: 'X', tiktok: 'TikTok', discord: 'Discord' }
-const REASONS = ['past niet', 'klopt niet wat Claude zag', 'te groot', 'te ver weg', 'anders'] as const
 const hostOf = (url: string) => {
   try {
     return new URL(url).hostname.replace(/^www\./, '')
@@ -49,21 +50,6 @@ const KIND_LABEL: Record<LessonCard['kind'], string> = {
   post: 'Posten',
   build: 'Laat zien wat je bouwde',
   growth: 'Groeistap',
-}
-
-/** Claude speaks: its badge and a speech bubble. */
-function Bubble({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bubble-row">
-      <span className="bubble-who" aria-hidden="true">
-        <Logo />
-      </span>
-      <div className="bubble">
-        <p className="bubble-title">{title}</p>
-        {children}
-      </div>
-    </div>
-  )
 }
 
 const PLATFORM_HOME: Record<string, string> = { instagram: 'https://www.instagram.com/', tiktok: 'https://www.tiktok.com/upload', linkedin: 'https://www.linkedin.com/feed/', x: 'https://x.com/compose/post' }
@@ -251,22 +237,7 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
       </div>
     ) : (
       <div className="stack-m">
-        {card.observation ? (
-          <Bubble title="Wat Claude zag">
-            <p>{card.observation}</p>
-            {card.website ? (
-              <a href={card.website} target="_blank" rel="noreferrer noopener" className="tiny row nowrap" style={{ gap: '0.3rem', width: 'fit-content' }}>
-                Bekijk hun site <ExternalLink size={14} strokeWidth={2.5} aria-hidden="true" />
-              </a>
-            ) : null}
-          </Bubble>
-        ) : null}
-        {card.pitch ? (
-          <div className="card sunken stack-xs">
-            <p className="eyebrow">Zo open je</p>
-            <p>“{card.pitch}”</p>
-          </div>
-        ) : null}
+        {card.observation ? <ProspectFacts observation={card.observation} website={card.website ?? null} pitch={card.pitch ?? ''} /> : null}
         {card.phone ? (
           <a className="button secondary big lesson-call" href={`tel:${card.phone}`}>
             <Phone size={24} strokeWidth={2.5} aria-hidden="true" /> {card.phone}
@@ -288,20 +259,7 @@ function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
     if (phase === 'reasons') return <p>Waarom niet? Dan zoekt Claude beter.</p>
     return (
       <div className="stack-m">
-        <Bubble title="Wat ik zag">
-          <p>{card.p.observation}</p>
-          {card.p.website ? (
-            <a href={card.p.website} target="_blank" rel="noreferrer noopener" className="tiny row nowrap" style={{ gap: '0.3rem', width: 'fit-content' }}>
-              Kijk zelf <ExternalLink size={14} strokeWidth={2.5} aria-hidden="true" />
-            </a>
-          ) : null}
-        </Bubble>
-        {card.p.pitch ? (
-          <div className="card sunken stack-xs">
-            <p className="eyebrow">Zo open je</p>
-            <p>“{card.p.pitch}”</p>
-          </div>
-        ) : null}
+        <ProspectFacts observation={card.p.observation} website={card.p.website} pitch={card.p.pitch} found={{ phone: card.p.hasPhone, email: card.p.hasEmail }} />
       </div>
     )
   }
@@ -550,7 +508,7 @@ function Actions({
       return (
         <div className="lesson-actions">
           <div className="row">
-            {REASONS.map((r) => (
+            {NO_REASONS.map((r) => (
               <button
                 key={r}
                 type="button"
@@ -584,7 +542,7 @@ function Actions({
             })
           }
         >
-          {card.p.channel === 'visit' ? 'Ja, ik ga langs' : 'Ja, ik bel ze'}
+          {YES_VERB[card.p.channel] ?? YES_VERB.call}
         </button>
         <div className="row">
           <button type="button" className={second} onClick={() => setPhase('reasons')}>
