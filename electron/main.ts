@@ -4,7 +4,7 @@ import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync,
 import { createServer } from 'node:net'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, Menu, nativeTheme, session, shell, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, dialog, Menu, nativeTheme, Notification, session, shell, type MenuItemConstructorOptions } from 'electron'
 import { loginShellPath, mergePath } from './path'
 
 // The desktop app (Mac and Windows): a window around the cockpit's own local server. The server
@@ -169,17 +169,38 @@ let win: BrowserWindow | null = null
 let opened: { base: string; token: string } | null = null
 
 /** Open the window (again): on a Mac, closing it leaves Cockpit running in the Dock, reading on. */
-async function showWindow() {
+async function showWindow(path?: string) {
   if (win) {
     if (win.isMinimized()) win.restore()
+    win.show()
     win.focus()
-    return
+  } else {
+    if (!opened) return
+    win = await openWindow(opened.base, opened.token)
+    win.on('closed', () => {
+      win = null
+    })
   }
-  if (!opened) return
-  win = await openWindow(opened.base, opened.token)
-  win.on('closed', () => {
-    win = null
-  })
+  if (path && opened) await win.loadURL(`${opened.base}${path}`)
+}
+
+/**
+ * The daily nudge: the server says when (a working day, his time, day goal still open, once a day); the
+ * app shows it as a Mac notification. A click opens the lesson.
+ */
+async function remind(base: string, token: string) {
+  try {
+    const res = await fetch(`${base}/api/reminder`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return
+    const data = (await res.json()) as { show: boolean; title?: string; body?: string; sound?: boolean }
+    if (!data.show || !Notification.isSupported()) return
+    const note = new Notification({ title: data.title ?? 'Cockpit', body: data.body ?? '', silent: !data.sound })
+    note.on('click', () => void showWindow('/dag'))
+    note.show()
+    appLog('reminder shown')
+  } catch {
+    // A missed minute is fine: the next one asks again.
+  }
 }
 
 async function main() {
@@ -260,6 +281,9 @@ async function main() {
   const daily = () => fetch(`${base}/api/daily`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined)
   setTimeout(daily, 15_000)
   setInterval(daily, 12 * 60 * 60 * 1000)
+  // The daily reminder: asked every minute, shown at most once a day.
+  setTimeout(() => void remind(base, token), 45_000)
+  setInterval(() => void remind(base, token), 60_000)
 }
 
 // On a Mac the app stays in the Dock when the window closes, so GitHub, the outbox and the daily round

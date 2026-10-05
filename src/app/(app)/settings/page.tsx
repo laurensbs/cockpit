@@ -3,11 +3,13 @@ import { ConnectClaudeButton } from '@/components/ConnectClaudeButton'
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/Icon'
 import { MailSettingsForm } from '@/components/MailSettingsForm'
+import { ReminderSettings } from '@/components/ReminderSettings'
 import { SoundToggle } from '@/components/SoundToggle'
 import { SettingsForm } from '@/components/SettingsForm'
 import { UpdateNowButton } from '@/components/UpdateNowButton'
 import { dbDir, dbMode, getDb } from '@/db'
 import { expectedToken } from '@/lib/local'
+import { reminderTime } from '@/lib/reminder'
 import { claudeInstallCommand } from '@/lib/terminal'
 import { claudeVersion, connectCommand, desktopConfig, mcpUrl } from '@/server/claude'
 import { mailConfig } from '@/server/outbox'
@@ -26,7 +28,7 @@ function StatusChip({ status }: { status: ServiceStatus }) {
 export default async function SettingsPage() {
   const owner = await requireOwner('/settings')
   const db = await getDb()
-  const [{ token, from }, stored, version, connectedAt, mail, autopilot, coldMail] = await Promise.all([
+  const [{ token, from }, stored, version, connectedAt, mail, autopilot, coldMail, reminder, reminderSound] = await Promise.all([
     githubTokenSource(db, owner.userId),
     getSetting(db, owner.userId, 'github_token'),
     claudeVersion(),
@@ -34,6 +36,8 @@ export default async function SettingsPage() {
     mailConfig(db, owner.userId),
     getSetting(db, owner.userId, 'autopilot_weekly'),
     getSetting(db, owner.userId, 'cold_mail_ok'),
+    getSetting(db, owner.userId, 'reminder_time'),
+    getSetting(db, owner.userId, 'reminder_sound'),
   ])
   const github = githubStatus(token)
   const appToken = expectedToken() ?? ''
@@ -84,6 +88,7 @@ export default async function SettingsPage() {
         ) : null}
         {version ? <AutopilotToggle on={autopilot !== '0'} /> : null}
         <SoundToggle />
+        <ReminderSettings time={reminderTime(reminder)} sound={reminderSound === '1'} />
         {version ? (
           <ConnectClaudeButton connectedAt={connectedAt} />
         ) : (
