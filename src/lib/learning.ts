@@ -43,6 +43,26 @@ export function learningLines(prospects: DecidedProspect[], posts: PostDone[], r
   return lines
 }
 
+/** The same lessons in his words, for him to see (at most three lines): so the cockpit shows it learns. */
+export function learningSummary(prospects: DecidedProspect[], posts: PostDone[]): string[] {
+  const lines: string[] = []
+  const decided = prospects.filter((p) => p.status !== 'prospect')
+  const no = decided.filter((p) => p.status === 'skipped')
+  const reasons = count(no.map((p) => p.note.match(/Nee van Laurens: ([^·]+)$/)?.[1]?.trim() ?? 'anders'))
+  if (reasons.length) lines.push(`Nee: ${reasons.map(([r, n]) => `${n}× ${r}`).join(', ')}. Claude zoekt minder van deze.`)
+  const byCity = count(decided.filter((p) => p.city).map((p) => p.city))
+  const cities = byCity.slice(0, 3).map(([city, n]) => `${city} ${decided.filter((p) => p.city === city && p.status !== 'skipped').length} van ${n}`)
+  if (cities.length) lines.push(`Ja per plaats: ${cities.join(', ')}. Hij zoekt meer waar jij ja zegt.`)
+  const info = decided.filter((p) => p.basis === 'consent').length
+  if (info) lines.push(`${info} ${info === 1 ? 'bedrijf vroeg' : 'bedrijven vroegen'} om informatie na je telefoontje.`)
+  const done = posts.filter((p) => p.done)
+  if (posts.length && lines.length < 3) {
+    const top = count(done.map((p) => p.platform))[0]
+    lines.push(`Je postte ${done.length} van de laatste ${posts.length} concepten${top ? `, vooral op ${top[0] === 'instagram' ? 'Instagram' : top[0] === 'linkedin' ? 'LinkedIn' : top[0]}` : ''}.`)
+  }
+  return lines.slice(0, 3)
+}
+
 /** One Dutch sentence for the end of the lesson, from what he decided in it. */
 export function lessonLearned(yes: number, reasons: string[]): string | null {
   if (!yes && !reasons.length) return null

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { learningLines, lessonLearned } from './learning'
+import { learningLines, learningSummary, lessonLearned } from './learning'
 
 describe('learningLines', () => {
   it('sums up his no reasons, his yes per town, info asked after a call, posts and reach', () => {
@@ -34,5 +34,21 @@ describe('lessonLearned', () => {
   it('turns the decisions of one lesson into one sentence', () => {
     expect(lessonLearned(2, ['te groot', 'te groot', 'past niet'])).toBe('Claude onthoudt: 2× ja, 2× "te groot", 1× "past niet". Morgen zoekt hij daarop.')
     expect(lessonLearned(0, [])).toBeNull()
+  })
+})
+
+describe('learningSummary', () => {
+  it('says in his words what his choices taught, at most three lines', () => {
+    const lines = learningSummary(
+      [
+        { status: 'skipped', city: 'Begur', note: 'x · Nee van Laurens: te groot', basis: 'business' },
+        { status: 'skipped', city: 'Begur', note: 'x · Nee van Laurens: te groot', basis: 'business' },
+        { status: 'drafted', city: 'Palamós', note: '', basis: 'consent' },
+        { status: 'prospect', city: 'Pals', note: '', basis: 'business' },
+      ],
+      [{ platform: 'instagram', done: true }],
+    )
+    expect(lines).toEqual(['Nee: 2× te groot. Claude zoekt minder van deze.', 'Ja per plaats: Begur 0 van 2, Palamós 1 van 1. Hij zoekt meer waar jij ja zegt.', '1 bedrijf vroeg om informatie na je telefoontje.'])
+    expect(learningSummary([], [])).toEqual([])
   })
 })

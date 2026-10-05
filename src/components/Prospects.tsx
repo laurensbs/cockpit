@@ -38,7 +38,7 @@ function useWatch(active: boolean) {
 const SEARCH_NOW = 20
 
 /** The switch per project and "Zoek nu": Claude looks for businesses that fit, he decides per business. */
-export function ProspectPanel({ projectId, projectName, perDay, waiting, off }: { projectId: string; projectName: string; perDay: number; waiting: number; off: boolean }) {
+export function ProspectPanel({ projectId, projectName, perDay, waiting, off, learned = [] }: { projectId: string; projectName: string; perDay: number; waiting: number; off: boolean; learned?: string[] }) {
   const [pending, start] = useTransition()
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [searching, setSearching] = useState(false)
@@ -48,6 +48,16 @@ export function ProspectPanel({ projectId, projectName, perDay, waiting, off }: 
     <section className="card stack-s" aria-labelledby="prospect-title">
       <h2 id="prospect-title">Claude zoekt bedrijven voor je</h2>
       <p className="small muted">Claude zoekt elke werkdag bedrijven die bij {projectName} passen. Jij zegt per bedrijf ja (dan bel je) of nee (dan leert hij).</p>
+      {learned.length ? (
+        <div className="card sunken stack-xs">
+          <p className="eyebrow">Wat Claude van je keuzes leerde</p>
+          <ul className="small setup-how">
+            {learned.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="row wrap">
         <label className="row nowrap small">
           Elke werkdag

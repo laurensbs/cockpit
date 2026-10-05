@@ -18,6 +18,7 @@ import { byProspectRank } from '@/lib/prospect'
 import { hostOf } from '@/lib/urls'
 import { loadJobContext } from '@/server/ai/context'
 import { claudeBlocked } from '@/server/claude-status'
+import { learningShown } from '@/server/learning'
 import { mailStatus, outboxRows, queueByItem } from '@/server/outbox-views'
 import { requireOwner } from '@/server/session'
 
@@ -80,7 +81,7 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
         </p>
       </details>
       <MailBanner status={status} />
-      <ProspectPanel projectId={id} projectName={ctx.project.name} perDay={projectRow?.perDay ?? 0} waiting={prospects.length} off={marketingOff} />
+      <ProspectPanel projectId={id} projectName={ctx.project.name} perDay={projectRow?.perDay ?? 0} waiting={prospects.length} off={marketingOff} learned={marketingOff ? [] : await learningShown(db, id)} />
       <ProspectList
         items={prospects.map((c): ProspectView => {
           const first = drafts.find((d) => d.contactId === c.id && d.status === 'draft')

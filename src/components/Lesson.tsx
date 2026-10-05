@@ -1,11 +1,12 @@
 'use client'
 
-import { Check, ExternalLink, Flame, Phone, Sparkles, Trophy, X, Zap } from 'lucide-react'
+import { Check, ExternalLink, Flame, Phone, Sparkles, Trophy, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { chime } from '@/lib/chime'
 import { lessonLearned } from '@/lib/learning'
+import { MEASURE_LABEL, MEASURES, type WeekScore } from '@/lib/week-score'
 import { shareUrl } from '@/lib/share'
 import { searchLinks } from '@/lib/visibility'
 import type { LessonCard } from '@/server/lesson'
@@ -71,7 +72,7 @@ const PLATFORM_HOME: Record<string, string> = { instagram: 'https://www.instagra
  * The day as a lesson: one card at a time, a big button, a green "goed zo" and on to the next. Claude
  * prepared every card; he does or decides. Leaving halfway is fine: what he did counts.
  */
-export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCard[]; done: number; goal: number; streak: number }) {
+export function Lesson({ cards: initial, done, goal, streak, week }: { cards: LessonCard[]; done: number; goal: number; streak: number; week?: { now: WeekScore['now']; before: WeekScore['before'] } }) {
   const router = useRouter()
   // The lesson keeps the cards it started with: every action refreshes the page, and a card that is done
   // would otherwise vanish from under the one he is looking at.
@@ -79,7 +80,6 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
   const [index, setIndex] = useState(0)
   const [phase, setPhase] = useState<Phase>('act')
   const [feedback, setFeedback] = useState<Feedback | null>(null)
-  const [xp, setXp] = useState(0)
   const [actions, setActions] = useState(0)
   // What he decided on businesses in this lesson, for the one sentence at the end.
   const [yes, setYes] = useState(0)
@@ -91,7 +91,6 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
   const answer = (f: Feedback, counts = f.tone === 'good') => {
     if (f.tone === 'good') chime('good')
     setFeedback(f)
-    setXp((x) => x + f.xp)
     if (counts) setActions((a) => a + 1)
   }
   const run = (fn: () => Promise<Feedback | null>) =>
@@ -110,9 +109,16 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
     setIndex((i) => i + 1)
   }
   const later = (text = 'Komt een andere keer terug.') => answer({ tone: 'neutral', text, xp: 0 }, false)
+  // At the end, read the week again, so its numbers include what he just did.
+  const ended = !cards[index]
+  useEffect(() => {
+    if (ended && cards.length) router.refresh()
+  }, [ended, cards.length, router])
 
   if (!card) {
     const reached = done + actions >= goal
+    // This week next to last week, for what moved: real progress instead of points.
+    const moved = week ? MEASURES.filter((m) => week.now[m] || week.before[m]) : []
     return (
       <div className="lesson">
         {reached ? <Confetti /> : null}
@@ -122,14 +128,22 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
             {reached ? <Trophy size={52} strokeWidth={2.5} /> : <Sparkles size={52} strokeWidth={2.5} />}
           </span>
           <h1>{reached ? 'Dagdoel gehaald!' : cards.length ? 'Lekker bezig!' : 'Niets te doen nu'}</h1>
+          {cards.length && actions ? (
+            <p className="muted">
+              {actions} {actions === 1 ? 'stap' : 'stappen'} gedaan
+            </p>
+          ) : null}
+          {moved.length && week ? (
+            <ul className="end-week small">
+              {moved.map((m) => (
+                <li key={m}>
+                  {MEASURE_LABEL[m]} deze week: <strong className="num">{week.now[m]}</strong> <span className="muted">(vorige week {week.before[m]})</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {cards.length ? (
             <div className="end-stats">
-              <div className="end-stat tone-lime">
-                <span>XP</span>
-                <strong>
-                  <Zap size={22} strokeWidth={2.5} fill="currentColor" aria-hidden="true" /> +{xp}
-                </strong>
-              </div>
               <div className="end-stat tone-orange">
                 <span>Op rij</span>
                 <strong>
@@ -208,10 +222,7 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
             pending={pending}
             run={run}
             later={later}
-            credit={(n) => {
-              setXp((x) => x + n)
-              setActions((a) => a + 1)
-            }}
+            credit={() => setActions((a) => a + 1)}
             decided={(reason) => (reason ? setReasons((r) => [...r, reason]) : setYes((n) => n + 1))}
           />
         )}

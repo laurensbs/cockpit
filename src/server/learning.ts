@@ -3,7 +3,7 @@ import { and, desc, eq, gte } from 'drizzle-orm'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayOf } from '@/lib/dates'
-import { learningLines } from '@/lib/learning'
+import { learningLines, learningSummary } from '@/lib/learning'
 import { weekLearning } from '@/lib/week-score'
 import { loadWeekScore } from './week-score'
 
@@ -38,4 +38,25 @@ export async function learningFor(db: Db, projectId: string): Promise<string[]> 
   const [owner] = await db.select({ ownerId: s.project.ownerId }).from(s.project).where(eq(s.project.id, projectId))
   const week = owner ? weekLearning(await loadWeekScore(db, owner.ownerId, projectId)) : null
   return week ? [...lines, week] : lines
+}
+
+/** What his choices of the last 30 days taught, in his words, to show on the page. */
+export async function learningShown(db: Db, projectId: string): Promise<string[]> {
+  const since = new Date(`${addDays(dayOf(new Date()), -30)}T00:00:00Z`)
+  const [prospects, posts] = await Promise.all([
+    db
+      .select({ status: s.contact.status, city: s.contact.city, note: s.contact.note, basis: s.contact.basis })
+      .from(s.contact)
+      .where(and(eq(s.contact.projectId, projectId), eq(s.contact.source, 'prospect'), gte(s.contact.createdAt, since))),
+    db
+      .select({ platform: s.contentItem.channel, status: s.contentItem.status })
+      .from(s.contentItem)
+      .where(and(eq(s.contentItem.projectId, projectId), eq(s.contentItem.kind, 'social'), gte(s.contentItem.createdAt, since)))
+      .orderBy(desc(s.contentItem.createdAt))
+      .limit(20),
+  ])
+  return learningSummary(
+    prospects,
+    posts.map((p) => ({ platform: p.platform || 'linkedin', done: p.status === 'done' })),
+  )
 }

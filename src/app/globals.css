@@ -2988,3 +2988,13 @@ html[data-shell='mac'] .lesson {
 .coach-line summary {
   cursor: pointer;
 }
+
+/* The end of the day: what moved this week, next to last week. */
+.end-week {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  text-align: center;
+}
