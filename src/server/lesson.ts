@@ -3,6 +3,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import type { ProspectView } from '@/components/Prospects'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
+import { byProspectRank } from '@/lib/prospect'
 import type { DayStep } from '@/lib/today'
 import { daySteps } from './today'
 
@@ -25,14 +26,18 @@ export async function lessonCards(db: Db, ownerId: string): Promise<LessonCard[]
       .from(s.contact)
       .where(and(eq(s.contact.ownerId, ownerId), eq(s.contact.projectId, step.projectId!), eq(s.contact.status, 'prospect')))
       .orderBy(desc(s.contact.fit), s.contact.createdAt)
-      .limit(PROSPECTS_PER_LESSON)
-    const drafts = rows.length
+    // The ones he can reach today first (see prospectRank), five per lesson.
+    const best = rows
+      .map((c) => ({ ...c, hasPhone: Boolean(c.phone) }))
+      .sort(byProspectRank)
+      .slice(0, PROSPECTS_PER_LESSON)
+    const drafts = best.length
       ? await db
           .select({ contactId: s.contentItem.contactId, body: s.contentItem.body })
           .from(s.contentItem)
-          .where(and(inArray(s.contentItem.contactId, rows.map((r) => r.id)), eq(s.contentItem.status, 'draft')))
+          .where(and(inArray(s.contentItem.contactId, best.map((r) => r.id)), eq(s.contentItem.status, 'draft')))
       : []
-    for (const c of rows) {
+    for (const c of best) {
       const body = drafts.find((d) => d.contactId === c.id)?.body as { subject?: string; body?: string; followups?: unknown[] } | undefined
       cards.push({
         kind: 'prospect',

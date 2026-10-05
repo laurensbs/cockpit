@@ -104,3 +104,16 @@ export function prospectKey(organization: string, website: string | null | undef
   if (host) keys.push(`host:${host}`)
   return keys
 }
+
+/**
+ * Which business to put in front of him first: the best fit, with a head start for one he can actually
+ * reach today (a phone number was found, or it is a place to walk into). A great fit without a number
+ * still comes before a weak one with a number.
+ */
+export function prospectRank(p: { fit: number | null; hasPhone: boolean; channel: string }): number {
+  return (p.fit ?? 0) + (p.hasPhone || p.channel === 'visit' ? 1.5 : 0)
+}
+
+export function byProspectRank<T extends { fit: number | null; hasPhone: boolean; channel: string; createdAt: Date }>(a: T, b: T): number {
+  return prospectRank(b) - prospectRank(a) || a.createdAt.getTime() - b.createdAt.getTime()
+}

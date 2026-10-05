@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contactLinks, extractEmails, extractPhones, normalizePhone, pickBusinessEmail, prospectKey } from './prospect'
+import { byProspectRank, contactLinks, extractEmails, extractPhones, normalizePhone, pickBusinessEmail, prospectKey } from './prospect'
 
 describe('extractEmails', () => {
   it('finds mailto links, plain text and the [at] spelling, and skips image names and placeholders', () => {
@@ -55,5 +55,19 @@ describe('extractPhones', () => {
   it('only keeps something that is a phone number', () => {
     expect(normalizePhone('12345')).toBeNull()
     expect(normalizePhone('0034 972 00 11 22')).toBe('+34972001122')
+  })
+})
+
+describe('byProspectRank', () => {
+  it('puts a business he can reach today first, but a great fit without a number before a weak one with', () => {
+    const at = (n: number) => new Date(2026, 9, 5, 9, n)
+    const list = [
+      { name: 'great, no number', fit: 5, hasPhone: false, channel: 'call', createdAt: at(1) },
+      { name: 'weak, number', fit: 2, hasPhone: true, channel: 'call', createdAt: at(2) },
+      { name: 'good, number', fit: 4, hasPhone: true, channel: 'call', createdAt: at(3) },
+      { name: 'good, shop', fit: 4, hasPhone: false, channel: 'visit', createdAt: at(4) },
+      { name: 'good, no number', fit: 4, hasPhone: false, channel: 'call', createdAt: at(5) },
+    ]
+    expect([...list].sort(byProspectRank).map((p) => p.name)).toEqual(['good, number', 'good, shop', 'great, no number', 'good, no number', 'weak, number'])
   })
 })

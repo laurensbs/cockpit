@@ -14,6 +14,7 @@ import { getDb } from '@/db'
 import * as s from '@/db/schema'
 import { dayOf } from '@/lib/dates'
 import { ANSWERED_STATUSES, CONTACT_BASIS_LABELS, isStopped, PROSPECT_STATUSES } from '@/lib/options'
+import { byProspectRank } from '@/lib/prospect'
 import { hostOf } from '@/lib/urls'
 import { loadJobContext } from '@/server/ai/context'
 import { claudeBlocked } from '@/server/claude-status'
@@ -31,7 +32,10 @@ export default async function ContactsPage({ params }: { params: Promise<{ id: s
   const all = await db.select().from(s.contact).where(eq(s.contact.projectId, id)).orderBy(desc(s.contact.createdAt))
   // Proposals from Claude wait for his yes or no on top; the ones he said no to stay out of sight.
   // The best fit first; of equal fit, the one waiting longest.
-  const prospects = all.filter((c) => c.status === 'prospect').sort((a, b) => (b.fit ?? 0) - (a.fit ?? 0) || a.createdAt.getTime() - b.createdAt.getTime())
+  const prospects = all
+    .filter((c) => c.status === 'prospect')
+    .map((c) => ({ ...c, hasPhone: Boolean(c.phone) }))
+    .sort(byProspectRank)
   const skippedCount = all.filter((c) => c.status === 'skipped').length
   const contacts = all.filter((c) => !PROSPECT_STATUSES.includes(c.status))
   const [projectRow] = await db.select({ perDay: s.project.prospectPerDay, what: s.project.what, redLines: s.project.redLines }).from(s.project).where(eq(s.project.id, id))

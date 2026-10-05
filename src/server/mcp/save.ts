@@ -105,11 +105,17 @@ export async function saveEmails(
     if (!contact || contact.projectId !== project.id) return 'Niets opgeslagen: dat contact hoort niet bij dit project (zie list_contacts).'
     const [draft, ...rest] = drafts
     const followups = rest.slice(0, 2).map((f) => ({ subject: f.subject, body: f.body }))
+    // A new version for this contact replaces the draft that was there (kept in the archive, never sent).
+    const replaced = await db
+      .update(s.contentItem)
+      .set({ status: 'archived' })
+      .where(and(eq(s.contentItem.contactId, contact.id), eq(s.contentItem.kind, 'email'), eq(s.contentItem.status, 'draft')))
+      .returning({ id: s.contentItem.id })
     await insertDrafts(db, ownerId, project.id, 'email', 'contact', input.language, [
       { title: `Mail aan ${contact.organization}`, body: { subject: draft.subject, body: draft.body, ps: draft.ps, followups }, contactId: contact.id },
     ])
     if (contact.status === 'new') await db.update(s.contact).set({ status: 'drafted' }).where(eq(s.contact.id, contact.id))
-    return `Opgeslagen: een persoonlijke mail aan ${contact.organization}${followups.length ? ` met ${followups.length} opvolgmail${followups.length === 1 ? '' : 's'}` : ''}. Hij keurt hem goed in Contacten; daarna gaat hij vanzelf de deur uit.`
+    return `Opgeslagen: een persoonlijke mail aan ${contact.organization}${followups.length ? ` met ${followups.length} opvolgmail${followups.length === 1 ? '' : 's'}` : ''}${replaced.length ? ' (vervangt het vorige concept)' : ''}. Hij keurt hem goed in Contacten; daarna gaat hij vanzelf de deur uit.`
   }
   const n = await insertDrafts(
     db,

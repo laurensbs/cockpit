@@ -67,6 +67,10 @@ test('approved mails go out on their own, within the cap, and an answer stops th
     const saved = await mcpTool(request, 'save_emails', { project: 'Rondje', purpose: 'contact', contactId: id, language: 'nl', drafts: sequence(org) })
     expect(saved.text).toContain('met 2 opvolgmails')
   }
+  // A better version for the same contact replaces the draft; it never ends up twice.
+  const noord = contacts.find((c) => c.organization === 'Opvang Noord')!.id
+  const better = await mcpTool(request, 'save_emails', { project: 'Rondje', purpose: 'contact', contactId: noord, language: 'nl', drafts: sequence('Opvang Noord') })
+  expect(better.text).toContain('vervangt het vorige concept')
 
   // One approval for all three.
   await page.reload()
