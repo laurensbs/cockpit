@@ -72,6 +72,12 @@ describe('studio schemas', () => {
     expect(normalizePosts(postsFixture()).at(0)?.hashtags).toEqual(['#rondje', '#hondenliefde', '#Utrecht'])
   })
 
+  it('keeps the planned day of a post only when it is a real date', () => {
+    const [good, bad] = normalizePosts({ posts: [{ ...postsFixture().posts[0], plannedFor: '2026-10-07' }, { ...postsFixture().posts[0], plannedFor: 'woensdag' }] })
+    expect(good.plannedFor).toBe('2026-10-07')
+    expect(bad.plannedFor).toBeNull()
+  })
+
   it('keeps scores between 1 and 5', () => {
     const [idea] = normalizeIdeas({ ideas: [{ ...ideasFixture().ideas[0], impact: 9, effort: -2, wildness: Number.NaN }] })
     expect(idea).toMatchObject({ impact: 5, effort: 1, wildness: 3 })

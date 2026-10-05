@@ -17,6 +17,7 @@ export interface MailSettingsValues {
   fromEmail: string
   cap: number
   enabled: boolean
+  coldMail: boolean
 }
 
 /** His own mailbox over SMTP, the daily cap, and the switch for automatic sending. */
@@ -96,7 +97,18 @@ export function MailSettingsForm({ values }: { values: MailSettingsValues }) {
         <input type="checkbox" name="enabled" value="1" defaultChecked={values.enabled} />
         <span className="stack-xs">
           <strong>Automatisch versturen</strong>
-          <span className="tiny muted">Mails die jij goedkeurt, gaan op werkdagen tussen 9 en 17 uur de deur uit, één tegelijk, met opvolgmails na 4 en 11 dagen. Een antwoord of “geen interesse” stopt de rest.</span>
+          <span className="tiny muted">Mails die jij goedkeurt, gaan op werkdagen tussen 9 en 17 uur de deur uit, één tegelijk, met opvolgmails na 4 en 11 dagen. Een antwoord of “geen interesse” stopt de rest. Een nieuwe mailbox warmt op: de eerste week hooguit 10 per dag, dan 20, dan 35, daarna jouw maximum. Zo belandt je mail niet in spam.</span>
+        </span>
+      </label>
+      <label className="check">
+        <input type="checkbox" name="coldMail" value="1" defaultChecked={values.coldMail} />
+        <span className="stack-xs">
+          <strong>Ook koude mail aan bedrijven</strong>
+          <span className="tiny muted">
+            Standaard uit. In Spanje (LSSI art. 21) en Nederland (Telecommunicatiewet 11.7) mag reclame per mail aan bedrijven alleen met toestemming,
+            of als er al een relatie is. Daarom bel je eerst; vraagt een bedrijf om info, dan tik je op “Ze willen info” en gaat de mail wel. Zet dit
+            alleen aan als je het hebt laten nakijken. Dit is geen juridisch advies.
+          </span>
         </span>
       </label>
       {state.error ? (

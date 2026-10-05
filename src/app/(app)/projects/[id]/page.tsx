@@ -2,6 +2,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AskClaude } from '@/components/AskClaude'
+import { CoachCard } from '@/components/CoachCard'
 import { FunnelStrip } from '@/components/FunnelStrip'
 import { GrowthCard } from '@/components/GrowthCard'
 import { Heatmap } from '@/components/Heatmap'
@@ -10,6 +11,8 @@ import { MetricForm } from '@/components/MetricForm'
 import { NextSteps } from '@/components/NextSteps'
 import { ProjectTabs } from '@/components/ProjectTabs'
 import { RepoList } from '@/components/RepoList'
+import { SetupCard } from '@/components/SetupCard'
+import { Socials } from '@/components/Socials'
 import { StageSelect } from '@/components/StageSelect'
 import { SyncButton } from '@/components/SyncButton'
 import { getDb } from '@/db'
@@ -18,13 +21,18 @@ import { activeDays, daysSinceLast, mergeCommitDays } from '@/lib/activity'
 import { addMonths, dayOf, monthLabel, monthStart } from '@/lib/dates'
 import { ACTION_TASKS, actionHref, nextActions } from '@/lib/growth'
 import { LANGUAGE_LABELS, METRIC_KEYS, METRIC_LABELS } from '@/lib/options'
+import { nextSetupStep } from '@/lib/setup'
 import { ago, formatEuro, formatNumber } from '@/lib/time'
+import { socialsOf } from '@/lib/socials'
 import { hostOf } from '@/lib/urls'
 import { claudeBlocked } from '@/server/claude-status'
+import { latestCoach } from '@/server/coach'
+import { readCompass } from '@/server/compass'
 import { EMPTY_GROWTH, growthStates } from '@/server/growth-state'
 import { outcomeHref, outcomeStates } from '@/server/outcome-state'
 import { metricsSince } from '@/server/queries'
 import { requireOwner } from '@/server/session'
+import { loadSetup } from '@/server/setup-check'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -55,6 +63,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const repos = await db.select().from(s.repo).where(eq(s.repo.projectId, id)).orderBy(desc(s.repo.pushedAt))
 
   const now = new Date()
+  const compass = readCompass(project)
+  const setup = /marketing staat uit/i.test(`${project.what} ${project.redLines}`) ? [] : await loadSetup(db, project)
+  const coach = setup.length ? await latestCoach(db, owner.userId, project.id) : null
   const today = dayOf(now)
   const thisMonth = monthStart(today)
   const months = [addMonths(thisMonth, -2), addMonths(thisMonth, -1), thisMonth]
@@ -82,41 +93,52 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         <Link href="/projects" className="button ghost small" style={{ alignSelf: 'start' }}>
           ← Projecten
         </Link>
-        <div className="row between">
-          <div className="stack-xs grow">
-            {company ? (
-              <Link href={`/companies/${company.id}`} className="row tiny" style={{ color: 'var(--muted)', textDecoration: 'none' }}>
-                <span className="dot" style={{ background: company.color }} /> {company.name}
+        <section className="card project-hero stack-m">
+          <div className="project-hero-top">
+            <span className="project-disc" style={{ '--tone': company?.color ?? 'var(--accent)' } as React.CSSProperties} aria-hidden="true">
+              {project.name.slice(0, 1).toUpperCase()}
+            </span>
+            <div className="stack-xs grow">
+              {company ? (
+                <Link href={`/companies/${company.id}`} className="tiny muted" style={{ textDecoration: 'none' }}>
+                  {company.name}
+                </Link>
+              ) : null}
+              <h1>{project.name}</h1>
+              <div className="row" style={{ gap: '0.4rem' }}>
+                {compass?.phase ? (
+                  <span className="chip accent" title={`Uit ${compass.source}${compass.goal ? `: ${compass.goal}` : ''}`}>
+                    Fase {compass.phase}
+                  </span>
+                ) : null}
+                {project.siteUrl ? (
+                  <a href={project.siteUrl} target="_blank" rel="noreferrer noopener" className={`chip ${project.siteStatus == null ? '' : project.siteStatus > 0 && project.siteStatus < 500 ? 'good' : 'bad'}`} title={project.siteCheckedAt ? `Gecontroleerd ${ago(project.siteCheckedAt, now)}` : undefined}>
+                    <Icon name="external" size={14} /> {hostOf(project.siteUrl)}
+                    {project.siteStatus == null ? null : project.siteStatus > 0 && project.siteStatus < 500 ? ' · online' : project.siteStatus ? ` · fout ${project.siteStatus}` : ' · niet bereikbaar'}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+            <div className="row project-actions">
+              <StageSelect projectId={project.id} stage={project.stage} />
+              <Link href={`/projects/${project.id}/edit`} className="button secondary small">
+                <Icon name="edit" size={16} /> Bewerken
               </Link>
-            ) : null}
-            <h1>{project.name}</h1>
-            {project.oneLiner ? <p className="lede">{project.oneLiner}</p> : null}
+            </div>
           </div>
-          <div className="row">
-            <StageSelect projectId={project.id} stage={project.stage} />
-            <Link href={`/projects/${project.id}/edit`} className="button secondary small">
-              <Icon name="edit" size={16} /> Bewerken
-            </Link>
-          </div>
-        </div>
-        {project.siteUrl ? (
-          <span className="row">
-            <a href={project.siteUrl} target="_blank" rel="noreferrer noopener" className="row small" style={{ width: 'fit-content' }}>
-              <Icon name="external" size={16} /> {hostOf(project.siteUrl)}
-            </a>
-            {project.siteStatus == null ? null : project.siteStatus > 0 && project.siteStatus < 500 ? (
-              <span className="chip good" title={project.siteCheckedAt ? `Gecontroleerd ${ago(project.siteCheckedAt, now)}` : undefined}>
-                online
-              </span>
-            ) : (
-              <span className="chip bad" title={project.siteCheckedAt ? `Gecontroleerd ${ago(project.siteCheckedAt, now)}` : undefined}>
-                {project.siteStatus ? `fout ${project.siteStatus}` : 'niet bereikbaar'}
-              </span>
-            )}
-          </span>
-        ) : null}
+          {project.oneLiner ? <p className="lede">{project.oneLiner}</p> : null}
+          <Socials projectId={project.id} linked={socialsOf(project.links)} />
+        </section>
         <ProjectTabs projectId={project.id} active="overview" />
       </header>
+
+      {coach ? (
+        <CoachCard
+          coach={{ advice: coach.advice, projectId: project.id, projectName: project.name, when: ago(coach.at, now), stamp: coach.at.toISOString() }}
+          scope={{ projectId: project.id }}
+          disabledReason={blocked}
+        />
+      ) : null}
 
       {!intakeDone ? (
         <div className="notice row between">
@@ -132,8 +154,19 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
       <NextSteps groups={steps} disabledReason={blocked} project={project.name} />
 
+      {setup.length ? (
+        <SetupCard
+          projectId={project.id}
+          next={nextSetupStep(setup)?.item.key ?? null}
+          steps={setup.map((v) => ({ key: v.item.key, group: v.item.group, title: v.item.title, why: v.item.why, steps: v.item.steps, who: v.item.who, cost: v.item.cost, legal: Boolean(v.item.legal), status: v.status, source: v.source, note: v.note }))}
+        />
+      ) : null}
+
       <AskClaude projects={[]} project={{ id: project.id, name: project.name }} disabledReason={blocked} />
 
+      {/* What the project is and does, its code and its numbers: there when he wants it, not in the way. */}
+      <details className="more stack-l">
+        <summary className="button secondary">Meer over {project.name}</summary>
       <section className="card stack-m">
         <h2>Intake</h2>
         <div className="grid">
@@ -246,6 +279,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         )}
         <MetricForm projects={[{ id: project.id, name: project.name }]} month={thisMonth.slice(0, 7)} />
       </section>
+      </details>
     </div>
   )
 }

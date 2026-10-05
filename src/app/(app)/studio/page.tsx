@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm'
+import { FlaskConical, Mail, Megaphone, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { ArticleCard } from '@/components/ArticleCard'
 import { EmailDraftCard } from '@/components/EmailDraftCard'
@@ -61,12 +62,17 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const db = await getDb()
   const projects = (
     await db
-      .select({ id: s.project.id, name: s.project.name, stage: s.project.stage, languages: s.project.languages })
+      .select({ id: s.project.id, name: s.project.name, stage: s.project.stage, languages: s.project.languages, what: s.project.what, redLines: s.project.redLines, prospectPerDay: s.project.prospectPerDay })
       .from(s.project)
       .where(eq(s.project.ownerId, owner.userId))
       .orderBy(asc(s.project.sortOrder), asc(s.project.name))
-  ).filter((p) => isStage(p.stage) && ACTIVE_STAGES.includes(p.stage))
-  const current = projects.find((p) => p.id === params.project) ?? projects[0]
+  )
+    .filter((p) => isStage(p.stage) && ACTIVE_STAGES.includes(p.stage))
+    // Projects that do marketing first; one with marketing off (a private project) goes last.
+    .map((p) => ({ ...p, off: /marketing staat uit/i.test(`${p.what} ${p.redLines}`) }))
+    .sort((a, b) => Number(a.off) - Number(b.off))
+  // Without a choice: the project he is actively selling (it looks for businesses every day), else the first that markets.
+  const current = projects.find((p) => p.id === params.project) ?? projects.find((p) => !p.off && p.prospectPerDay > 0) ?? projects[0]
   const href = (over: Record<string, string | undefined>) => {
     const q = new URLSearchParams()
     const next = { tab, project: current?.id, ...over }
@@ -211,31 +217,43 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     hub = (
       <>
         <section className="kpis">
-          <div className="kpi card flat">
+          <Link href={href({ tab: 'drafts' })} className="kpi card tile tone-orange">
+            <span className="tile-ico" aria-hidden="true">
+              <Megaphone size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Posts deze week</span>
             <span className="value">{postsDone}</span>
             <span className="tiny muted">{postsPlanned} gepland</span>
-          </div>
-          <div className="kpi card flat">
+          </Link>
+          <Link href={href({ tab: 'mails' })} className="kpi card tile tone-blue">
+            <span className="tile-ico" aria-hidden="true">
+              <Mail size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Mails deze week</span>
             <span className="value">{sentThisWeek}</span>
             <span className="tiny muted">{outbox.filter((o) => o.status === 'queued').length} in de wachtrij</span>
-          </div>
-          <div className="kpi card flat">
+          </Link>
+          <Link href={`/projects/${current.id}/contacts`} className="kpi card tile tone-green">
+            <span className="tile-ico" aria-hidden="true">
+              <MessageCircle size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Antwoorden</span>
             <span className="value">{contacts.filter((c) => ANSWERED_STATUSES.includes(c.status)).length}</span>
             <span className="tiny muted">van {contacts.length} contacten</span>
-          </div>
-          <div className="kpi card flat">
+          </Link>
+          <Link href={href({ tab: 'experiments' })} className="kpi card tile tone-violet">
+            <span className="tile-ico" aria-hidden="true">
+              <FlaskConical size={22} strokeWidth={2.5} />
+            </span>
             <span className="eyebrow">Experimenten</span>
             <span className="value">{running.length}</span>
             <span className="tiny muted">{experiments.filter((e) => e.status === 'done' && str(b(e).result) === 'won').length} gewonnen</span>
-          </div>
+          </Link>
         </section>
         <section className="card stack-s">
           <h2>Organische groei: wat nu?</h2>
           {actions.length ? (
-            <ol className="list">
+            <ol className="list next-steps">
               {actions.map((a) => (
                 <li key={a.key} className="row between">
                   <span className="stack-xs grow" style={{ minWidth: 0 }}>
@@ -378,17 +396,21 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       {tab === 'calendar' ? (
         <section className="card stack-s">
           <h2>Komende twee weken</h2>
-          <div className="calendar">
-            {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((day) => {
-              const planned = rows.filter((r) => r.plannedFor === day)
-              return (
-                <div key={day} className={`day${day === today ? ' today' : ''}`}>
-                  <span className="day-label small">{day === today ? 'vandaag' : dayLabel(day)}</span>
-                  <div className="stack-s">{planned.length ? planned.map((r) => (r.kind === 'social' ? postCard(r) : emailCard(r))) : <span className="tiny faint">—</span>}</div>
-                </div>
-              )
-            })}
-          </div>
+          {rows.some((r) => r.plannedFor && r.plannedFor >= today && r.plannedFor <= addDays(today, 13)) ? (
+            <div className="calendar">
+              {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((day) => {
+                const planned = rows.filter((r) => r.plannedFor === day)
+                return (
+                  <div key={day} className={`day${day === today ? ' today' : ''}${planned.length ? '' : ' empty-day'}`}>
+                    <span className="day-label small">{day === today ? 'vandaag' : dayLabel(day)}</span>
+                    <div className="stack-s">{planned.length ? planned.map((r) => (r.kind === 'social' ? postCard(r) : emailCard(r))) : <span className="tiny faint">—</span>}</div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="empty">Nog niets gepland voor de komende twee weken.</p>
+          )}
           <p className="tiny muted">Plan een post vanaf zijn kaart in Concepten (veld “Plan”).</p>
         </section>
       ) : null}

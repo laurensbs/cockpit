@@ -141,3 +141,20 @@ export async function pullNow(projectId?: string): Promise<{ ok: boolean; messag
     message: `${result.pulled} bron${result.pulled === 1 ? '' : 'nen'} opgehaald, ${result.points} cijfers${result.failed ? `; ${result.failed} lukte niet (zie hieronder)` : ''}.`,
   }
 }
+
+/** The lesson's one question: how many followers today. Same rules as savePoint, without a form. */
+export async function saveFollowers(projectId: string, value: number): Promise<{ ok: boolean; message: string; xp: number }> {
+  const owner = await actionOwner()
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n) || n < 0 || n > 1e9) return { ok: false, message: 'Vul een aantal in.', xp: 0 }
+  const own = await ownProject(owner.userId, String(projectId))
+  if (!own) return { ok: false, message: 'Dat project bestaat niet.', xp: 0 }
+  const day = dayOf(new Date())
+  const { ok } = normalizePoints([{ key: 'followers', day, value: n }], day)
+  if (!ok.length) return { ok: false, message: 'Dat kan niet.', xp: 0 }
+  await upsertPoints(own.db, owner.userId, String(projectId), 'manual', ok)
+  await rollupMonths(own.db, owner.userId, String(projectId), ['followers'])
+  const xp = await award(own.db, owner.userId, { kind: 'metric', refId: `${projectId}:${day}:followers`, projectId: String(projectId) })
+  refresh(String(projectId))
+  return { ok: true, message: 'Bewaard.', xp }
+}

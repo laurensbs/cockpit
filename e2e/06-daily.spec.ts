@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { weeklyFixture } from '../src/lib/ai/fixtures'
-import { mcpTool, newVisitor, TOKEN } from './helpers'
+import { mcpTool, newVisitor, TOKEN, openMore } from './helpers'
 
 // Runs last: projects exist. GITHUB_FIXTURES=1.
 test('the daily round runs with the app token, and syncs, checks and makes quests', async ({ request }) => {
@@ -15,6 +15,7 @@ test('the daily round runs with the app token, and syncs, checks and makes quest
 test('the weekly focus from Claude Code looks at the whole portfolio and suggests a boss', async ({ browser, request }) => {
   const { context, page } = await newVisitor(browser)
   await page.goto('/')
+  await openMore(page)
   await expect(page.getByRole('heading', { name: 'Focus van de week' })).toBeVisible()
   await page.getByRole('button', { name: /Maak de weekfocus/ }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Claude Code is geopend' })).toBeVisible()
@@ -24,6 +25,7 @@ test('the weekly focus from Claude Code looks at the whole portfolio and suggest
   const saved = await mcpTool(request, 'save_weekly', { weekly: weeklyFixture() })
   expect(saved.text).toContain('Opgeslagen')
   await page.reload()
+  await openMore(page)
   await expect(page.getByText('Deze week: Rondje op straat, de rest op een laag pitje.')).toBeVisible()
   await page.getByRole('button', { name: 'Maak er de boss van' }).click()
   await expect(page.getByText('Boss staat erop')).toBeVisible()

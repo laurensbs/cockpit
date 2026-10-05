@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
+import { contactKey, parseContactList } from '@/lib/contact-import'
 import { EMAIL } from '@/lib/mailto'
 import { ANSWERED_STATUSES, CONTACT_STATUSES, isStopped } from '@/lib/options'
 import { normalizeUrl } from '@/lib/urls'
@@ -59,6 +60,58 @@ export async function saveContact(_prev: FormState, form: FormData): Promise<For
   })
   revalidatePath(`/projects/${c.projectId}/contacts`)
   return { ok: true, message: 'Contact toegevoegd.' }
+}
+
+/**
+ * A pasted list of contacts (see parseContactList). Organisations already in the project, or twice in
+ * the list, are skipped; every line it cannot take is named, and the rest goes in.
+ */
+export async function importContacts(_prev: FormState, form: FormData): Promise<FormState> {
+  const owner = await actionOwner()
+  const projectId = String(form.get('projectId') ?? '')
+  const text = String(form.get('list') ?? '')
+  if (!text.trim()) return { ok: false, error: 'Plak eerst een lijst.' }
+  if (text.length > 200_000) return { ok: false, error: 'Die lijst is te lang.' }
+  const db = await getDb()
+  const [project] = await db
+    .select({ id: s.project.id })
+    .from(s.project)
+    .where(and(eq(s.project.id, projectId), eq(s.project.ownerId, owner.userId)))
+  if (!project) return { ok: false, error: 'Dat project bestaat niet.' }
+  const { rows, problems } = parseContactList(text)
+  const existing = await db.select({ organization: s.contact.organization }).from(s.contact).where(eq(s.contact.projectId, projectId))
+  const seen = new Set(existing.map((c) => contactKey(c.organization)))
+  const fresh = rows.filter((r) => {
+    const key = contactKey(r.organization)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  if (fresh.length) {
+    await db.insert(s.contact).values(
+      fresh.map((r) => ({
+        id: crypto.randomUUID(),
+        ownerId: owner.userId,
+        projectId,
+        organization: r.organization,
+        name: r.name,
+        email: r.email,
+        website: r.website,
+        note: r.note,
+        basis: r.basis,
+      })),
+    )
+    revalidatePath(`/projects/${projectId}/contacts`)
+  }
+  const skipped = rows.length - fresh.length
+  const parts = [
+    `${fresh.length} contact${fresh.length === 1 ? '' : 'en'} toegevoegd`,
+    skipped ? `${skipped} stond${skipped === 1 ? '' : 'en'} er al` : '',
+    ...problems.slice(0, 5).map((p) => `regel ${p.line}: ${p.reason}`),
+    problems.length > 5 ? `en nog ${problems.length - 5} regels met een fout` : '',
+  ].filter(Boolean)
+  if (!fresh.length && problems.length) return { ok: false, error: parts.join(' · ') }
+  return { ok: true, message: `${parts.join(' · ')}.` }
 }
 
 /**

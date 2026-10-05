@@ -30,3 +30,15 @@ export async function saveSettings(_prev: FormState, form: FormData): Promise<Fo
   revalidatePath('/', 'layout')
   return { ok: true, message: 'Bewaard.' }
 }
+
+/** The daily reminder: a time ("09:00") or off, and whether it makes a sound (off unless he wants it). */
+export async function saveReminder(on: boolean, time: string, sound: boolean): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).safeParse(time)
+  if (on && !clock.success) return { ok: false, message: 'Kies een tijd, bijvoorbeeld 09:00.' }
+  const db = await getDb()
+  await setSetting(db, owner.userId, 'reminder_time', on && clock.success ? clock.data : '')
+  await setSetting(db, owner.userId, 'reminder_sound', sound ? '1' : null)
+  revalidatePath('/settings')
+  return { ok: true, message: on ? `Elke werkdag om ${time} een seintje, zolang je dagdoel nog open staat.` : 'Geen herinnering meer.' }
+}

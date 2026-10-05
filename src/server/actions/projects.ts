@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { getDb, type Db } from '@/db'
 import * as s from '@/db/schema'
 import { COMPANY_COLORS, LANGUAGES, MARKETS, STAGES, isStage } from '@/lib/options'
+import { socialUrl, SOCIALS, withSocial } from '@/lib/socials'
 import { STARTER_PROJECTS } from '@/lib/starter'
 import { normalizeUrl, REPO_NAME } from '@/lib/urls'
 import { isIntakeDone } from '../game'
@@ -207,4 +208,23 @@ export async function setupStarter(_prev: FormState, form: FormData): Promise<Fo
   }
   revalidatePath('/projects')
   redirect('/projects')
+}
+
+/** Links (or, with an empty address, unlinks) a social profile of a project. */
+export async function saveSocial(projectId: string, key: string, raw: string): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  const social = SOCIALS.find((x) => x.key === key)
+  if (!social) return { ok: false, message: 'Onbekend platform.' }
+  const url = raw.trim() ? socialUrl(key, raw) : null
+  if (raw.trim() && !url) return { ok: false, message: `Dat is geen ${social.label}-link.` }
+  const db = await getDb()
+  const [project] = await db
+    .select({ id: s.project.id, links: s.project.links })
+    .from(s.project)
+    .where(and(eq(s.project.id, String(projectId)), eq(s.project.ownerId, owner.userId)))
+  if (!project) return { ok: false, message: 'Dat project bestaat niet.' }
+  await db.update(s.project).set({ links: withSocial(project.links, social.key, url), updatedAt: new Date() }).where(eq(s.project.id, project.id))
+  revalidatePath(`/projects/${project.id}`)
+  revalidatePath('/')
+  return { ok: true, message: url ? `${social.label} gekoppeld.` : `${social.label} losgekoppeld.` }
 }

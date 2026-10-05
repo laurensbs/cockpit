@@ -3,6 +3,7 @@ import { ContentActions } from './ContentActions'
 import { CopyButton } from './CopyButton'
 import { DoneToggle } from './DoneToggle'
 import { Icon } from './Icon'
+import { PlatformBadge } from './PlatformBadge'
 import { ScheduleButton } from './ScheduleButton'
 
 export interface EmailView {
@@ -33,9 +34,7 @@ export function EmailDraftCard({ email }: { email: EmailView }) {
   return (
     <article className="card stack-s draft">
       <div className="row between">
-        <span className="chip">
-          <Icon name="mail" size={14} /> {email.title}
-        </span>
+        <PlatformBadge platform="email" label={email.title} />
         {email.projectName ? <span className="tiny faint">{email.projectName}</span> : null}
       </div>
       <p className="draft-subject">{email.subject}</p>

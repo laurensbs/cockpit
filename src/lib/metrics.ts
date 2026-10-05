@@ -33,6 +33,7 @@ export const METRIC_DEFS = {
   users: { label: 'Gebruikers', unit: 'count', agg: 'last', combine: 'prefer' },
   active_users: { label: 'Actieve gebruikers', unit: 'count', agg: 'last', combine: 'prefer' },
   followers: { label: 'Volgers', unit: 'count', agg: 'last', combine: 'prefer' },
+  reach: { label: 'Bereik op socials', unit: 'count', agg: 'sum', combine: 'prefer' },
   discord_members: { label: 'Discord-leden', unit: 'count', agg: 'last', combine: 'prefer' },
   discord_online: { label: 'Discord online', unit: 'count', agg: 'last', combine: 'prefer' },
 } as const satisfies Record<string, MetricDef>
@@ -45,10 +46,11 @@ export const metricLabel = (key: string) => (isMetricKey(key) ? METRIC_DEFS[key]
 export const metricName = (key: string) => metricLabel(key).replace(/ \(€\)$/, '')
 
 /** Who said so. A number he typed beats Claude, Claude beats a connector, connectors beat the pipeline. */
-export const SOURCES = ['manual', 'claude', 'stripe', 'mollie', 'plausible', 'ga4', 'gsc', 'discord', 'app', 'pipeline'] as const
+export const SOURCES = ['manual', 'instagram', 'claude', 'stripe', 'mollie', 'plausible', 'ga4', 'gsc', 'discord', 'app', 'pipeline'] as const
 export type Source = (typeof SOURCES)[number]
 export const SOURCE_LABELS: Record<Source, string> = {
   manual: 'Jij',
+  instagram: 'Instagram',
   claude: 'Claude',
   stripe: 'Stripe',
   mollie: 'Mollie',

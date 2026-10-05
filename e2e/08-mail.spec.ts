@@ -29,6 +29,8 @@ test('approved mails go out on their own, within the cap, and an answer stops th
   await mail.getByLabel('Adres afzender').fill('laurens@rondje.test')
   await mail.getByLabel('Maximaal per dag').fill('2')
   await mail.getByText('Automatisch versturen', { exact: true }).click()
+  // These test contacts are business addresses: the test says yes to cold mail, which is off by default.
+  await mail.getByText('Ook koude mail aan bedrijven', { exact: true }).click()
   await mail.getByRole('button', { name: 'Bewaren' }).click()
   await expect(mail.getByRole('status')).toContainText('Automatisch versturen staat aan')
   await mail.getByRole('button', { name: 'Stuur een testmail naar mezelf' }).click()
@@ -48,12 +50,27 @@ test('approved mails go out on their own, within the cap, and an answer stops th
   const batch = await mcpTool(request, 'get_task', { task: 'contact_mails', project: 'Rondje' })
   expect(batch.text).toContain('Opvang Noord')
   expect(batch.text).not.toContain('info@noord.test')
+
+  // One button writes them all in the background; big lists go in parts that never take the same contacts.
+  const launched = () => readFileSync('test-results/claude-launch.txt', 'utf8').trim().split('\n').length
+  const before = launched()
+  await page.getByRole('button', { name: 'Schrijf mails voor 3 nieuwe contacten' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Claude schrijft nu 3 mails' })).toBeVisible()
+  expect(launched()).toBe(before + 1)
+  const part2 = await mcpTool(request, 'get_task', { task: 'contact_mails', project: 'Rondje', count: 2, offset: 1 })
+  expect(part2.text).toContain('Opvang Zuid')
+  expect(part2.text).toContain('Opvang West')
+  expect(part2.text).not.toContain('Opvang Noord')
   const contacts = JSON.parse((await mcpTool(request, 'list_contacts', { project: 'Rondje' })).text) as { id: string; organization: string }[]
   for (const org of ['Opvang Noord', 'Opvang Zuid', 'Opvang West']) {
     const id = contacts.find((c) => c.organization === org)!.id
     const saved = await mcpTool(request, 'save_emails', { project: 'Rondje', purpose: 'contact', contactId: id, language: 'nl', drafts: sequence(org) })
     expect(saved.text).toContain('met 2 opvolgmails')
   }
+  // A better version for the same contact replaces the draft; it never ends up twice.
+  const noord = contacts.find((c) => c.organization === 'Opvang Noord')!.id
+  const better = await mcpTool(request, 'save_emails', { project: 'Rondje', purpose: 'contact', contactId: noord, language: 'nl', drafts: sequence('Opvang Noord') })
+  expect(better.text).toContain('vervangt het vorige concept')
 
   // One approval for all three.
   await page.reload()

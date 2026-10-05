@@ -4,6 +4,7 @@ import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { commitDaysFrom, trimCommitDays } from '@/lib/activity'
 import { addDays, dayOf } from '@/lib/dates'
+import { changeOf } from '@/lib/github-work'
 import { clip, redactSecrets } from '@/lib/redact'
 import { pickDocs } from '@/lib/repo-docs'
 import { packageJsonPath, tagsFromFileNames, tagsFromPackageJson } from '@/lib/stack'
@@ -89,17 +90,27 @@ export async function syncRepo(db: Db, row: RepoRow, now = new Date()): Promise<
     const commits = await source.commits(row.fullName, `${since}T00:00:00Z`)
     // Fresh counts replace the days GitHub returned; older stored days stay (a very busy repo can
     // have more commits in 90 days than the 300 we fetch).
-    const fresh = commitDaysFrom(commits.map((c) => c.date))
+    const freshDays = commitDaysFrom(commits.map((c) => c.date))
     const oldest = commits.length ? dayOf(new Date(commits.reduce((min, c) => (c.date < min ? c.date : min), commits[0].date))) : today
     const kept = Object.fromEntries(Object.entries(row.commitDays).filter(([day]) => day < oldest))
-    const commitDays = trimCommitDays({ ...kept, ...fresh }, since)
+    const commitDays = trimCommitDays({ ...kept, ...freshDays }, since)
     const recentCommits = [...commits]
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 20)
       .map((c) => ({ date: c.date, message: cleanText(c.message.split('\n')[0], 140) }))
+    // The work in progress: the newest pull requests, and what the newest commits changed (3 new at most per sync).
+    const pulls = (await source.pulls(row.fullName)).map((p) => ({ ...p, title: cleanText(p.title, 140), body: cleanText(p.body, 300) }))
+    const known = new Set(row.recentChanges.map((c) => c.sha))
+    const fresh = [...commits].sort((a, b) => b.date.localeCompare(a.date)).filter((c) => c.sha && !known.has(c.sha)).slice(0, 3)
+    const changes = []
+    for (const c of fresh) {
+      const detail = await source.commitFiles(row.fullName, c.sha!)
+      if (detail) changes.push(changeOf({ sha: c.sha!, date: c.date, message: cleanText(c.message, 300) }, detail.files))
+    }
+    const recentChanges = [...changes, ...row.recentChanges].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10)
     await db
       .update(s.repo)
-      .set({ ...details, ...content, commitDays, recentCommits })
+      .set({ ...details, ...content, commitDays, recentCommits, recentPulls: pulls, recentChanges })
       .where(eq(s.repo.id, row.id))
     return { ok: true }
   } catch (error) {

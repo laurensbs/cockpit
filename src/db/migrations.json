@@ -73,5 +73,42 @@
       "CREATE UNIQUE INDEX \"metric_point_unique_idx\" ON \"metric_point\" USING btree (\"project_id\",\"key\",\"day\",\"source\");",
       "CREATE INDEX \"metric_point_owner_idx\" ON \"metric_point\" USING btree (\"owner_id\",\"project_id\",\"key\",\"day\");"
     ]
+  },
+  {
+    "tag": "0003_prospects",
+    "statements": [
+      "ALTER TABLE \"contact\" ADD COLUMN \"source\" text DEFAULT 'manual' NOT NULL;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"observation\" text DEFAULT '' NOT NULL;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"fit\" integer;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"channel\" text DEFAULT '' NOT NULL;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"email_source\" text;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"phone\" text;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"city\" text DEFAULT '' NOT NULL;",
+      "ALTER TABLE \"contact\" ADD COLUMN \"pitch\" text DEFAULT '' NOT NULL;",
+      "ALTER TABLE \"project\" ADD COLUMN \"prospect_per_day\" integer DEFAULT 0 NOT NULL;"
+    ]
+  },
+  {
+    "tag": "0004_github-work",
+    "statements": [
+      "ALTER TABLE \"repo\" ADD COLUMN \"recent_pulls\" jsonb DEFAULT '[]'::jsonb NOT NULL;",
+      "ALTER TABLE \"repo\" ADD COLUMN \"recent_changes\" jsonb DEFAULT '[]'::jsonb NOT NULL;"
+    ]
+  },
+  {
+    "tag": "0005_setup",
+    "statements": [
+      "CREATE TABLE \"setup_item\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text NOT NULL,\n\t\"key\" text NOT NULL,\n\t\"source\" text NOT NULL,\n\t\"status\" text NOT NULL,\n\t\"note\" text DEFAULT '' NOT NULL,\n\t\"updated_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "ALTER TABLE \"setup_item\" ADD CONSTRAINT \"setup_item_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "CREATE UNIQUE INDEX \"setup_item_project_key_source_idx\" ON \"setup_item\" USING btree (\"project_id\",\"key\",\"source\");"
+    ]
+  },
+  {
+    "tag": "0006_money",
+    "statements": [
+      "CREATE TABLE \"money_item\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"project_id\" text,\n\t\"key\" text NOT NULL,\n\t\"kind\" text NOT NULL,\n\t\"title\" text NOT NULL,\n\t\"amount\" double precision,\n\t\"currency\" text DEFAULT 'EUR' NOT NULL,\n\t\"period\" text NOT NULL,\n\t\"next_date\" date,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"note\" text DEFAULT '' NOT NULL,\n\t\"source\" text NOT NULL,\n\t\"updated_at\" timestamp DEFAULT now() NOT NULL\n);",
+      "ALTER TABLE \"money_item\" ADD CONSTRAINT \"money_item_project_id_project_id_fk\" FOREIGN KEY (\"project_id\") REFERENCES \"public\".\"project\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "CREATE UNIQUE INDEX \"money_item_owner_key_idx\" ON \"money_item\" USING btree (\"owner_id\",\"key\");"
+    ]
   }
 ]

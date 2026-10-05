@@ -19,7 +19,7 @@ import {
 } from '@/lib/game'
 import { ACTIVE_STAGES, isStage } from '@/lib/options'
 import type { PaceStatus } from '@/lib/pace'
-import { experimentQuests, ruleQuests, type RuleProject } from '@/lib/quests'
+import { experimentQuests, ruleQuests, type RuleProject, settledRuleKeys } from '@/lib/quests'
 import { type OutcomeState, paceTip } from './outcome-state'
 import { award } from './xp'
 
@@ -133,6 +133,14 @@ export async function dailyRound(db: Db, ownerId: string, now = new Date()): Pro
       .values(candidates.map((c) => ({ id: crypto.randomUUID(), ownerId, ...c, kind: 'custom', source: 'rule' })))
       .onConflictDoNothing()
   }
+  // What was asked is there now (the intake, a plan, a target): those quests close by themselves.
+  const open = await db
+    .select({ id: s.quest.id, sourceKey: s.quest.sourceKey })
+    .from(s.quest)
+    .where(and(eq(s.quest.ownerId, ownerId), eq(s.quest.status, 'open'), eq(s.quest.source, 'rule')))
+  const settled = new Set(settledRuleKeys(open.map((q) => q.sourceKey ?? ''), candidates))
+  const ids = open.filter((q) => q.sourceKey && settled.has(q.sourceKey)).map((q) => q.id)
+  if (ids.length) await db.update(s.quest).set({ status: 'done', doneAt: new Date() }).where(inArray(s.quest.id, ids))
 }
 
 /** What the badges are judged on. */

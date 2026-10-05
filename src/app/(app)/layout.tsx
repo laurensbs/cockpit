@@ -34,9 +34,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="shell">
       <header className="topbar">
-        <Link href="/" className="brand">
+        <Link href="/" className="brand" aria-label={APP_NAME}>
           <Logo />
-          {APP_NAME}
+          <span className="brand-name">{APP_NAME}</span>
         </Link>
         <CommandBar projects={projects.map(({ id, name }) => ({ id, name }))} />
         <div className="grow" />

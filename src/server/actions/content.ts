@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb, type Db } from '@/db'
@@ -55,6 +55,17 @@ export async function markContentDone(id: string, done: boolean): Promise<{ xp: 
   return { xp }
 }
 
+/** "Help iemand" done: he gave something of value in that place today (an answer, a tip, no pitch). */
+export async function gaveValue(id: string): Promise<{ xp: number }> {
+  const owner = await actionOwner()
+  const db = await getDb()
+  const item = await own(db, owner.userId, id)
+  if (!item || item.kind !== 'opportunity') return { xp: 0 }
+  const xp = await award(db, owner.userId, { kind: 'give', refId: `${item.id}:${dayOf(new Date())}`, projectId: item.projectId })
+  refresh(item.projectId)
+  return { xp }
+}
+
 /** Thumbs up or down: the AI reads these the next time it makes something for this project. */
 export async function rateContent(id: string, rating: number): Promise<void> {
   const owner = await actionOwner()
@@ -87,7 +98,8 @@ export async function planContent(id: string, day: string | null): Promise<void>
   const [row] = await db
     .update(s.contentItem)
     .set({ plannedFor: day, status: day ? 'planned' : 'draft' })
-    .where(and(eq(s.contentItem.id, String(id)), eq(s.contentItem.ownerId, owner.userId), eq(s.contentItem.status, day ? 'draft' : 'planned')))
+    // A planned post can move to another day; taking the day off makes it a draft again.
+    .where(and(eq(s.contentItem.id, String(id)), eq(s.contentItem.ownerId, owner.userId), day ? inArray(s.contentItem.status, ['draft', 'planned']) : eq(s.contentItem.status, 'planned')))
     .returning({ projectId: s.contentItem.projectId })
   if (row) refresh(row.projectId)
 }

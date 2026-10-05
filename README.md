@@ -20,11 +20,13 @@ Je kunt ook gewoon zelf met Claude Code praten. De cockpit is daar een gereedsch
 | **Vandaag** | **Klaarzetten** (wat er nog moet tot alles werkt), **Vraag Claude**, **Nu doen**: per project de stap die het meest oplevert, met één klik naar Claude Code; dan de focus van de week, je quests, en per project de gezondheid (0–100) |
 | **⌘K** | De opdrachtbalk: naar elke plek of elk project, elke Claude-klus voor elk project, of een vraag aan Claude |
 | **Zijbalk** | Je plekken, al je actieve projecten met hun kleur, en of Claude Code gekoppeld is |
-| **Projecten** | Per project: intake (vijf vragen), activiteit uit GitHub, repo’s, cijfers per maand, en of de site online is |
+| **Projecten** | Per project: intake (vijf vragen), activiteit uit GitHub, repo’s, cijfers per maand, en of de site online is. De cockpit kijkt elke 10 minuten of je iets pushte; dan leest hij je pull requests en welke delen van de code veranderden, zodat Claude weet wat er nieuw is |
 | **Cijfers** (per project) | Het **groeimodel**: één doelcijfer met een deadline (bijvoorbeeld MRR naar €3.000 vóór februari) en de **trechter** ernaartoe (bezoekers → aanvragen → gesprekken → klanten). Claude stelt het voor, jij neemt het over. De cockpit ziet of je op schema ligt en **waar de trechter lekt**, en daar kiest “Nu doen” de klus voor. Cijfers komen vanzelf binnen uit **bronnen** (Plausible, Stripe, Mollie) met sleutels die alleen kunnen lezen, of vul je zelf in. Per week een tabel, met per cijfer de bron. En de **lessen** van afgeronde experimenten |
 | **Marketingbrein** | Profiel (doelgroepen, kanalen, KPI’s, quick wins) en een plan voor 90 dagen; acties worden quests |
 | **Marketing** | Overzicht met de cijfers van deze week en “wat nu?” voor organische groei; concepten, mails (wachtrij en verzonden), SEO-artikelen, groei-experimenten met een bord, een kalender, het idee-lab en kansen van het web |
-| **Contacten** | Organisaties met hun wettelijke basis om te mailen; per contact een persoonlijke mail met twee opvolgmails, of in één keer voor alle nieuwe contacten; één keer goedkeuren en het gaat vanzelf. De pijplijn: antwoord → gesprek → offerte → gewonnen of verloren, met de waarde van de deal en de volgende stap; elke stap telt mee in de trechter |
+| **Contacten** | Organisaties met hun wettelijke basis om te mailen; per contact een persoonlijke mail met twee opvolgmails, of met één knop voor alle nieuwe contacten (tot 100, in vier delen tegelijk op de achtergrond); één keer goedkeuren en het gaat vanzelf. De pijplijn: antwoord → gesprek → offerte → gewonnen of verloren, met de waarde van de deal en de volgende stap; elke stap telt mee in de trechter |
+| **Prospectie** (onder Contacten) | Claude zoekt elke werkdag zelf bedrijven die passen bij het project (op de achtergrond, zolang de app open is). Per bedrijf: wat hij op hun eigen site zag, wat je zegt als je belt, en de infomail voor als ze erom vragen. De cockpit haalt hun telefoonnummer en algemene adres zelf van hun site; Claude ziet die nooit. Jij zegt per bedrijf **Ja** (een belkaart bij je quests), **Nee** (nooit meer, met een reden) of **Later**. **Zoek nu** zoekt 20 bedrijven in vier delen tegelijk, elk in een eigen hoek. Op Vandaag staat het bovenaan |
+| **Help iemand** (in je dag) | Eén keer per dag een plek waar jouw doelgroep praat (een forum, groep of subreddit uit je kansen), met de regel van die plek en hoe je daar waarde geeft: een vraag beantwoorden of een tip delen, zonder link of reclame |
 | **Experimenten** (onder Marketing) | Elk experiment meet een cijfer: waar het stond bij de start, waar het nu staat, en of het doel gehaald is. Bij het afronden stelt de cockpit voor of het werkte; jij beslist. Wat eruit kwam wordt een les die Claude bij elke volgende klus leest |
 | **LinkedIn** (op het brein) | Je kop, een about-tekst, met wie je moet connecten (met een bericht), een weekritme en posts met de knop “Post op LinkedIn” |
 | **Quests** | Quests van regels, van het plan, van de weekfocus of van jezelf; terugkerende quests; badges |
@@ -61,6 +63,7 @@ Gebruik je liever de Claude-desktop-app? Onder Instellingen → *Zelf koppelen* 
 
 ## Automatische mails: de regels
 
+- **Koude mail aan bedrijven staat standaard uit.** In Spanje (LSSI art. 21) en Nederland (Telecommunicatiewet 11.7) mag reclame per mail aan bedrijven alleen met toestemming of bij een bestaande relatie. Daarom eerst bellen of langsgaan; vraagt een bedrijf om informatie, dan tik je op **Ze willen info** en gaat de mail. Je kunt het onder Instellingen → Mails versturen aanzetten; laat dat eerst nakijken.
 - Alleen mails die jij goedkeurt, naar contacten met een e-mailadres en een wettelijke basis: een zakelijk adres van een organisatie, een bestaande relatie, of toestemming.
 - Op werkdagen tussen 9 en 17 uur (Amsterdamse tijd), één tegelijk, minstens 3 minuten na elkaar, nooit meer dan je daglimiet.
 - Opvolgmails gaan 4 dagen na de eerste mail en daarna nog eens 7 dagen later, alleen als er geen antwoord is. Zet je een contact op *Antwoord!* of *Geen interesse*, dan stopt de rest meteen. Antwoorden lees je in je eigen mailbox; de cockpit leest je mail niet.
@@ -95,7 +98,10 @@ Met `GITHUB_FIXTURES=1` werkt GitHub met vaste antwoorden, zonder token. De e2e-
 ```bash
 npm run electron:build      # next build → release/server → dist-electron → release/dist (Windows: .exe; op een Mac: npm run electron:build:mac)
 npm run test:electron       # rooktest van de app (onder Linux: xvfb-run -a …)
+bash scripts/install-mac-local.sh   # op je eigen Mac (Apple-chip): controles, bouwen, rooktest, kopie van je database, en in Apps zetten
 ```
+
+Het lokale script heeft GitHub niet nodig: het werkt ook als GitHub Actions niet draait. De oude app gaat naar de prullenmand. Een kopie van je database komt in `~/Library/Application Support/Cockpit-backups`. Met `--quick` sla je de controles over; met `--open` gaat Cockpit daarna open.
 
 Op elke computer (ook Linux) bouwt `scripts/build-mac.sh` de Mac-app voor de branch `downloads`. Alleen de app en zijn helpers krijgen een nieuwe ad-hoc-handtekening (met `rcodesign`); de Electron-frameworks blijven zoals Electron ze levert. Daarna gaan de twee delen, `install-mac.sh` (met de nieuwe checksum) en `version.json` naar `downloads`.
 

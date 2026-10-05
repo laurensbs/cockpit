@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bucketOf, experimentQuests, nextDue, ruleQuests, type RuleProject } from './quests'
+import { bucketOf, experimentQuests, nextDue, type RuleProject, ruleQuests, settledRuleKeys } from './quests'
 
 describe('recurring quests', () => {
   it('moves the due day by the recurrence, keeping month ends sane', () => {
@@ -81,5 +81,12 @@ describe('experimentQuests', () => {
     expect(experimentQuests(running, '2026-10-05')).toEqual([
       expect.objectContaining({ sourceKey: 'experiment-end:e1', title: 'Rond af: Gratis website-check als lokmiddel', dueOn: '2026-10-05' }),
     ])
+  })
+})
+
+describe('settledRuleKeys', () => {
+  it('closes the intake, plan and target quests whose reason is gone, and leaves the rest', () => {
+    const open = ['intake:a', 'intake:b', 'plan:a', 'quiet:a:2026-10-05', 'metrics:a:2026-09']
+    expect(settledRuleKeys(open, [{ sourceKey: 'intake:b' }])).toEqual(['intake:a', 'plan:a'])
   })
 })

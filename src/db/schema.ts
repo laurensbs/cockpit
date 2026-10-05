@@ -66,6 +66,8 @@ export const project = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
     // The growth model he accepted: one target number with a deadline, and the funnel that leads to it.
     growthModel: jsonb('growth_model').$type<GrowthModel>(),
+    // How many businesses Claude looks for on its own each working day (0 = off).
+    prospectPerDay: integer('prospect_per_day').notNull().default(0),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -93,6 +95,9 @@ export const repo = pgTable(
     docs: jsonb('docs').$type<{ path: string; text: string }[]>().notNull().default([]),
     commitDays: jsonb('commit_days').$type<Record<string, number>>().notNull().default({}),
     recentCommits: jsonb('recent_commits').$type<{ date: string; message: string }[]>().notNull().default([]),
+    // The newest pull requests (the work in progress) and what the newest commits changed, by area.
+    recentPulls: jsonb('recent_pulls').$type<{ number: number; title: string; state: string; updatedAt: string; body: string }[]>().notNull().default([]),
+    recentChanges: jsonb('recent_changes').$type<{ sha: string; date: string; message: string; areas: string[]; files: number; additions: number; deletions: number }[]>().notNull().default([]),
     pushedAt: timestamp('pushed_at'),
     syncedAt: timestamp('synced_at'),
     syncError: text('sync_error'),
@@ -139,6 +144,17 @@ export const contact = pgTable(
     dealPeriod: text('deal_period'),
     nextStep: text('next_step').notNull().default(''),
     nextStepOn: date('next_step_on'),
+    // Where the contact came from (manual, import, prospect) and, for one Claude found, what it saw
+    // on their own site, how well they fit (1–5), how to reach them, and where the address was found.
+    source: text('source').notNull().default('manual'),
+    observation: text('observation').notNull().default(''),
+    fit: integer('fit'),
+    channel: text('channel').notNull().default(''),
+    emailSource: text('email_source'),
+    // Their public business phone and town (call or visit first), and what Claude would say on the phone.
+    phone: text('phone'),
+    city: text('city').notNull().default(''),
+    pitch: text('pitch').notNull().default(''),
     createdAt: createdAt(),
   },
   (t) => [index('contact_project_idx').on(t.projectId)],
@@ -324,6 +340,54 @@ export const emailJob = pgTable(
 )
 
 /** One value per key: the owner's name, the GitHub token, what is connected. */
+/**
+ * What a business still needs to grow (an own domain, a Google Business Profile, reviews, live keys, the
+ * App Store…), per project. One row per source: what the cockpit checked itself ("auto"), what Claude
+ * read in his documents ("claude"), and what he ticked off himself ("jij", which always wins).
+ */
+export const setupItem = pgTable(
+  'setup_item',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    source: text('source').notNull(),
+    status: text('status').notNull(),
+    note: text('note').notNull().default(''),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('setup_item_project_key_source_idx').on(t.projectId, t.key, t.source)],
+)
+
+/**
+ * Money for his businesses: what he pays, what comes in, his prices, spending that waits for his decision
+ * and dates to watch. project_id null is the business as a whole. "key" keeps one line per thing, so
+ * Claude can save it again; a line he changed himself (source "jij") is his and stays.
+ */
+export const moneyItem = pgTable(
+  'money_item',
+  {
+    id: text('id').primaryKey(),
+    ownerId: ownerId(),
+    projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    kind: text('kind').notNull(),
+    title: text('title').notNull(),
+    amount: doublePrecision('amount'),
+    currency: text('currency').notNull().default('EUR'),
+    period: text('period').notNull(),
+    nextDate: date('next_date'),
+    status: text('status').notNull().default('active'),
+    note: text('note').notNull().default(''),
+    source: text('source').notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('money_item_owner_key_idx').on(t.ownerId, t.key)],
+)
+
 export const setting = pgTable(
   'setting',
   {

@@ -5,17 +5,26 @@ import { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { ArticlesWire, EmailsWire, ExperimentsWire, IdeasWire, LinkedinWire, OpportunitiesWire, PlanWire, planFromJson, PostsWire, ProfileWire, profileFromJson, WeeklyWire } from '@/lib/ai/schemas'
+import { CoachWire } from '@/lib/coach'
 import { addDays, dayOf } from '@/lib/dates'
+import { CURRENCIES, MONEY_KINDS, MONEY_PERIODS, MONEY_STATUSES } from '@/lib/finance'
 import { BOSS_XP, QUEST_XP } from '@/lib/game'
 import { METRIC_KEYS } from '@/lib/metrics'
-import { LANGUAGES } from '@/lib/options'
+import { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
+import { hideContactDetails } from '@/lib/redact'
+import { SETUP_ITEMS } from '@/lib/setup'
 import { contextText, loadJobContext, loadPortfolioContext } from '../ai/context'
+import { saveCoach } from '../coach'
+import { saveMoney } from '../finance'
 import { isIntakeDone, playerStats } from '../game'
 import { outcomeStates, paceLine } from '../outcome-state'
+import { saveSetupRows } from '../setup-check'
 import { resolveProject, type ProjectRef } from './projects'
-import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveLinkedin, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly } from './save'
+import { saveArticles, saveClaudeMetrics, saveEmails, saveExperiments, saveIdeas, saveIntake, saveLinkedin, saveProspects, saveModelProposal, saveOpportunities, savePlan, savePosts, saveProfile, saveWeekly, updateProspect } from './save'
 import { buildBrief, EMAIL_PURPOSE_KEYS, IDEA_MODE_KEYS, isTaskKind, PLATFORM_KEYS, TASK_KINDS, TASK_LABELS, TaskOptions } from './tasks'
 import { readTicket } from './tickets'
+
+const SETUP_KEYS = SETUP_ITEMS.map((i) => i.key) as [string, ...string[]]
 
 const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] })
 const fail = (t: string) => ({ content: [{ type: 'text' as const, text: t }], isError: true })
@@ -164,7 +173,7 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
         kind = found.task
         projectId = found.projectId
         options = { ...found.options, ...options }
-      } else if (kind && kind !== 'weekly' && !(kind === 'ask' && !project)) {
+      } else if (kind && kind !== 'weekly' && kind !== 'coach' && kind !== 'money' && !(kind === 'ask' && !project)) {
         if (!project) return fail('Which project? Pass project (see list_projects).')
         const found = await resolveProject(db, ownerId, project)
         if ('error' in found) return fail(found.error)
@@ -174,6 +183,160 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
       const brief = await buildBrief(db, ownerId, kind, projectId, options)
       return 'error' in brief ? fail(brief.error) : text(brief.text)
     },
+  )
+
+  server.registerTool(
+    'save_intake',
+    {
+      title: 'Fill in or update the intake',
+      description:
+        'Writes the intake of a project from what you know of it: its CLAUDE.md, STAND.md, VISIE.md, README and code. Only facts and decisions he made himself; never invent goals or numbers (the goal and north star come from his own documents, or say "voorstel"). Only the fields you send change. Plain Dutch, short sentences.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        name: z.string().trim().min(1).max(80).optional().describe('The new name, only when his own documents say the project was renamed'),
+        oneLiner: z.string().max(200).optional().describe('What it is and for whom, one line'),
+        what: z.string().max(2000).optional().describe('What it does, the offer and price if decided, where it stands'),
+        audience: z.string().max(1000).optional(),
+        goal: z.string().max(600).optional().describe('Only goals and deadlines he decided, with the date'),
+        tone: z.string().max(300).optional(),
+        northStar: z.string().max(200).optional(),
+        redLines: z.string().max(1000).optional().describe('What must never happen or be pitched'),
+        siteUrl: z.string().max(300).optional(),
+        localPath: z.string().max(400).optional().describe('Absolute path of the local code folder; Claude Code starts there'),
+        languages: z.array(z.enum(LANGUAGES)).max(LANGUAGES.length).optional(),
+        markets: z.array(z.enum(MARKETS)).max(MARKETS.length).optional(),
+        stage: z.enum(STAGES).optional(),
+        prospectPerDay: z.literal(0).optional().describe('Only 0: switch prospectie off (for a project with marketing off, or when he says so). Switching it on is his choice, under Bewerken'),
+      },
+    },
+    async ({ project, ...intake }) =>
+      withProject(project, async (p) => {
+        const result = await saveIntake(db, ownerId, p, intake)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
+  )
+
+  server.registerTool(
+    'save_coach',
+    {
+      title: 'Save the best next step (the coach)',
+      description:
+        'One concrete best next step for a project (or across everything when project is left out): title (starts with a verb), why (two plain Dutch sentences: what it brings him), steps (1–5, concrete, in order), who does it (jij, claude or samen), cost (an amount or "gratis") and setupKey when it is a step of the checklist. He sees it on Vandaag and on the project page. Money, accounts, publishing and contacting people stay his decision.',
+      inputSchema: { project: z.string().optional().describe('Exact name or id; leave out for advice across all projects'), ...CoachWire.shape },
+    },
+    async ({ project, ...advice }) => {
+      const setupKey = advice.setupKey && SETUP_KEYS.includes(advice.setupKey) ? advice.setupKey : undefined
+      if (!project) return text(await saveCoach(db, ownerId, null, { ...advice, setupKey }))
+      return withProject(project, async (p) => text(await saveCoach(db, ownerId, p, { ...advice, setupKey })))
+    },
+  )
+
+  server.registerTool(
+    'save_checklist',
+    {
+      title: 'Say what a project has arranged (domain, mail, Google Business Profile, reviews, keys, app stores)',
+      description:
+        'The growth checklist per project (see <setup> in get_project). Set a step from what his own documents say (STAND.md, CLAUDE.md, the code): "done" when it is arranged, "todo" when it is needed and not done, "na" when it does not fit this project (for example no Google Business Profile for a game), with a short note in Dutch (what you saw, where). He and the cockpit\'s own checks overrule you. Only what you send changes.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        items: z
+          .array(z.object({ key: z.enum(SETUP_KEYS), status: z.enum(['done', 'todo', 'na', 'unknown']), note: z.string().trim().max(300).optional() }))
+          .min(1)
+          .max(SETUP_KEYS.length),
+      },
+    },
+    async ({ project, items }) =>
+      withProject(project, async (p) => {
+        await saveSetupRows(db, ownerId, p.id, items.map((i) => ({ key: i.key, source: 'claude', status: i.status, note: i.note ?? '' })))
+        return text(`Checklist van ${p.name} bijgewerkt (${items.length} ${items.length === 1 ? 'stap' : 'stappen'}). Hij ziet het op de projectpagina.`)
+      }),
+  )
+
+  server.registerTool(
+    'save_money',
+    {
+      title: 'Write down money: costs, income, prices, spending to decide, dates',
+      description:
+        'Everything about money for his businesses, from his own documents (STAND.md, CLAUDE.md, invoices or price pages he mentions): what he pays now (kind cost: a subscription, a domain, hosting), what comes in (income), the prices he asks (price), spending that waits for his yes (plan) and dates to watch (deadline: a renewal, a tax return). Only facts from his documents or an official price page you checked (say which in the note); amount null when unknown, never a guess. project is the exact project name, or leave it out for the business as a whole (his Claude subscription, his accountant). Saving the same title again updates it; a line he changed himself stays his. Paying is always his: never buy or pay anything.',
+      inputSchema: {
+        items: z
+          .array(
+            z.object({
+              project: z.string().trim().max(80).nullable().optional(),
+              kind: z.enum(MONEY_KINDS),
+              title: z.string().trim().min(2).max(120),
+              amount: z.number().min(0).max(1_000_000).nullable().optional(),
+              currency: z.enum(CURRENCIES).optional(),
+              period: z.enum(MONEY_PERIODS),
+              nextDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe('YYYY-MM-DD: the next renewal, due date or decision day'),
+              status: z.enum(MONEY_STATUSES).optional(),
+              note: z.string().trim().max(300).optional().describe('Where it comes from (file and line, or the price page), in Dutch'),
+            }),
+          )
+          .min(1)
+          .max(60),
+      },
+    },
+    async ({ items }) => {
+      const result = await saveMoney(db, ownerId, items)
+      return result.ok ? text(result.text) : fail(result.text)
+    },
+  )
+
+  server.registerTool(
+    'update_prospect',
+    {
+      title: 'Sharpen a proposal, or let it wait until a day',
+      description:
+        'For a business still waiting for his yes or no (status "prospect", see list_contacts): a better opening for the phone (pitch, in their language), a corrected fit (1–5), and/or a day before which it must not come up in his day (notBefore, YYYY-MM-DD, with nextStep saying why, e.g. "Na de demo van dinsdag"). notBefore null shows it again right away. Only what you send changes.',
+      inputSchema: {
+        project: PROJECT_ARG,
+        contactId: z.string().trim().min(1).max(64),
+        pitch: z.string().trim().min(1).max(600).optional(),
+        fit: z.number().int().min(1).max(5).optional(),
+        nextStep: z.string().trim().max(200).optional(),
+        notBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      },
+    },
+    async ({ project, ...input }) =>
+      withProject(project, async (p) => {
+        const result = await updateProspect(db, ownerId, p, input)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
+  )
+
+  server.registerTool(
+    'save_prospects',
+    {
+      title: 'Save businesses you found (prospects)',
+      description:
+        'Stores 1–10 businesses or organisations that fit the project, each checked on its own website. Each becomes a proposal he says yes or no to; known ones are skipped. Never private persons. The cockpit reads their public phone and address itself; you only hear whether it found them. Afterwards write, per proposal, the info mail he sends when they ask for information on the phone (save_emails, purpose "contact", contactId from this result).',
+      inputSchema: {
+        project: PROJECT_ARG,
+        prospects: z
+          .array(
+            z.object({
+              organization: z.string().trim().min(1).max(120),
+              website: z.string().trim().min(4).max(300).describe('Their own site, as you checked it'),
+              city: z.string().max(80).optional(),
+              what: z.string().max(300).optional().describe('What they do, in one line'),
+              howRequestsArrive: z.string().max(300).optional().describe('How a customer reaches them now, as you saw it on their site'),
+              observation: z.string().trim().min(10).max(400).describe('One concrete thing he can check himself on their site, and where ("kijk zelf: hun contactpagina")'),
+              fit: z.number().int().min(1).max(5).optional().describe('How well they fit, 1–5'),
+              why: z.string().max(300).optional(),
+              pitch: z.string().max(600).optional().describe('What he says when he calls: two or three sentences in their language, starting from the observation, ending with one yes/no question'),
+              channel: z.enum(['call', 'visit', 'form', 'email']).optional().describe('The best first step; call or visit unless they asked for mail'),
+            }),
+          )
+          .min(1)
+          .max(10),
+      },
+    },
+    async ({ project, prospects }) =>
+      withProject(project, async (p) => {
+        const result = await saveProspects(db, ownerId, p, prospects)
+        return result.ok ? text(result.text) : fail(result.text)
+      }),
   )
 
   server.registerTool(
@@ -365,11 +528,12 @@ export function createCockpitServer(db: Db, ownerId: string, version = process.e
     async ({ project }) =>
       withProject(project, async (p) => {
         const rows = await db
-          .select({ id: s.contact.id, organization: s.contact.organization, name: s.contact.name, website: s.contact.website, note: s.contact.note, basis: s.contact.basis, status: s.contact.status })
+          .select({ id: s.contact.id, organization: s.contact.organization, name: s.contact.name, website: s.contact.website, note: s.contact.note, basis: s.contact.basis, status: s.contact.status, fit: s.contact.fit, pitch: s.contact.pitch, notBefore: s.contact.nextStepOn })
           .from(s.contact)
           .where(eq(s.contact.projectId, p.id))
           .orderBy(desc(s.contact.createdAt))
-        return text(rows.length ? JSON.stringify(rows, null, 2) : `No contacts for ${p.name} yet. He adds them under Contacten, or from the opportunities you find.`)
+        const safe = rows.map((r) => ({ ...r, note: hideContactDetails(r.note), pitch: hideContactDetails(r.pitch) }))
+        return text(safe.length ? JSON.stringify(safe, null, 2) : `No contacts for ${p.name} yet. He adds them under Contacten, or from the opportunities you find.`)
       }),
   )
 

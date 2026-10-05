@@ -1,11 +1,15 @@
 import 'server-only'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Db } from '@/db'
 import * as s from '@/db/schema'
-import { dayOf } from '@/lib/dates'
+import { addDays, dayOf } from '@/lib/dates'
 import { normalizeModel } from '@/lib/growth-model'
 import { normalizePoints } from '@/lib/metrics'
+import type { LANGUAGES, MARKETS, STAGES } from '@/lib/options'
+import { prospectKey } from '@/lib/prospect'
+import { hideContactDetails } from '@/lib/redact'
+import { normalizeUrl } from '@/lib/urls'
 import {
   type ArticlesWire,
   type EmailsWire,
@@ -29,6 +33,8 @@ import {
   type WeeklyWire,
 } from '@/lib/ai/schemas'
 import { rollupMonths, upsertPoints } from '../points'
+import { isIntakeDone } from '../game'
+import { findSiteDetails } from '../prospect-web'
 import { award } from '../xp'
 
 // What Claude Code hands back goes through the same normalizers as before: clamped, trimmed, safe
@@ -43,7 +49,7 @@ async function insertDrafts(
   kind: string,
   channel: string,
   language: string,
-  items: { title: string; body: Record<string, unknown>; contactId?: string | null }[],
+  items: { title: string; body: Record<string, unknown>; contactId?: string | null; plannedFor?: string | null }[],
 ): Promise<number> {
   if (!items.length) return 0
   await db.insert(s.contentItem).values(
@@ -57,6 +63,7 @@ async function insertDrafts(
       title: item.title,
       body: item.body,
       contactId: item.contactId ?? null,
+      ...(item.plannedFor ? { plannedFor: item.plannedFor, status: 'planned' } : {}),
       runId: SOURCE,
     })),
   )
@@ -100,11 +107,17 @@ export async function saveEmails(
     if (!contact || contact.projectId !== project.id) return 'Niets opgeslagen: dat contact hoort niet bij dit project (zie list_contacts).'
     const [draft, ...rest] = drafts
     const followups = rest.slice(0, 2).map((f) => ({ subject: f.subject, body: f.body }))
+    // A new version for this contact replaces the draft that was there (kept in the archive, never sent).
+    const replaced = await db
+      .update(s.contentItem)
+      .set({ status: 'archived' })
+      .where(and(eq(s.contentItem.contactId, contact.id), eq(s.contentItem.kind, 'email'), eq(s.contentItem.status, 'draft')))
+      .returning({ id: s.contentItem.id })
     await insertDrafts(db, ownerId, project.id, 'email', 'contact', input.language, [
       { title: `Mail aan ${contact.organization}`, body: { subject: draft.subject, body: draft.body, ps: draft.ps, followups }, contactId: contact.id },
     ])
     if (contact.status === 'new') await db.update(s.contact).set({ status: 'drafted' }).where(eq(s.contact.id, contact.id))
-    return `Opgeslagen: een persoonlijke mail aan ${contact.organization}${followups.length ? ` met ${followups.length} opvolgmail${followups.length === 1 ? '' : 's'}` : ''}. Hij keurt hem goed in Contacten; daarna gaat hij vanzelf de deur uit.`
+    return `Opgeslagen: een persoonlijke mail aan ${contact.organization}${followups.length ? ` met ${followups.length} opvolgmail${followups.length === 1 ? '' : 's'}` : ''}${replaced.length ? ' (vervangt het vorige concept)' : ''}. Hij keurt hem goed in Contacten; daarna gaat hij vanzelf de deur uit.`
   }
   const n = await insertDrafts(
     db,
@@ -119,6 +132,10 @@ export async function saveEmails(
 }
 
 export async function savePosts(db: Db, ownerId: string, project: { id: string; name: string }, input: { platform: string; language: string }, wire: z.infer<typeof PostsWire>): Promise<string> {
+  // A planned day counts when it is within the coming month; otherwise the post stays a draft without a day.
+  const today = dayOf(new Date())
+  const inWindow = (day: string | null) => (day && day >= today && day <= addDays(today, 31) ? day : null)
+  const posts = normalizePosts(wire)
   const n = await insertDrafts(
     db,
     ownerId,
@@ -126,9 +143,17 @@ export async function savePosts(db: Db, ownerId: string, project: { id: string; 
     'social',
     input.platform,
     input.language,
-    normalizePosts(wire).map(({ title, ...body }) => ({ title, body })),
+    // Instagram takes at most five hashtags per post (since December 2025).
+    posts.map(({ title, plannedFor, ...body }) => ({
+      title,
+      body: input.platform === 'instagram' ? { ...body, hashtags: body.hashtags.slice(0, 5) } : body,
+      plannedFor: inWindow(plannedFor),
+    })),
   )
-  return n ? `Opgeslagen: ${n} post${n === 1 ? '' : 's'} voor ${input.platform} (${project.name}). Hij plant en post ze zelf vanuit de Studio.` : 'Niets opgeslagen: er zaten geen posts in.'
+  const planned = posts.filter((p) => inWindow(p.plannedFor)).length
+  return n
+    ? `Opgeslagen: ${n} post${n === 1 ? '' : 's'} voor ${input.platform} (${project.name})${planned ? `, ${planned} ingepland in de kalender` : ''}. Op de dag zelf staat de post in zijn dagles; posten doet hij zelf (of hij plant hem in Meta).`
+    : 'Niets opgeslagen: er zaten geen posts in.'
 }
 
 export async function saveIdeas(db: Db, ownerId: string, project: { id: string; name: string }, input: { mode: string }, wire: z.infer<typeof IdeasWire>): Promise<string> {
@@ -228,5 +253,173 @@ export async function saveClaudeMetrics(db: Db, ownerId: string, project: { id: 
   return {
     ok: true,
     text: `${ok.length} cijfer${ok.length === 1 ? '' : 's'} opgeslagen voor ${project.name}.${rejected.length ? ` Overgeslagen: ${rejected.map((r) => `${r.point.key} op ${r.point.day} (${r.why})`).join('; ')}.` : ''}`,
+  }
+}
+
+export interface IntakeInput {
+  name?: string
+  oneLiner?: string
+  what?: string
+  audience?: string
+  goal?: string
+  tone?: string
+  northStar?: string
+  redLines?: string
+  siteUrl?: string
+  localPath?: string
+  languages?: (typeof LANGUAGES)[number][]
+  markets?: (typeof MARKETS)[number][]
+  stage?: (typeof STAGES)[number]
+  /** Claude may only switch prospectie off; he switches it on himself. */
+  prospectPerDay?: 0
+}
+
+/**
+ * Claude fills in or updates the intake from what it knows of the project (its own docs and code).
+ * Only the fields it sends change; he reads and edits it under Bewerken.
+ */
+export async function saveIntake(db: Db, ownerId: string, project: { id: string; name: string }, input: IntakeInput): Promise<{ ok: boolean; text: string }> {
+  const siteUrl = input.siteUrl === undefined ? undefined : input.siteUrl.trim() ? normalizeUrl(input.siteUrl) : null
+  if (siteUrl === null && input.siteUrl?.trim()) return { ok: false, text: 'Niets opgeslagen: dat webadres klopt niet.' }
+  const localPath = input.localPath === undefined ? undefined : input.localPath.trim() || null
+  if (localPath && !localPath.startsWith('/') && !/^[A-Za-z]:\\/.test(localPath)) return { ok: false, text: 'Niets opgeslagen: de lokale map moet een volledig pad zijn.' }
+  const changes = Object.fromEntries(
+    Object.entries({
+      oneLiner: input.oneLiner?.trim(),
+      what: input.what?.trim(),
+      audience: input.audience?.trim(),
+      goal: input.goal?.trim(),
+      tone: input.tone?.trim(),
+      northStar: input.northStar?.trim(),
+      redLines: input.redLines?.trim(),
+      siteUrl,
+      localPath,
+      languages: input.languages?.length ? [...new Set(input.languages)] : undefined,
+      markets: input.markets ? [...new Set(input.markets)] : undefined,
+      stage: input.stage,
+      prospectPerDay: input.prospectPerDay,
+    }).filter(([, v]) => v !== undefined),
+  )
+  // A new name (a rebrand in his own documents): the project, and its company when that carried the old name.
+  const name = input.name?.replace(/\s+/g, ' ').trim()
+  if (name && name !== project.name) {
+    const others = await db.select({ id: s.project.id, name: s.project.name }).from(s.project).where(eq(s.project.ownerId, ownerId))
+    if (others.some((o) => o.id !== project.id && o.name.toLowerCase() === name.toLowerCase())) return { ok: false, text: `Niets opgeslagen: er is al een project dat ${name} heet.` }
+    changes.name = name
+    const [current] = await db.select({ companyId: s.project.companyId }).from(s.project).where(eq(s.project.id, project.id))
+    if (current?.companyId)
+      await db
+        .update(s.company)
+        .set({ name })
+        .where(and(eq(s.company.id, current.companyId), eq(s.company.ownerId, ownerId), eq(s.company.name, project.name)))
+  }
+  if (!Object.keys(changes).length) return { ok: false, text: 'Niets opgeslagen: er zat geen veld in.' }
+  const [row] = await db
+    .update(s.project)
+    .set({ ...changes, updatedAt: new Date() })
+    .where(and(eq(s.project.id, project.id), eq(s.project.ownerId, ownerId)))
+    .returning()
+  if (!row) return { ok: false, text: 'Niets opgeslagen: dat project bestaat niet.' }
+  if (isIntakeDone(row)) await award(db, ownerId, { kind: 'intake', refId: row.id, projectId: row.id })
+  const renamed = changes.name ? ` ${project.name} heet nu ${changes.name}.` : ''
+  return { ok: true, text: `Intake van ${row.name} bijgewerkt (${Object.keys(changes).join(', ')}).${renamed} Hij leest en past hem aan onder Bewerken.` }
+}
+
+/**
+ * A better opening, a sharper fit, or a day before which a business should not come up (for example
+ * "after Tuesday's demo"). Only for a business still waiting for his yes or no.
+ */
+export async function updateProspect(
+  db: Db,
+  ownerId: string,
+  project: { id: string; name: string },
+  input: { contactId: string; pitch?: string; fit?: number; nextStep?: string; notBefore?: string | null },
+): Promise<{ ok: boolean; text: string }> {
+  const [contact] = await db
+    .select()
+    .from(s.contact)
+    .where(and(eq(s.contact.id, input.contactId), eq(s.contact.ownerId, ownerId), eq(s.contact.projectId, project.id)))
+  if (!contact) return { ok: false, text: 'Niets opgeslagen: dat contact hoort niet bij dit project (zie list_contacts).' }
+  if (contact.status !== 'prospect') return { ok: false, text: `Niets opgeslagen: over ${contact.organization} heeft hij al beslist.` }
+  const changes = Object.fromEntries(
+    Object.entries({
+      pitch: input.pitch?.trim(),
+      fit: input.fit,
+      nextStep: input.nextStep?.trim(),
+      nextStepOn: input.notBefore === undefined ? undefined : input.notBefore,
+    }).filter(([, v]) => v !== undefined),
+  )
+  if (!Object.keys(changes).length) return { ok: false, text: 'Niets opgeslagen: er zat geen veld in.' }
+  await db.update(s.contact).set(changes).where(eq(s.contact.id, contact.id))
+  const when = input.notBefore ? ` Hij ziet het voorstel pas vanaf ${input.notBefore}.` : input.notBefore === null ? ' Het voorstel staat weer meteen klaar.' : ''
+  return { ok: true, text: `Voorstel ${contact.organization} bijgewerkt (${Object.keys(changes).join(', ')}).${when}` }
+}
+
+export interface ProspectInput {
+  organization: string
+  website: string
+  city?: string
+  what?: string
+  howRequestsArrive?: string
+  observation: string
+  fit?: number
+  why?: string
+  pitch?: string
+  channel?: string
+}
+
+/**
+ * Businesses Claude found for a project. Each becomes a proposal (status "prospect") that waits for his
+ * yes or no; one already known (same name or website, also one he said no to) is skipped. The cockpit
+ * reads their public phone and address from their own site itself: Claude only hears whether it found them.
+ */
+export async function saveProspects(db: Db, ownerId: string, project: { id: string; name: string }, prospects: ProspectInput[]): Promise<{ ok: boolean; text: string }> {
+  const known = new Set(
+    (await db.select({ organization: s.contact.organization, website: s.contact.website }).from(s.contact).where(eq(s.contact.projectId, project.id))).flatMap((c) =>
+      prospectKey(c.organization, c.website),
+    ),
+  )
+  const fresh: { id: string; organization: string; website: string }[] = []
+  let skipped = 0
+  for (const p of prospects.slice(0, 10)) {
+    const website = normalizeUrl(p.website)
+    const keys = prospectKey(p.organization, website)
+    if (!website || !p.organization.trim() || keys.some((k) => known.has(k))) {
+      skipped++
+      continue
+    }
+    keys.forEach((k) => known.add(k))
+    const id = crypto.randomUUID()
+    const note = [p.what?.trim(), p.howRequestsArrive?.trim() ? `Aanvragen nu: ${p.howRequestsArrive.trim()}` : '', p.why?.trim() ? `Waarom: ${p.why.trim()}` : '']
+      .filter(Boolean)
+      .join(' · ')
+    await db.insert(s.contact).values({
+      id,
+      ownerId,
+      projectId: project.id,
+      organization: p.organization.trim().slice(0, 120),
+      website,
+      city: (p.city ?? '').trim().slice(0, 80),
+      note: hideContactDetails(note).slice(0, 1000),
+      observation: hideContactDetails(p.observation.trim()).slice(0, 400),
+      fit: p.fit && p.fit >= 1 && p.fit <= 5 ? Math.round(p.fit) : null,
+      pitch: hideContactDetails((p.pitch ?? '').trim()).slice(0, 600),
+      channel: (p.channel ?? 'call').trim().slice(0, 20),
+      basis: 'business',
+      source: 'prospect',
+      status: 'prospect',
+    })
+    fresh.push({ id, organization: p.organization.trim(), website })
+  }
+  const details = await Promise.all(fresh.map((f) => findSiteDetails(f.website).catch(() => ({ email: null, emailSource: null, phone: null }))))
+  for (const [i, f] of fresh.entries()) {
+    const d = details[i]
+    if (d.email || d.phone) await db.update(s.contact).set({ email: d.email, emailSource: d.emailSource, phone: d.phone }).where(eq(s.contact.id, f.id))
+  }
+  if (!fresh.length) return { ok: false, text: `Niets nieuws opgeslagen: alle ${skipped} bedrijven stonden er al (of misten een naam of website). Zoek andere bedrijven.` }
+  const list = fresh.map((f, i) => ({ id: f.id, organization: f.organization, phoneFound: Boolean(details[i].phone), addressFound: Boolean(details[i].email) }))
+  return {
+    ok: true,
+    text: `Opgeslagen: ${fresh.length} voorstel${fresh.length === 1 ? '' : 'len'} voor ${project.name}${skipped ? ` (${skipped} stond${skipped === 1 ? '' : 'en'} er al)` : ''}. Hij beslist per bedrijf. ${JSON.stringify(list)}`,
   }
 }

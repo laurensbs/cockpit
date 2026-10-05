@@ -27,6 +27,7 @@ const mailSchema = z.object({
   fromEmail: z.string().trim().max(200),
   cap: z.coerce.number().int().min(1).max(MAX_DAILY_CAP),
   enabled: z.boolean(),
+  coldMail: z.boolean(),
 })
 
 /** His own mailbox: where mails go out from. An empty password field keeps the stored one. */
@@ -42,6 +43,7 @@ export async function saveMailSettings(_prev: FormState, form: FormData): Promis
     fromEmail: form.get('fromEmail') ?? '',
     cap: form.get('cap') ?? 20,
     enabled: form.get('enabled') === '1',
+    coldMail: form.get('coldMail') === '1',
   })
   if (!parsed.success) return { ok: false, error: 'Controleer de velden: server, poort en limiet (1–50).' }
   const m = parsed.data
@@ -59,6 +61,7 @@ export async function saveMailSettings(_prev: FormState, form: FormData): Promis
   await setSetting(db, id, 'mail_from_email', m.fromEmail)
   await setSetting(db, id, 'mail_cap', String(m.cap))
   await setSetting(db, id, 'mail_enabled', m.enabled ? '1' : '0')
+  await setSetting(db, id, 'cold_mail_ok', m.coldMail ? '1' : '0')
   revalidatePath('/settings')
   return { ok: true, message: m.enabled ? 'Bewaard. Automatisch versturen staat aan.' : 'Bewaard. Automatisch versturen staat uit.' }
 }

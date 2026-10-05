@@ -40,9 +40,10 @@ export { isMetricKey, METRIC_KEYS, type MetricKey } from './metrics'
 import { METRIC_DEFS, type MetricKey as Key } from './metrics'
 export const METRIC_LABELS = Object.fromEntries(Object.entries(METRIC_DEFS).map(([k, d]) => [k, d.label])) as Record<Key, string>
 
-export const CONTACT_STATUSES = ['new', 'drafted', 'sent', 'replied', 'meeting', 'offer', 'won', 'lost', 'no'] as const
+export const CONTACT_STATUSES = ['prospect', 'new', 'drafted', 'sent', 'replied', 'meeting', 'offer', 'won', 'lost', 'no', 'skipped'] as const
 export type ContactStatus = (typeof CONTACT_STATUSES)[number]
 export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  prospect: 'Voorstel van Claude',
   new: 'Nieuw',
   drafted: 'Concept klaar',
   sent: 'Gemaild',
@@ -52,11 +53,14 @@ export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
   won: 'Gewonnen!',
   lost: 'Verloren',
   no: 'Geen interesse',
+  skipped: 'Overgeslagen',
 }
 /** They answered (and maybe went further): worth the reply XP, and counted as answers. */
 export const ANSWERED_STATUSES: readonly string[] = ['replied', 'meeting', 'offer', 'won', 'lost']
-/** Nothing more goes out to them on its own: they answered, or said no. */
-export const STOP_STATUSES: readonly string[] = [...ANSWERED_STATUSES, 'no']
+/** Nothing more goes out to them on its own: they answered, said no, he skipped them, or he has not said yes yet. */
+export const STOP_STATUSES: readonly string[] = [...ANSWERED_STATUSES, 'no', 'skipped', 'prospect']
+/** A business Claude found, waiting for his yes or no; and one he said no to, never proposed again. */
+export const PROSPECT_STATUSES: readonly string[] = ['prospect', 'skipped']
 export const isStopped = (status: string | null | undefined) => STOP_STATUSES.includes(status ?? '')
 /** The pipeline stages that count in the funnel, and the number each one feeds. */
 export const PIPELINE_METRICS: Record<string, 'leads' | 'meetings' | 'offers' | 'deals_won'> = { replied: 'leads', meeting: 'meetings', offer: 'offers', won: 'deals_won' }

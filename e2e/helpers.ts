@@ -44,3 +44,9 @@ export async function mcpTool(request: APIRequestContext, name: string, args: Re
   if (r.error) throw new Error(`${name}: ${r.error.message}`)
   return { text: r.result?.content?.map((c) => c.text).join('\n') ?? '', isError: Boolean(r.result?.isError) }
 }
+
+/** Vandaag shows the day route; the rest sits behind "Meer". */
+export async function openMore(page: Page) {
+  const more = page.locator('details.more')
+  if (!(await more.evaluate((d) => (d as HTMLDetailsElement).open))) await more.locator('summary').click()
+}

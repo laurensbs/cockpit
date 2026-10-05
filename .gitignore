@@ -53,3 +53,8 @@ next-env.d.ts
 # electron
 /dist-electron/
 /release/
+
+# Vitest JSON report (RTK)
+.vitest/
+# Local preview server (paths of this machine)
+.claude/launch.json

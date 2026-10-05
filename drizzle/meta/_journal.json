@@ -22,6 +22,34 @@
       "when": 1791136527716,
       "tag": "0002_outcomes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791150982212,
+      "tag": "0003_prospects",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791190621448,
+      "tag": "0004_github-work",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791201760297,
+      "tag": "0005_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791205765716,
+      "tag": "0006_money",
+      "breakpoints": true
     }
   ]
 }

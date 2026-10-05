@@ -1,5 +1,7 @@
 import 'server-only'
 import { getDb } from '@/db'
+import { syncAll } from './github/sync'
+import { maybeRefresh } from './knowledge'
 import { runOutbox } from './outbox'
 import { LOCAL_OWNER_ID } from './session'
 
@@ -23,4 +25,23 @@ export function startWorker(): void {
   }
   state.__cockpitWorker = setInterval(tick, EVERY_MS)
   setTimeout(tick, 20_000)
+
+  // GitHub, every ten minutes: one cheap request per repo, and the full read only for one that was pushed to.
+  // After a push Claude reads what is new and updates the project's intake (name, offer, stage).
+  let reading = false
+  const github = async () => {
+    if (reading) return
+    reading = true
+    try {
+      const db = await getDb()
+      await syncAll(db, LOCAL_OWNER_ID, 60_000)
+      await maybeRefresh(db, LOCAL_OWNER_ID)
+    } catch (error) {
+      console.error('github', error instanceof Error ? error.message : error)
+    } finally {
+      reading = false
+    }
+  }
+  setInterval(github, 10 * 60_000)
+  setTimeout(github, 60_000)
 }

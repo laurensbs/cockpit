@@ -4,8 +4,9 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getDb } from '@/db'
 import * as s from '@/db/schema'
+import { dayOf } from '@/lib/dates'
 import { expectedToken } from '@/lib/local'
-import { connectClaudeCode, launchPrompt, mcpUrl, openTerminal } from '../claude'
+import { claudeLoggedIn, connectClaudeCode, launchPrompt, mcpUrl, openTerminal, runHeadless } from '../claude'
 import { isTaskKind, TaskOptions } from '../mcp/tasks'
 import { createTicket } from '../mcp/tickets'
 import { actionOwner } from '../session'
@@ -58,9 +59,81 @@ export async function connectClaude(): Promise<{ ok: boolean; message: string }>
   return result
 }
 
-/** The autopilot: on Monday morning Claude Code makes the weekly focus by itself. */
+/** The autopilot: on Monday morning the weekly focus, and on working days a post about what he built. */
 export async function setAutopilot(on: boolean): Promise<void> {
   const owner = await actionOwner()
-  await setSetting(await getDb(), owner.userId, 'autopilot_weekly', on ? '1' : null)
+  await setSetting(await getDb(), owner.userId, 'autopilot_weekly', on ? '1' : '0')
   revalidatePath('/settings')
+}
+
+/** Tasks that need to search or read the web. */
+const WEB_TASKS = new Set(['opportunities', 'seo', 'prospect'])
+
+/**
+ * The day route's buttons: Claude does the task in the background, without a terminal window; the
+ * result appears on the page when it lands. For a layperson that is one tap and nothing to watch.
+ */
+export async function runInBackground(task: string, projectId: string, options: Record<string, unknown> = {}): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  if (!isTaskKind(task) || task === 'ask') return { ok: false, message: 'Onbekende taak.' }
+  const parsed = TaskOptions.safeParse(options)
+  if (!parsed.success) return { ok: false, message: 'Die keuzes kloppen niet.' }
+  const db = await getDb()
+  const [project] = await db
+    .select({ id: s.project.id })
+    .from(s.project)
+    .where(and(eq(s.project.id, String(projectId)), eq(s.project.ownerId, owner.userId)))
+  if (!project) return { ok: false, message: 'Dit project bestaat niet.' }
+  const ticket = createTicket({ task, projectId: project.id, options: parsed.data })
+  const { started } = await runHeadless(launchPrompt(ticket), { web: WEB_TASKS.has(task) })
+  return started ? { ok: true, message: 'Claude is ermee bezig. Het verschijnt hier vanzelf.' } : { ok: false, message: 'Claude Code kon niet starten.' }
+}
+
+/**
+ * After he logged in again: forget that today's background work was started (it failed), and start it
+ * again (the weekly focus on Monday, the posts, the week plan, the search for businesses).
+ */
+export async function retryBackgroundToday(): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  if ((await claudeLoggedIn()) === false) return { ok: false, message: 'Claude Code is nog niet ingelogd. Typ in Terminal claude en dan /login.' }
+  const db = await getDb()
+  const { maybeAutopilot, maybeBuildPosts, maybePlanWeek, maybeProspect } = await import('../autopilot')
+  const projects = await db.select({ id: s.project.id }).from(s.project).where(eq(s.project.ownerId, owner.userId))
+  for (const p of projects) {
+    await setSetting(db, owner.userId, `build_post_${p.id}`, null)
+    await setSetting(db, owner.userId, `prospect_day_${p.id}`, null)
+  }
+  await setSetting(db, owner.userId, 'autopilot_week', null)
+  const [weekly, prospects, posts] = await Promise.all([maybeAutopilot(db, owner.userId), maybeProspect(db, owner.userId), maybeBuildPosts(db, owner.userId)])
+  // After the single posts, so the week plan skips a project whose post just started.
+  const planned = await maybePlanWeek(db, owner.userId)
+  revalidatePath('/')
+  const started = (weekly === 'started' ? 1 : 0) + prospects.started.length + posts.length + planned.length
+  return { ok: true, message: started ? `Claude is opnieuw begonnen (${started} ${started === 1 ? 'klus' : 'klussen'}).` : 'Er stond vandaag niets meer klaar om te doen.' }
+}
+
+/** "Zet al het geld erin": Claude reads his documents and writes down every cost, price and money date. */
+export async function askMoney(): Promise<{ ok: boolean; message: string }> {
+  const owner = await actionOwner()
+  if ((await claudeLoggedIn()) === false) return { ok: false, message: 'Claude Code is nog niet ingelogd. Typ in Terminal claude en dan /login.' }
+  const ticket = createTicket({ task: 'money', projectId: null, options: {} })
+  const { started } = await runHeadless(launchPrompt(ticket), { read: true })
+  if (started) await setSetting(await getDb(), owner.userId, 'money_round', dayOf(new Date()))
+  return started
+    ? { ok: true, message: 'Claude leest je documenten en zet alles over geld erin. Over een paar minuten staat het hier.' }
+    : { ok: false, message: 'Claude Code kon niet starten.' }
+}
+
+/**
+ * "Ik weet het even niet": Claude looks across all his projects in the background and names the one
+ * thing to do now; the coach card shows it when it lands.
+ */
+export async function askCoach(): Promise<{ ok: boolean; message: string }> {
+  await actionOwner()
+  if ((await claudeLoggedIn()) === false) return { ok: false, message: 'Claude Code is nog niet ingelogd. Typ in Terminal claude en dan /login.' }
+  const ticket = createTicket({ task: 'coach', projectId: null, options: {} })
+  const { started } = await runHeadless(launchPrompt(ticket))
+  return started
+    ? { ok: true, message: 'Claude kijkt naar al je projecten. Over een paar minuten staat hier wat nu het belangrijkst is.' }
+    : { ok: false, message: 'Claude Code kon niet starten.' }
 }
