@@ -1755,6 +1755,13 @@ a.chip:hover {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* Each line of a decision, lesson or target on its own row: what, project, why, button. */
+.review-list.plain li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
 
 /* ---------- the pipeline board ---------- */
 .row.tight {
