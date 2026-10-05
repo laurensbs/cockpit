@@ -115,5 +115,12 @@ test('"Help iemand": a place where his audience talks, value without a pitch, on
   // Done for today: the next lesson does not ask again.
   await page.goto('/dag')
   await expect(page.getByRole('heading', { name: 'Help iemand in Forum Test' })).toHaveCount(0)
+
+  // The week card counts what he did: the call from the lesson above and this bit of help.
+  await page.goto('/')
+  const week = page.getByRole('region', { name: 'Deze week' })
+  await expect(week.locator('.week-rows li').filter({ hasText: 'Gebeld' }).locator('strong')).toHaveText('1')
+  await expect(week.locator('.week-rows li').filter({ hasText: 'Geholpen' }).locator('strong')).toHaveText('1')
+  await expect(week).toContainText('Webstability')
   await context.close()
 })

@@ -2037,6 +2037,65 @@ a.chip:hover {
 .today-head h1 {
   font-size: clamp(1.75rem, 3.2vw, 2.2rem);
 }
+.today-rail .rail-wide {
+  grid-column: 1 / -1;
+}
+@media (min-width: 1120px) {
+  .today-rail .rail-wide {
+    grid-column: auto;
+  }
+}
+/* The week in five numbers: an icon, what it is, this week, last week. */
+.week-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.week-rows li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 750;
+}
+.week-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--tone-soft);
+  color: var(--tone-edge);
+}
+.week-rows strong {
+  min-width: 1.6em;
+  text-align: right;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+.week-rows strong.up {
+  color: var(--green-edge);
+}
+.week-before {
+  min-width: 2.2em;
+  text-align: right;
+}
+.week-projects {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0 0;
+  border-top: 2px solid var(--line);
+  display: grid;
+  gap: 0.35rem;
+}
+.week-projects li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
 .rail-card {
   display: flex;
   align-items: center;

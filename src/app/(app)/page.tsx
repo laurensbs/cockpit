@@ -10,6 +10,7 @@ import { NextSteps, SetupChecklist } from '@/components/NextSteps'
 import { ClaudeLoggedOut } from '@/components/ClaudeLoggedOut'
 import { DayPath } from '@/components/DayPath'
 import { WeeklyFocus } from '@/components/WeeklyFocus'
+import { WeekScoreCard } from '@/components/WeekScoreCard'
 import { getDb } from '@/db'
 import { greeting } from '@/lib/dates'
 import { pickSteps } from '@/lib/today'
@@ -22,6 +23,7 @@ import { questViews } from '@/server/quest-views'
 import { requireOwner } from '@/server/session'
 import { setupSteps } from '@/server/setup'
 import { dayCandidates, dayProgress, growthStep, orderNextSteps } from '@/server/today'
+import { loadWeekScore } from '@/server/week-score'
 
 const TREND = { up: { icon: '▲', label: 'meer dan vorige week', color: 'var(--good)' }, down: { icon: '▼', label: 'minder dan vorige week', color: 'var(--bad)' }, flat: { icon: '●', label: 'gelijk aan vorige week', color: 'var(--faint)' } }
 
@@ -46,6 +48,7 @@ export default async function TodayPage() {
   // The day route: the first growth step of the least healthy project closes the list.
   const daySteps = pickSteps(await dayCandidates(db, owner.userId, growthStep(ordered)), new Set(), 8)
   const progress = await dayProgress(db, owner.userId)
+  const week = await loadWeekScore(db, owner.userId)
 
   const left = Math.max(0, progress.goal - progress.done)
   const name = owner.name ? owner.name.split(' ')[0] : null
@@ -105,6 +108,7 @@ export default async function TodayPage() {
             </p>
           </div>
         </section>
+        <WeekScoreCard score={week} projects={pulses.map((p) => ({ id: p.id, name: p.name, color: p.color }))} />
       </aside>
 
       {/* Everything else stays quiet behind one button: the day route is the page. */}

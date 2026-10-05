@@ -4,6 +4,8 @@ import type { Db } from '@/db'
 import * as s from '@/db/schema'
 import { addDays, dayOf } from '@/lib/dates'
 import { learningLines } from '@/lib/learning'
+import { weekLearning } from '@/lib/week-score'
+import { loadWeekScore } from './week-score'
 
 /** What his choices of the last 30 days taught, for Claude's next search or posts on this project. */
 export async function learningFor(db: Db, projectId: string): Promise<string[]> {
@@ -27,9 +29,13 @@ export async function learningFor(db: Db, projectId: string): Promise<string[]> 
   ])
   const cut = addDays(today, -7)
   const sum = (rows: { value: number }[]) => Math.round(rows.reduce((t, r) => t + r.value, 0))
-  return learningLines(
+  const lines = learningLines(
     prospects,
     posts.map((p) => ({ platform: p.platform || 'linkedin', done: p.status === 'done' })),
     reach.length ? { last7: sum(reach.filter((r) => r.day > cut)), before7: sum(reach.filter((r) => r.day <= cut)) } : null,
   )
+  // What he did on this project this week, next to last week.
+  const [owner] = await db.select({ ownerId: s.project.ownerId }).from(s.project).where(eq(s.project.id, projectId))
+  const week = owner ? weekLearning(await loadWeekScore(db, owner.ownerId, projectId)) : null
+  return week ? [...lines, week] : lines
 }
