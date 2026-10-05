@@ -61,12 +61,17 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const db = await getDb()
   const projects = (
     await db
-      .select({ id: s.project.id, name: s.project.name, stage: s.project.stage, languages: s.project.languages })
+      .select({ id: s.project.id, name: s.project.name, stage: s.project.stage, languages: s.project.languages, what: s.project.what, redLines: s.project.redLines, prospectPerDay: s.project.prospectPerDay })
       .from(s.project)
       .where(eq(s.project.ownerId, owner.userId))
       .orderBy(asc(s.project.sortOrder), asc(s.project.name))
-  ).filter((p) => isStage(p.stage) && ACTIVE_STAGES.includes(p.stage))
-  const current = projects.find((p) => p.id === params.project) ?? projects[0]
+  )
+    .filter((p) => isStage(p.stage) && ACTIVE_STAGES.includes(p.stage))
+    // Projects that do marketing first; one with marketing off (a private project) goes last.
+    .map((p) => ({ ...p, off: /marketing staat uit/i.test(`${p.what} ${p.redLines}`) }))
+    .sort((a, b) => Number(a.off) - Number(b.off))
+  // Without a choice: the project he is actively selling (it looks for businesses every day), else the first that markets.
+  const current = projects.find((p) => p.id === params.project) ?? projects.find((p) => !p.off && p.prospectPerDay > 0) ?? projects[0]
   const href = (over: Record<string, string | undefined>) => {
     const q = new URLSearchParams()
     const next = { tab, project: current?.id, ...over }

@@ -1,19 +1,32 @@
 'use client'
 
+import { ChevronDown, Ellipsis } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon, type IconName } from './Icon'
+import type { Tone } from './StepIcon'
 
-// Three places up front; the rest is one tap away under "Meer" (and always in ⌘K).
-const PLACES: { href: string; label: string; icon: IconName }[] = [
-  { href: '/', label: 'Vandaag', icon: 'today' },
-  { href: '/projects', label: 'Projecten', icon: 'projects' },
-  { href: '/studio', label: 'Marketing', icon: 'studio' },
+// Three places up front; the rest is one tap away under "Meer" (and always in ⌘K). Each has its colour.
+export const PLACES: { href: string; label: string; icon: IconName; tone: Tone }[] = [
+  { href: '/', label: 'Vandaag', icon: 'today', tone: 'orange' },
+  { href: '/projects', label: 'Projecten', icon: 'projects', tone: 'blue' },
+  { href: '/studio', label: 'Marketing', icon: 'studio', tone: 'violet' },
 ]
-const MORE: { href: string; label: string; icon: IconName }[] = [
-  { href: '/quests', label: 'Quests', icon: 'quests' },
-  { href: '/companies', label: 'Bedrijven', icon: 'companies' },
+export const MORE: { href: string; label: string; icon: IconName; tone: Tone }[] = [
+  { href: '/quests', label: 'Quests', icon: 'quests', tone: 'green' },
+  { href: '/companies', label: 'Bedrijven', icon: 'companies', tone: 'gold' },
 ]
+
+function Place({ place, active }: { place: (typeof PLACES)[number]; active: boolean }) {
+  return (
+    <Link href={place.href} className={`tone-${place.tone}`} aria-current={active ? 'page' : undefined}>
+      <span className="nav-ico">
+        <Icon name={place.icon} size={24} />
+      </span>
+      <span>{place.label}</span>
+    </Link>
+  )
+}
 
 export interface SidebarProject {
   id: string
@@ -36,18 +49,18 @@ export function Sidebar({ projects, claude, version }: { projects: SidebarProjec
     <nav className="sidebar" aria-label="Hoofdmenu">
       <div className="sidebar-group">
         {PLACES.map((p) => (
-          <Link key={p.href} href={p.href} aria-current={isActive(pathname, p.href) ? 'page' : undefined}>
-            <Icon name={p.icon} size={18} />
-            <span>{p.label}</span>
-          </Link>
+          <Place key={p.href} place={p} active={isActive(pathname, p.href)} />
         ))}
         <details className="sidebar-more" open={MORE.some((p) => isActive(pathname, p.href)) || undefined}>
-          <summary>Meer</summary>
+          <summary>
+            <span className="nav-ico tone-gray">
+              <Ellipsis size={24} strokeWidth={2.25} aria-hidden="true" />
+            </span>
+            <span className="grow">Meer</span>
+            <ChevronDown className="chev" size={18} strokeWidth={2.5} aria-hidden="true" />
+          </summary>
           {MORE.map((p) => (
-            <Link key={p.href} href={p.href} aria-current={isActive(pathname, p.href) ? 'page' : undefined}>
-              <Icon name={p.icon} size={18} />
-              <span>{p.label}</span>
-            </Link>
+            <Place key={p.href} place={p} active={isActive(pathname, p.href)} />
           ))}
         </details>
       </div>
@@ -68,8 +81,10 @@ export function Sidebar({ projects, claude, version }: { projects: SidebarProjec
         </div>
       ) : null}
       <div className="sidebar-foot">
-        <Link href="/settings" aria-current={isActive(pathname, '/settings') ? 'page' : undefined}>
-          <Icon name="settings" size={18} />
+        <Link href="/settings" className="tone-gray" aria-current={isActive(pathname, '/settings') ? 'page' : undefined}>
+          <span className="nav-ico">
+            <Icon name="settings" size={22} />
+          </span>
           <span>Instellingen</span>
         </Link>
         <Link href="/settings#claude" className={`claude-status ${status.tone}`}>

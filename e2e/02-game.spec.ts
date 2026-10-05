@@ -40,7 +40,7 @@ test('quests give XP, a boss levels you up, recurring quests come back', async (
   await page.goto('/')
   await expect(page.getByText('Level 2 · Knutselaar')).toBeVisible()
   await expect(page.getByText('+275 XP vandaag')).toBeVisible()
-  await expect(page.getByText('1 dag actie')).toBeVisible()
+  await expect(page.getByText('1 dag op rij')).toBeVisible()
   await shot(page, '07-today')
 
   // Reopening takes the XP back out.

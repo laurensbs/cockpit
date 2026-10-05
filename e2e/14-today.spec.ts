@@ -33,7 +33,7 @@ test('Vandaag is calm; the lesson takes him through the day one card at a time',
 
   // The call first: the number, "Gebeld", and then the one question that matters.
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bel Garage Test')
-  await expect(page.getByRole('link', { name: '📞 +34972000000' })).toHaveAttribute('href', 'tel:+34972000000')
+  await expect(page.getByRole('link', { name: '+34972000000' })).toHaveAttribute('href', 'tel:+34972000000')
   await shot(page, '21-les-bellen')
   await page.getByRole('button', { name: 'Gebeld ✓' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Wilden ze informatie?')

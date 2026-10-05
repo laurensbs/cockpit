@@ -1,3 +1,4 @@
+import { Crown, Flame, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { HealthRing } from '@/components/HealthRing'
 import { Icon } from '@/components/Icon'
@@ -46,46 +47,65 @@ export default async function TodayPage() {
   const daySteps = pickSteps(await dayCandidates(db, owner.userId, growthStep(ordered)), new Set(), 8)
   const progress = await dayProgress(db, owner.userId)
 
+  const left = Math.max(0, progress.goal - progress.done)
+  const name = owner.name ? owner.name.split(' ')[0] : null
+
   return (
-    <div className="stack-l">
-      <section className="hero hero-compact">
-        <div className="stack-s">
-          <p className="eyebrow" style={{ color: '#b5f23d' }}>
-            Vandaag
-          </p>
-          <h1>{owner.name ? `${greeting(new Date())}, ${owner.name.split(' ')[0]}` : greeting(new Date())}</h1>
-          <div className="row">
-            <span className="chip flame" title="Dagen op rij iets gedaan (één vrije dag per week)">
-              <Icon name="flame" size={14} /> {actionStreak.length} {actionStreak.length === 1 ? 'dag' : 'dagen'} actie{actionStreak.length && !actionStreak.today ? ' · vandaag nog niet' : ''}
-            </span>
-            <span className="chip" title="Dagen op rij gecommit">
-              <Icon name="branch" size={14} /> {buildStreak.length} {buildStreak.length === 1 ? 'dag' : 'dagen'} bouwen
-            </span>
-            <span className="chip xp num">+{stats.todayXp} XP vandaag</span>
-          </div>
-        </div>
-        <div className="row nowrap hero-level">
-          <div className="level-badge num" aria-hidden="true">
-            {level.level}
-          </div>
-          <div className="grow stack-xs">
-            <p style={{ fontWeight: 700 }}>
-              Level {level.level} · {level.title}
-            </p>
-            <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={level.needed} aria-valuenow={level.current} aria-label="XP naar het volgende level">
-              <span style={{ width: `${Math.round(level.progress * 100)}%` }} />
-            </div>
-            <p className="tiny muted num">
-              {level.current} / {level.needed} XP naar level {level.level + 1}
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="today">
+      <header className="today-head stack-xs">
+        <h1>{name ? `${greeting(new Date())}, ${name}` : greeting(new Date())}</h1>
+        <p className="muted">
+          {left ? `${left} ${left === 1 ? 'stap' : 'stappen'} tot je dagdoel · een paar minuten` : 'Dagdoel gehaald. Meer mag, hoeft niet.'}
+        </p>
+      </header>
 
       {setupLeft ? <SetupChecklist steps={setup} /> : null}
 
       {headlessProblem() === 'logged-out' ? <ClaudeLoggedOut /> : null}
       <DayPath steps={daySteps} done={progress.done} goal={progress.goal} />
+
+      <aside className="today-rail" aria-label="Je voortgang">
+        <section className="card rail-card">
+          <span className="disc tone-orange" style={{ width: 56, height: 56 }} aria-hidden="true">
+            <Flame size={28} strokeWidth={2.5} fill={actionStreak.today ? 'currentColor' : 'none'} />
+          </span>
+          <div className="grow">
+            <h3>
+              {actionStreak.length} {actionStreak.length === 1 ? 'dag' : 'dagen'} op rij
+            </h3>
+            <p className="tiny muted">{actionStreak.today ? 'Vandaag al gedaan. Goed bezig.' : 'Doe vandaag één stap om je reeks te houden.'}</p>
+          </div>
+        </section>
+        <section className="card stack-s rail-level">
+          <div className="rail-card">
+            <span className="disc tone-gold" style={{ width: 56, height: 56 }} aria-hidden="true">
+              <Crown size={28} strokeWidth={2.5} fill="currentColor" />
+            </span>
+            <div className="grow">
+              <h3>
+                Level {level.level} · {level.title}
+              </h3>
+              <p className="tiny muted num">
+                {level.current} / {level.needed} XP naar level {level.level + 1}
+              </p>
+            </div>
+          </div>
+          <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={level.needed} aria-valuenow={level.current} aria-label="XP naar het volgende level">
+            <span style={{ width: `${Math.round(level.progress * 100)}%` }} />
+          </div>
+        </section>
+        <section className="card rail-card">
+          <span className="disc tone-lime" style={{ width: 56, height: 56 }} aria-hidden="true">
+            <Zap size={28} strokeWidth={2.5} fill="currentColor" />
+          </span>
+          <div className="grow">
+            <h3 className="num">+{stats.todayXp} XP vandaag</h3>
+            <p className="tiny muted">
+              {buildStreak.length} {buildStreak.length === 1 ? 'dag' : 'dagen'} op rij gebouwd
+            </p>
+          </div>
+        </section>
+      </aside>
 
       {/* Everything else stays quiet behind one button: the day route is the page. */}
       <details className="more stack-l">

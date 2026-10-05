@@ -1,5 +1,6 @@
 'use client'
 
+import { Check, ExternalLink, Flame, Phone, Sparkles, Trophy, X, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -13,7 +14,8 @@ import { gaveValue, markContentDone } from '@/server/actions/content'
 import { saveFollowers } from '@/server/actions/numbers'
 import { acceptProspect, prospectWantsInfo, skipProspect } from '@/server/actions/prospects'
 import { completeQuest } from '@/server/actions/quests'
-import { STEP_ICON } from './DayPath'
+import { Logo } from './Logo'
+import { STEP_LOOK, StepDisc } from './StepIcon'
 import { PostImage } from './PostImage'
 
 type Feedback = { tone: 'good' | 'neutral' | 'bad'; text: string; xp: number }
@@ -28,6 +30,33 @@ const hostOf = (url: string) => {
     return 'de plek'
   }
 }
+/** What kind of step a card is, above its title. */
+const KIND_LABEL: Record<LessonCard['kind'], string> = {
+  call: 'Bellen',
+  prospect: 'Nieuw bedrijf',
+  reply: 'Antwoord?',
+  give: 'Help iemand',
+  checkin: 'Je cijfers',
+  post: 'Posten',
+  build: 'Bouwen in het openbaar',
+  growth: 'Groeien',
+}
+
+/** Claude speaks: its badge and a speech bubble. */
+function Bubble({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bubble-row">
+      <span className="bubble-who" aria-hidden="true">
+        <Logo />
+      </span>
+      <div className="bubble">
+        <p className="bubble-title">{title}</p>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 const PLATFORM_HOME: Record<string, string> = { instagram: 'https://www.instagram.com/', tiktok: 'https://www.tiktok.com/upload', linkedin: 'https://www.linkedin.com/feed/', x: 'https://x.com/compose/post' }
 
 /**
@@ -79,25 +108,46 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
     return (
       <div className="lesson">
         {reached ? <Confetti /> : null}
-        <main className="lesson-end stack-m">
-          <div className="lesson-flame" aria-hidden="true">
-            {reached ? '🔥' : '✨'}
-          </div>
-          {reached && streak ? <span className="chip flame lesson-streak">🔥 {streak} {streak === 1 ? 'dag' : 'dagen'} op rij</span> : null}
+        <span />
+        <main className="lesson-end">
+          <span className={`disc ${reached ? 'tone-gold' : 'tone-violet'}`} style={{ width: 112, height: 112 }} aria-hidden="true">
+            {reached ? <Trophy size={52} strokeWidth={2.5} /> : <Sparkles size={52} strokeWidth={2.5} />}
+          </span>
           <h1>{reached ? 'Dagdoel gehaald!' : cards.length ? 'Lekker bezig!' : 'Niets te doen nu'}</h1>
-          <p className="muted">{cards.length ? `+${xp} XP in deze les${streak ? ` · ${streak} ${streak === 1 ? 'dag' : 'dagen'} op rij` : ''}` : 'Claude zoekt verder. Kom straks terug.'}</p>
-          {lessonLearned(yes, reasons) ? <p className="small">{lessonLearned(yes, reasons)}</p> : null}
-          <button
-            type="button"
-            className="button primary big"
-            onClick={() => {
-              router.push('/')
-              router.refresh()
-            }}
-          >
-            Klaar
-          </button>
+          {cards.length ? (
+            <div className="end-stats">
+              <div className="end-stat tone-lime">
+                <span>XP</span>
+                <strong>
+                  <Zap size={22} strokeWidth={2.5} fill="currentColor" aria-hidden="true" /> +{xp}
+                </strong>
+              </div>
+              <div className="end-stat tone-orange">
+                <span>Op rij</span>
+                <strong>
+                  <Flame size={22} strokeWidth={2.5} fill="currentColor" aria-hidden="true" /> {streak} {streak === 1 ? 'dag' : 'dagen'}
+                </strong>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">Claude zoekt verder. Kom straks terug.</p>
+          )}
+          {lessonLearned(yes, reasons) ? <p className="small muted">{lessonLearned(yes, reasons)}</p> : null}
         </main>
+        <footer className="lesson-foot">
+          <div className="lesson-actions">
+            <button
+              type="button"
+              className="button primary big"
+              onClick={() => {
+                router.push('/')
+                router.refresh()
+              }}
+            >
+              Klaar
+            </button>
+          </div>
+        </footer>
       </div>
     )
   }
@@ -106,33 +156,38 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
     <div className="lesson">
       <header className="lesson-top">
         <Link href="/" className="lesson-close" aria-label="Stoppen">
-          ✕
+          <X size={26} strokeWidth={2.75} aria-hidden="true" />
         </Link>
         <div className="lesson-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label="Voortgang van je dag">
           <span style={{ width: `${progress}%` }} />
         </div>
-        <span className="chip flame" title="Dagen op rij">
-          🔥 {streak}
+        <span className="lesson-streak-top" title="Dagen op rij">
+          <Flame size={22} strokeWidth={2.5} fill="currentColor" aria-hidden="true" /> {streak}
         </span>
       </header>
 
       <main key={index} className="lesson-card stack-m" aria-live="polite">
-        <div className="lesson-icon" aria-hidden="true">
-          {card.kind === 'prospect' ? STEP_ICON.prospects : STEP_ICON[card.kind]}
+        <StepDisc kind={card.kind} size={88} />
+        <div className={`stack-xs tone-${STEP_LOOK[card.kind].tone}`}>
+          <p className="lesson-kind">{KIND_LABEL[card.kind]}</p>
+          <h1>{phase === 'ask-info' ? 'Wilden ze informatie?' : card.title}</h1>
+          {card.sub && card.kind !== 'call' ? <p className="muted">{card.sub}</p> : null}
         </div>
-        <h1>{phase === 'ask-info' ? 'Wilden ze informatie?' : card.title}</h1>
-        {card.sub ? <p className="muted">{card.sub}</p> : null}
         <CardBody card={card} phase={phase} />
       </main>
 
       <footer className={`lesson-foot${feedback ? ` ${feedback.tone}` : ''}`}>
         {feedback ? (
           <div className="lesson-feedback">
-            <strong>
-              {feedback.tone === 'good' ? '✓ ' : ''}
-              {feedback.text}
-              {feedback.xp ? ` +${feedback.xp} XP` : ''}
-            </strong>
+            <div className="feedback-head">
+              <span className="feedback-mark" aria-hidden="true">
+                {feedback.tone === 'good' ? <Check size={28} strokeWidth={3.5} /> : feedback.tone === 'bad' ? <X size={28} strokeWidth={3.5} /> : <Sparkles size={24} strokeWidth={2.5} />}
+              </span>
+              <strong className="feedback-text">
+                {feedback.text}
+                {feedback.xp ? ` +${feedback.xp} XP` : ''}
+              </strong>
+            </div>
             <button type="button" className="button primary big" onClick={next} autoFocus>
               Verder
             </button>
@@ -160,51 +215,70 @@ export function Lesson({ cards: initial, done, goal, streak }: { cards: LessonCa
 function CardBody({ card, phase }: { card: LessonCard; phase: Phase }) {
   if (card.kind === 'call')
     return phase === 'ask-info' ? (
-      <p>Vroegen ze om informatie? Dan stuurt de cockpit de mail die Claude klaarzette. Dat mag, want ze vroegen erom.</p>
-    ) : card.phone ? (
-      <a className="lesson-phone" href={`tel:${card.phone}`}>
-        📞 {card.phone}
-      </a>
+      <Bubble title="Claude">
+        <p>Vroegen ze om informatie? Dan stuurt de cockpit de mail die ik klaarzette. Dat mag, want ze vroegen erom.</p>
+      </Bubble>
     ) : (
-      <p className="muted">Geen nummer gevonden: kijk op hun site.</p>
+      <div className="stack-m">
+        {card.phone ? (
+          <a className="button secondary big lesson-call" href={`tel:${card.phone}`}>
+            <Phone size={24} strokeWidth={2.5} aria-hidden="true" /> {card.phone}
+          </a>
+        ) : (
+          <p className="muted">Geen nummer gevonden: kijk op hun site.</p>
+        )}
+        {card.sub ? <p className="tiny muted">{card.sub}</p> : null}
+      </div>
     )
   if (card.kind === 'prospect') {
     if (phase === 'reasons') return <p>Waarom niet? Dan zoekt Claude beter.</p>
     return (
-      <div className="stack-s">
-        <div className="notice stack-xs">
-          <strong>Wat Claude zag</strong>
-          <span>{card.p.observation}</span>
+      <div className="stack-m">
+        <Bubble title="Wat ik zag">
+          <p>{card.p.observation}</p>
           {card.p.website ? (
-            <a href={card.p.website} target="_blank" rel="noreferrer noopener" className="tiny">
-              Kijk zelf
+            <a href={card.p.website} target="_blank" rel="noreferrer noopener" className="tiny row nowrap" style={{ gap: '0.3rem', width: 'fit-content' }}>
+              Kijk zelf <ExternalLink size={14} strokeWidth={2.5} aria-hidden="true" />
             </a>
           ) : null}
-        </div>
+        </Bubble>
         {card.p.pitch ? (
-          <p className="small">
-            <strong>Zo open je:</strong> “{card.p.pitch}”
-          </p>
+          <div className="card sunken stack-xs">
+            <p className="eyebrow">Zo open je</p>
+            <p>“{card.p.pitch}”</p>
+          </div>
         ) : null}
       </div>
     )
   }
   if (card.kind === 'post') return <PostBody card={card} />
-  if (card.kind === 'build') return <p>Claude maakt er een post van, over wat je bouwde. Jij kijkt hem daarna na.</p>
-  if (card.kind === 'growth') return <p>Claude doet het werk op de achtergrond. Het staat daarna in de cockpit.</p>
-  if (card.kind === 'reply') return <p>Een antwoord is goud: daarmee telt het mee in je trechter.</p>
+  if (card.kind === 'build')
+    return (
+      <Bubble title="Claude">
+        <p>Ik maak er een post van, over wat je bouwde. Jij kijkt hem daarna na.</p>
+      </Bubble>
+    )
+  if (card.kind === 'growth')
+    return (
+      <Bubble title="Claude">
+        <p>Ik doe het werk op de achtergrond. Het staat daarna in de cockpit.</p>
+      </Bubble>
+    )
+  if (card.kind === 'reply')
+    return (
+      <Bubble title="Claude">
+        <p>Een antwoord is goud: daarmee telt het mee in je trechter.</p>
+      </Bubble>
+    )
   if (card.kind === 'give')
     return (
-      <div className="stack-s">
-        <p>Geef iets weg: beantwoord één vraag of deel één tip. Geen link, geen reclame. Zo leren mensen je kennen.</p>
-        {card.how ? (
-          <div className="notice stack-xs">
-            <strong>Zo help je hier</strong>
-            <span className="small">{card.how}</span>
-          </div>
-        ) : null}
-        <a className="button secondary small" href={card.url} target="_blank" rel="noreferrer noopener nofollow">
-          Open {hostOf(card.url)}
+      <div className="stack-m">
+        <Bubble title="Claude">
+          <p>Geef iets weg: beantwoord één vraag of deel één tip. Geen link, geen reclame. Zo leren mensen je kennen.</p>
+          {card.how ? <p className="small muted">{card.how}</p> : null}
+        </Bubble>
+        <a className="button secondary" href={card.url} target="_blank" rel="noreferrer noopener nofollow" style={{ width: 'fit-content' }}>
+          Open {hostOf(card.url)} <ExternalLink size={16} strokeWidth={2.5} aria-hidden="true" />
         </a>
       </div>
     )
@@ -220,8 +294,12 @@ function PostBody({ card }: { card: Extract<LessonCard, { kind: 'post' }> }) {
     <div className="stack-s">
       <PostImage hook={card.hook} project={card.projectName} color={card.color} onSaved={() => setSaved(true)} />
       <ol className="lesson-checklist">
-        <li className={saved ? 'done' : ''}>Bewaar het beeld</li>
+        <li className={saved ? 'done' : ''}>
+          <span className="step-no">{saved ? <Check size={16} strokeWidth={3.5} /> : 1}</span>
+          Bewaar het beeld
+        </li>
         <li className={copied ? 'done' : ''}>
+          <span className="step-no">{copied ? <Check size={16} strokeWidth={3.5} /> : 2}</span>
           <button
             type="button"
             className="button secondary small"
@@ -238,6 +316,7 @@ function PostBody({ card }: { card: Extract<LessonCard, { kind: 'post' }> }) {
           </button>
         </li>
         <li>
+          <span className="step-no">3</span>
           {open ? (
             <a className="button secondary small" href={open} target="_blank" rel="noreferrer noopener">
               Open {PLATFORM[card.platform] ?? card.platform}

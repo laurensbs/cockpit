@@ -1,61 +1,69 @@
+import { Check, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import type { DayStep } from '@/lib/today'
+import { StepDisc } from './StepIcon'
 
-export const STEP_ICON: Record<DayStep['kind'], string> = { call: '📞', prospects: '🏢', reply: '💬', give: '🤝', checkin: '📈', post: '📣', build: '🛠️', growth: '🚀' }
-
-function Ring({ done, goal }: { done: number; goal: number }) {
-  const shown = Math.min(done, goal)
-  const r = 26
-  const c = 2 * Math.PI * r
-  return (
-    <div className="day-ring" role="img" aria-label={`${shown} van ${goal} gedaan vandaag`}>
-      <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="var(--sunken)" strokeWidth="8" />
-        <circle cx="32" cy="32" r={r} fill="none" stroke="var(--xp)" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(shown / goal) * c} ${c}`} transform="rotate(-90 32 32)" />
-      </svg>
-      <span className="num">
-        {shown}/{goal}
-      </span>
-    </div>
-  )
-}
+// How far each node sits from the middle, so the path winds down the page like a trail.
+const WIND = [0, 44, 66, 44, 0, -44, -66, -44]
+const at = (i: number) => ({ '--x': `${WIND[i % WIND.length]}px` }) as React.CSSProperties
 
 /**
- * Vandaag: what is waiting, in a few words, and one big button into the lesson (/dag), where Claude
- * takes him through it one card at a time.
+ * Vandaag: the day as a path. What he did today first (gold), then what is waiting (the first one asks
+ * to start), then the day goal. Every node opens the lesson (/dag), where Claude takes him through it.
  */
 export function DayPath({ steps, done, goal }: { steps: DayStep[]; done: number; goal: number }) {
   const finished = done >= goal
   const shown = steps.slice(0, 3)
+  const doneNodes = Math.min(done, goal)
   return (
-    <section className="card day-path stack-m" aria-label="Vandaag">
-      <div className="row between nowrap">
-        <div className="stack-xs">
-          <h2>{finished ? 'Dagdoel gehaald 🎉' : shown.length ? 'Klaar voor je dag?' : 'Alles gedaan'}</h2>
-          <span className="tiny muted">{finished ? '+30 XP · meer mag, hoeft niet' : shown.length ? `${shown.length} ${shown.length === 1 ? 'stap' : 'stappen'} · een paar minuten` : 'Claude zoekt intussen verder'}</span>
+    <section className="stack-m" aria-label="Vandaag">
+      <div className="unit tone-violet">
+        <div>
+          <p className="unit-eyebrow">
+            Vandaag · {Math.min(done, goal)} van {goal}
+          </p>
+          <h2>{finished ? 'Dagdoel gehaald' : shown.length ? 'Jouw stappen van vandaag' : 'Alles gedaan'}</h2>
         </div>
-        <Ring done={done} goal={goal} />
-      </div>
-      {shown.length ? (
-        <>
-          <ol className="day-preview">
-            {shown.map((step) => (
-              <li key={step.key}>
-                <span className="day-icon small" aria-hidden="true">
-                  {STEP_ICON[step.kind]}
-                </span>
-                <span className="stack-xs grow">
-                  <strong>{step.title}</strong>
-                  {step.sub ? <span className="tiny muted">{step.sub}</span> : null}
-                </span>
-              </li>
-            ))}
-          </ol>
-          <Link href="/dag" className="button primary big">
+        {shown.length ? (
+          <Link href="/dag" className="button big unit-cta">
             {finished ? 'Nog een rondje' : 'Start je dag'}
           </Link>
-        </>
-      ) : null}
+        ) : null}
+      </div>
+      <ol className="path">
+        {Array.from({ length: doneNodes }, (_, i) => (
+          <li key={`done-${i}`} className="path-node done" style={at(i)}>
+            <span className="disc done" style={{ width: 76, height: 76 }} aria-hidden="true">
+              <Check size={34} strokeWidth={3.5} />
+            </span>
+            <span className="node-label">
+              <strong>Gedaan</strong>
+              <span className="tiny muted">Stap {i + 1}</span>
+            </span>
+          </li>
+        ))}
+        {shown.map((step, i) => (
+          <li key={step.key} className={`path-node${i === 0 ? ' now' : ''}`} style={at(doneNodes + i)}>
+            <Link href="/dag" className="node-btn" aria-label={`${step.title}: start de les`}>
+              <StepDisc kind={step.kind} size={76} />
+            </Link>
+            {i === 0 ? <span className="node-start">Start</span> : null}
+            <span className="node-label">
+              <strong>{step.title}</strong>
+              {step.sub ? <span className="tiny muted">{step.sub}</span> : null}
+            </span>
+          </li>
+        ))}
+        <li className={`path-node${finished ? ' done' : ' locked'}`} style={at(doneNodes + shown.length)}>
+          <span className={`disc ${finished ? 'done' : 'locked'}`} style={{ width: 76, height: 76 }} aria-hidden="true">
+            <Trophy size={34} strokeWidth={2.5} />
+          </span>
+          <span className="node-label">
+            <strong>Dagdoel</strong>
+            <span className="tiny muted">{finished ? '+30 XP binnen · meer mag, hoeft niet' : `Nog ${goal - doneNodes} ${goal - doneNodes === 1 ? 'stap' : 'stappen'} · +30 XP`}</span>
+          </span>
+        </li>
+      </ol>
     </section>
   )
 }

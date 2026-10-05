@@ -56,3 +56,5 @@ next-env.d.ts
 
 # Vitest JSON report (RTK)
 .vitest/
+# Local preview server (paths of this machine)
+.claude/launch.json
