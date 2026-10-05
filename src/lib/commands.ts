@@ -17,7 +17,6 @@ export const PLACES: { label: string; href: string; hint?: string }[] = [
   { label: 'Marketing', href: '/studio', hint: 'concepten, mails, artikelen, experimenten' },
   { label: 'Taken', href: '/quests' },
   { label: 'Geld', href: '/geld', hint: 'vaste lasten, prijzen, data om op te letten' },
-  { label: 'Bedrijven', href: '/companies', hint: 'omzet, kosten, winst' },
   { label: 'GitHub', href: '/github', hint: 'alles binnenhalen' },
   { label: 'Instellingen', href: '/settings', hint: 'Claude, mailbox, GitHub' },
 ]

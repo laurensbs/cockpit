@@ -22,8 +22,8 @@ export function ContentActions({ id, rating, archived }: { id: string; rating: n
       <button type="button" className={`icon-button${value < 0 ? ' on' : ''}`} aria-pressed={value < 0} aria-label="Niet voor mij" disabled={pending} onClick={() => rate(-1)} style={{ width: 34, height: 34 }}>
         <Icon name="down" size={15} />
       </button>
-      <button type="button" className="icon-button" aria-label={archived ? 'Terughalen' : 'Archiveren'} disabled={pending} onClick={() => start(() => archiveContent(id, !archived))} style={{ width: 34, height: 34 }}>
-        <Icon name={archived ? 'refresh' : 'trash'} size={15} />
+      <button type="button" className="icon-button" aria-label={archived ? 'Terughalen' : 'Archiveren'} title={archived ? 'Terughalen' : 'Archiveren'} disabled={pending} onClick={() => start(() => archiveContent(id, !archived))} style={{ width: 34, height: 34 }}>
+        <Icon name={archived ? 'refresh' : 'archive'} size={15} />
       </button>
     </span>
   )

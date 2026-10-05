@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react'
 import { isPillar, PILLAR_LABEL } from '@/lib/ai/craft'
+import { dayLabel } from '@/lib/dates'
 import { shareUrl } from '@/lib/share'
 import { planContent } from '@/server/actions/content'
 import { ContentActions } from './ContentActions'
@@ -62,14 +63,22 @@ export function PostCard({ post }: { post: PostView }) {
         <strong>Beeld:</strong> {post.visualBrief}
         {post.bestTime ? ` · Beste moment: ${post.bestTime}` : ''}
       </p>
-      <div className="row between">
-        <div className="row">
-          {share ? (
-            <a className="button primary small" href={share} target="_blank" rel="noreferrer noopener">
-              Post op {PLATFORM_LABELS[post.platform]}
-            </a>
-          ) : null}
+      {/* One way to post and "Gepost" in view; planning, Meta and the rest behind one tap. */}
+      <div className="row">
+        {share ? (
+          <a className="button primary small" href={share} target="_blank" rel="noreferrer noopener">
+            Post op {PLATFORM_LABELS[post.platform]}
+          </a>
+        ) : (
           <CopyButton text={copy} label="Kopieer tekst" />
+        )}
+        <DoneToggle id={post.id} done={post.status === 'done'} label="Gepost" />
+        {post.plannedFor ? <span className="chip">Gepland: {dayLabel(post.plannedFor)}</span> : null}
+      </div>
+      <details>
+        <summary className="tiny muted">Plannen en meer</summary>
+        <div className="row" style={{ marginTop: '0.5rem' }}>
+          {share ? <CopyButton text={copy} label="Kopieer tekst" /> : null}
           {post.platform === 'instagram' ? (
             <a className="button secondary small" href={META_PLANNER} target="_blank" rel="noreferrer noopener" title="Plak de tekst en het beeld in Meta; Meta plaatst de post op het moment dat je kiest">
               Inplannen in Meta
@@ -90,10 +99,9 @@ export function PostCard({ post }: { post: PostView }) {
               }}
             />
           </label>
-          <DoneToggle id={post.id} done={post.status === 'done'} label="Gepost" />
+          <ContentActions id={post.id} rating={post.rating} archived={post.status === 'archived'} />
         </div>
-        <ContentActions id={post.id} rating={post.rating} archived={post.status === 'archived'} />
-      </div>
+      </details>
     </article>
   )
 }

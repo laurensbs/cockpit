@@ -38,6 +38,7 @@ test('the studio shows what Claude Code made: mails, posts, ideas, opportunities
   await sections.getByRole('link', { name: 'Posts' }).click()
   const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date(Date.now() + 86_400_000))
   const post = page.locator('article').filter({ hasText: 'Dit is Bram. Hij wacht op jou.' })
+  await post.getByText('Plannen en meer').click()
   await post.getByLabel('Datum om te posten').fill(tomorrow)
   await shot(page, '09-studio')
   await page.reload()

@@ -2,6 +2,7 @@
 // the round, bold type. The names stay the app's own, so a screen says what it means, not which icon.
 
 import {
+  Archive,
   ArrowLeft,
   ArrowRight,
   Building2,
@@ -80,6 +81,7 @@ const ICONS = {
   close: X,
   cpu: Cpu,
   coins: Coins,
+  archive: Archive,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof ICONS
