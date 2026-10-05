@@ -1,4 +1,4 @@
 {
-  "version": "0.5.1",
-  "notes": "Alle projecten op de meter: Google Analytics, Search Console, Discord en je eigen apps als bron, één Google-account in Instellingen voor alles. En Aan laten staan: aan de stroom gaat je computer niet slapen zolang de Cockpit openstaat, zodat de ronde, je mails en Claude doorlopen terwijl jij weg bent."
+  "version": "0.6.0",
+  "notes": "De contentweek: Claude maakt voor al je projecten posts, carrousels, PDF-carrousels, video-scripts en forumantwoorden, volgens een spelboek per kanaal (LinkedIn waarde, Instagram wat werkt, TikTok pakkend, forums eerst helpen). De Cockpit tekent de beelden zelf in de huisstijl van elk project. Jij keurt de week in één keer goed; desgewenst elke maandag automatisch."
 }
